@@ -3,6 +3,5 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "cleanUrls": true,
-  "root": ""
+  "cleanUrls": true
 } 
