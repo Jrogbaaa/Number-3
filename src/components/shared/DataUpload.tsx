@@ -1,135 +1,422 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { Upload } from 'lucide-react';
+import Papa from 'papaparse';
 import { uploadLeads } from '@/lib/supabase';
-import type { Lead, LeadSource, LeadStatus } from '@/types/leads';
+import { toast } from 'sonner';
+import type { Lead, LeadSource, LeadStatus } from '@/types/lead';
+import { supabase } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
+import type { FC } from 'react';
 
-const DataUpload = () => {
-  const [isUploading, setIsUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+interface UploadProgress {
+  processed: number;
+  total: number;
+}
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+interface CSVRow {
+  [key: string]: string | undefined;
+}
 
-    setIsUploading(true);
-    setError(null);
-    setSuccess(false);
+interface LeadInsights {
+  topics?: string[];
+  interests?: string[];
+  background?: string[];
+  potentialValue?: number;
+}
 
-    try {
-      const text = await file.text();
-      const rows = text.split('\n');
-      const headers = rows[0].split(',').map(header => header.trim());
+type ProcessedLead = Omit<Lead, 'last_contacted_at'> & {
+  last_contacted_at: undefined;
+  insights?: LeadInsights;
+};
 
-      const leads: Lead[] = rows.slice(1)
-        .filter(row => row.trim())
-        .map(row => {
-          const values = row.split(',').map(value => value.trim());
-          const lead: Partial<Lead> = {};
+const COMMON_FIELD_MAPPINGS = {
+  name: ['name', 'full name', 'contact', 'person'],
+  email: ['email', 'e-mail', 'mail'],
+  company: ['company', 'organization', 'employer', 'business'],
+  title: ['title', 'position', 'role', 'job title'],
+  phone: ['phone', 'mobile', 'cell', 'contact number'],
+  linkedin: ['linkedin', 'linkedin url', 'linkedin profile'],
+  industry: ['industry', 'sector', 'market'],
+  interests: ['interests', 'focus', 'specialties', 'expertise'],
+  background: ['background', 'experience', 'about'],
+};
 
-          headers.forEach((header, index) => {
-            const value = values[index];
-            switch (header.toLowerCase()) {
-              case 'name':
-                lead.name = value;
-                break;
-              case 'email':
-                lead.email = value;
-                break;
-              case 'score':
-                lead.score = parseInt(value, 10);
-                break;
-              case 'source':
-                lead.source = value as LeadSource;
-                break;
-              case 'status':
-                lead.status = value as LeadStatus;
-                break;
-              case 'value':
-                lead.value = parseFloat(value);
-                break;
-              case 'company':
-                lead.company = value;
-                break;
-              case 'phone':
-                lead.phone = value;
-                break;
-              case 'notes':
-                lead.notes = value;
-                break;
-            }
-          });
+const extractFieldValue = (row: CSVRow, fieldMappings: string[]): string => {
+  const foundKey = Object.keys(row).find(key => 
+    fieldMappings.some(mapping => 
+      key.toLowerCase().includes(mapping.toLowerCase())
+    )
+  );
+  return foundKey ? row[foundKey] || '' : '';
+};
 
-          if (!lead.name || !lead.email || !lead.score || !lead.source || !lead.status || !lead.value) {
-            throw new Error('Missing required fields in CSV');
+const analyzeLeadData = (row: CSVRow): LeadInsights => {
+  const insights: LeadInsights = {
+    topics: [],
+    interests: [],
+    background: [],
+    potentialValue: 50, // Default value
+  };
+
+  // Extract interests and expertise
+  const interestsText = extractFieldValue(row, COMMON_FIELD_MAPPINGS.interests);
+  if (interestsText) {
+    insights.interests = interestsText.split(/[,;]/).map(i => i.trim());
+  }
+
+  // Extract background information
+  const backgroundText = extractFieldValue(row, COMMON_FIELD_MAPPINGS.background);
+  if (backgroundText) {
+    insights.background = backgroundText.split(/[.!?]/).map(b => b.trim()).filter(Boolean);
+  }
+
+  // Analyze potential value based on available data
+  const title = extractFieldValue(row, COMMON_FIELD_MAPPINGS.title).toLowerCase();
+  if (title.includes('ceo') || title.includes('founder') || title.includes('president')) {
+    insights.potentialValue = 90;
+  } else if (title.includes('director') || title.includes('vp') || title.includes('head')) {
+    insights.potentialValue = 75;
+  } else if (title.includes('manager') || title.includes('lead')) {
+    insights.potentialValue = 60;
+  }
+
+  // Extract potential conversation topics
+  const industry = extractFieldValue(row, COMMON_FIELD_MAPPINGS.industry);
+  if (industry) {
+    insights.topics = [`Industry trends in ${industry}`, `Challenges in ${industry}`];
+  }
+
+  return insights;
+};
+
+const mapSourceToLeadSource = (source: string): LeadSource => {
+  const lowerSource = source.toLowerCase();
+  if (lowerSource.includes('linkedin')) return 'LinkedIn';
+  if (lowerSource.includes('website')) return 'Website';
+  if (lowerSource.includes('referral')) return 'Referral';
+  return 'Other';
+};
+
+interface Props {
+  onUploadComplete?: () => void;
+}
+
+const DataUpload: FC<Props> = ({ onUploadComplete }) => {
+  const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [progress, setProgress] = useState<UploadProgress | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleDrop = async (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      // Check if it's a CSV file by extension or type
+      const isCSV = file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv');
+      
+      if (isCSV) {
+        const fakeEvent = {
+          target: {
+            files: [file]
           }
-
-          return lead as Lead;
-        });
-
-      await uploadLeads(leads);
-      setSuccess(true);
-      event.target.value = '';
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error uploading file');
-    } finally {
-      setIsUploading(false);
+        } as unknown as React.ChangeEvent<HTMLInputElement>;
+        await handleUpload(fakeEvent);
+      } else {
+        toast.error('Please upload a CSV file');
+      }
     }
   };
 
-  return (
-    <div className="p-6 bg-[#1A1F2B] rounded-lg">
-      <h2 className="text-xl font-semibold text-white mb-4">Upload Lead Data</h2>
+  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      toast.error('Please select a file to upload');
+      return;
+    }
+
+    if (file.type !== 'text/csv' && !file.name.toLowerCase().endsWith('.csv')) {
+      toast.error('Please upload a CSV file');
+      return;
+    }
+
+    setIsProcessing(true);
+    const loadingToast = toast.loading('Processing CSV file...');
+    setProgress({ processed: 0, total: 0 });
+
+    try {
+      // Process the CSV file
+      const processedLeads = await processCSV(file);
       
-      <div className="space-y-4">
-        <div className="flex items-center justify-center w-full">
-          <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-600 border-dashed rounded-lg cursor-pointer hover:border-gray-500 bg-[#0D1117] hover:bg-[#1A1F2B] transition-colors">
-            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-              <svg className="w-8 h-8 mb-4 text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
-                <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
-              </svg>
-              <p className="mb-2 text-sm text-gray-400">
-                <span className="font-semibold">Click to upload</span> or drag and drop
-              </p>
-              <p className="text-xs text-gray-400">CSV file with lead data</p>
-            </div>
-            <input 
-              type="file" 
-              className="hidden" 
-              accept=".csv"
-              onChange={handleFileUpload}
-              disabled={isUploading}
-            />
-          </label>
-        </div>
+      toast.dismiss(loadingToast);
+      
+      if (!processedLeads.length) {
+        toast.error('No valid leads found in the CSV file');
+        setProgress(null);
+        setIsProcessing(false);
+        return;
+      }
 
-        {isUploading && (
-          <div className="text-blue-400 text-sm">Uploading...</div>
+      // Show a debug message with the first lead data
+      if (processedLeads.length > 0) {
+        console.log('First processed lead:', processedLeads[0]);
+        
+        // Show sample in UI via toast
+        const sampleLead = processedLeads[0];
+        toast.info(
+          <div className="max-w-md">
+            <p className="font-semibold mb-2">Sample processed lead:</p>
+            <ul className="text-xs">
+              <li>Name: {sampleLead.name}</li>
+              <li>Email: {sampleLead.email}</li>
+              <li>Company: {sampleLead.company}</li>
+              <li>Title: {sampleLead.title}</li>
+              <li>Source: {sampleLead.source}</li>
+            </ul>
+          </div>,
+          { duration: 5000 }
+        );
+      }
+      
+      // Start uploading to Supabase
+      const uploadingToast = toast.loading(`Uploading ${processedLeads.length} leads to database...`);
+      setProgress({ processed: 0, total: processedLeads.length });
+
+      try {
+        const result = await uploadLeads(processedLeads);
+        toast.dismiss(uploadingToast);
+        
+        // Check if we're in mock mode (fallback)
+        if (result.mockMode) {
+          toast.info(
+            'Demo Mode Active', 
+            { 
+              description: result.message || 'Using sample data instead of actual database', 
+              duration: 5000
+            }
+          );
+          
+          // Show a more detailed message in the console
+          console.info(`
+            🛈 DEMO MODE ACTIVE
+            -------------------
+            Your data was processed successfully, but couldn't be saved to the database.
+            This could be because:
+            1. The 'leads' table doesn't exist in your Supabase database
+            2. There's an issue with your Supabase connection or permissions
+            
+            Your data is being displayed as sample data for demonstration purposes.
+            
+            To fix this:
+            - Visit the /debug page to set up your database
+            - Download and run the SQL script in your Supabase project
+          `);
+          
+          // Still consider this a success for UX purposes
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
+          
+          if (onUploadComplete) {
+            onUploadComplete();
+          }
+          
+          router.refresh();
+          return;
+        }
+        
+        if (result.success) {
+          toast.success(`Successfully uploaded ${result.count} leads`);
+        } else if (result.processedCount && result.processedCount > 0) {
+          // Some leads were uploaded successfully
+          toast.success(
+            `Partially successful: ${result.processedCount} of ${result.count} leads uploaded`,
+            {
+              description: 'Some batches encountered errors but data was partially saved.'
+            }
+          );
+        } else {
+          // No leads were uploaded successfully
+          toast.error(`Failed to upload leads: ${result.errors?.length || 0} batch errors`);
+        }
+        
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        
+        if (onUploadComplete) {
+          onUploadComplete();
+        }
+        
+        router.refresh();
+      } catch (error: any) {
+        console.error('Upload error:', error);
+        toast.dismiss(uploadingToast);
+        
+        // Get error message
+        let errorMessage = 'Upload failed: Unknown error occurred';
+        
+        if (error.message) {
+          errorMessage = `Upload failed: ${error.message}`;
+        }
+        
+        toast.error(errorMessage);
+      }
+    } catch (error: any) {
+      console.error('Processing error:', error);
+      toast.dismiss();
+      toast.error(error.message || 'Error processing CSV file');
+    } finally {
+      setIsProcessing(false);
+      setProgress(null);
+    }
+  };
+
+  const processCSV = async (file: File): Promise<ProcessedLead[]> => {
+    return new Promise((resolve, reject) => {
+      Papa.parse<CSVRow>(file, {
+        header: true,
+        skipEmptyLines: true,
+        delimiter: '', // Auto-detect delimiter
+        transformHeader: (header: string) => {
+          return header.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+        },
+        complete: (results: Papa.ParseResult<CSVRow>) => {
+          console.log('Papa Parse results:', {
+            data: results.data.slice(0, 2),
+            errors: results.errors,
+            meta: results.meta
+          });
+
+          // Check for critical errors
+          const criticalErrors = results.errors.filter(err => err.type === 'Delimiter' || err.type === 'FieldMismatch');
+          if (criticalErrors.length > 0) {
+            console.error('Critical CSV parsing errors:', criticalErrors);
+            reject(new Error('Invalid CSV format. Please check your file format and try again.'));
+            return;
+          }
+
+          if (!Array.isArray(results.data) || results.data.length === 0) {
+            reject(new Error('No data found in CSV file'));
+            return;
+          }
+
+          try {
+            const processedData = results.data
+              .filter(row => {
+                // Keep any row that has at least one non-empty value
+                const values = Object.values(row).filter(Boolean);
+                return values.length > 0;
+              })
+              .map((row, index): ProcessedLead => {
+                // Extract all possible fields
+                const name = extractFieldValue(row, COMMON_FIELD_MAPPINGS.name);
+                const email = extractFieldValue(row, COMMON_FIELD_MAPPINGS.email);
+                const company = extractFieldValue(row, COMMON_FIELD_MAPPINGS.company);
+                const title = extractFieldValue(row, COMMON_FIELD_MAPPINGS.title);
+                
+                // Analyze the row data for insights
+                const insights = analyzeLeadData(row);
+
+                // Generate placeholder values for missing required fields
+                const generatedName = name || `Contact ${index + 1}`;
+                // Generate a unique ID for the email if missing
+                const generatedEmail = email || `lead_${Date.now()}_${index}_${Math.random().toString(36).slice(2)}@placeholder.com`;
+
+                return {
+                  id: '', // Will be generated by Supabase
+                  name: generatedName,
+                  email: generatedEmail,
+                  company: company || '',
+                  title: title || '',
+                  score: insights.potentialValue || 0,
+                  source: mapSourceToLeadSource(extractFieldValue(row, ['source', 'channel']) || 'other'),
+                  status: 'New' as LeadStatus,
+                  value: 0, // Default value
+                  created_at: new Date().toISOString(),
+                  last_contacted_at: undefined,
+                  insights
+                };
+              });
+
+            if (processedData.length === 0) {
+              reject(new Error('No valid data found in CSV file after processing'));
+              return;
+            }
+
+            console.log(`Successfully processed ${processedData.length} leads with insights`);
+            resolve(processedData);
+          } catch (error) {
+            console.error('Error processing CSV data:', error);
+            reject(new Error('Error processing CSV data: ' + (error as Error).message));
+          }
+        },
+        error: (error: Error) => {
+          console.error('CSV parsing error:', error);
+          reject(new Error('Failed to parse CSV file: ' + error.message));
+        }
+      });
+    });
+  };
+
+  return (
+    <div>
+      <div className="max-w-xl mx-auto">
+        <label
+          htmlFor="dropzone-file"
+          className={`flex flex-col items-center justify-center w-full h-60 border-2 border-dashed rounded-lg cursor-pointer ${
+            isProcessing ? 'border-gray-600 bg-gray-800' : 'border-gray-600 hover:border-gray-500 hover:bg-gray-800'
+          } transition-colors`}
+          onDragOver={(e) => e.preventDefault()}
+          onDragEnter={(e) => e.preventDefault()}
+          onDrop={handleDrop}
+        >
+          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+            {isProcessing ? (
+              <div className="text-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-gray-400 border-r-transparent mb-4" />
+                <p className="text-sm text-gray-500">
+                  {progress ? `Processing: ${progress.processed} of ${progress.total}` : 'Processing...'}
+                </p>
+              </div>
+            ) : (
+              <>
+                <Upload className="w-10 h-10 mb-3 text-gray-400" />
+                <p className="mb-2 text-sm text-gray-500">
+                  <span className="font-semibold">Click to upload</span> or drag and drop
+                </p>
+                <p className="text-xs text-gray-500">CSV files only</p>
+              </>
+            )}
+          </div>
+          <input
+            ref={fileInputRef}
+            id="dropzone-file"
+            type="file"
+            className="hidden"
+            accept=".csv"
+            onChange={handleUpload}
+            disabled={isProcessing}
+          />
+        </label>
+        {!isProcessing && (
+          <div className="mt-4 text-center text-gray-500 text-xs">
+            <p>The CSV file should contain columns for name, email, company, title, etc.</p>
+            <p className="mt-1">Files of any size can be processed - large files will be handled in batches automatically.</p>
+            <p className="mt-1">
+              Need a sample? <a href="/sample-leads.csv" className="text-blue-400 hover:underline">Download template</a>
+            </p>
+            <p className="mt-3 text-xs text-gray-400">
+              For large datasets (1000+ records), you can also visit the <a href="/debug" className="text-blue-400 hover:underline">Debug</a> page to generate test data.
+            </p>
+          </div>
         )}
-
-        {error && (
-          <div className="text-red-400 text-sm">{error}</div>
-        )}
-
-        {success && (
-          <div className="text-green-400 text-sm">Data uploaded successfully!</div>
-        )}
-
-        <div className="text-gray-400 text-xs">
-          <p className="font-semibold mb-1">Required CSV columns:</p>
-          <ul className="list-disc list-inside space-y-1">
-            <li>name</li>
-            <li>email</li>
-            <li>score (0-100)</li>
-            <li>source (Referral, Website, LinkedIn, etc.)</li>
-            <li>status (New, Contacted, Qualified, etc.)</li>
-            <li>value (numeric)</li>
-          </ul>
-        </div>
       </div>
     </div>
   );
 };
 
-export default DataUpload; 
+export { DataUpload }; 

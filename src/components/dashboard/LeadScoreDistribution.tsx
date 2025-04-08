@@ -24,6 +24,10 @@ const LeadScoreDistribution = () => {
 
   const options = {
     responsive: true,
+    maintainAspectRatio: true,
+    animation: {
+      duration: 0 // Disable initial animation
+    },
     plugins: {
       legend: {
         position: 'bottom' as const,
@@ -48,8 +52,10 @@ const LeadScoreDistribution = () => {
   return (
     <div>
       <h3 className="text-lg font-medium mb-3">Score Distribution</h3>
-      <div className="h-64 flex items-center justify-center">
-        <Pie data={data} options={options} />
+      <div className="h-64 w-full flex items-center justify-center">
+        <div className="w-64 h-64">
+          <Pie data={data} options={options} />
+        </div>
       </div>
       <div className="flex flex-wrap justify-center gap-3 mt-4">
         {data.labels.map((label, index) => (

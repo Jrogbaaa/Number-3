@@ -1,153 +1,185 @@
-# Props - Lead Management Dashboard
+# Chrome Industries Lead Management Platform
 
-A modern lead management dashboard built with Next.js, TypeScript, and TailwindCSS. The application helps track, analyze, and manage leads with features like lead scoring, content calendar, and AI-powered outreach tools.
+A modern lead management platform built with Next.js 15, React, TypeScript, and Supabase, specialized for Chrome Industries lifestyle brand.
 
 ## Features
 
-### Dashboard
-- Lead scoring and analysis
-- Comprehensive leads table with sorting and filtering
-- Weekly content calendar with success rate tracking
-- Visual lead score distribution
-- High-value leads tracking
+- 📊 Lead Analytics Dashboard
+- 📈 Industry-Specific Lead Scoring
+- 📥 CSV Data Import
+- 📅 Chrome Industries Outreach Calendar
+- 🔄 Real-time Updates
+- 🌙 Dark Mode UI
+- 📱 Responsive Design
 
-### Data Input
-- Drag-and-drop file upload
-- Support for CSV and JSON formats
-- Demo data generation
-- Data format validation and guidelines
-- Current dataset status tracking
+## Chrome Industries Focus
 
-### Outreach Tools
-- AI-powered script generator
-- Multiple script templates:
-  - Lead Overview
-  - Personalized Outreach
-  - Source Performance Analysis
-  - Lead Segmentation
-- One-click copy and regenerate functionality
-- Content calendar integration
+This platform is specifically designed to help Chrome Industries:
 
-### Heygen Integration
-- AI Podcast Creation tool integration
-- Heygen Studio for AI avatar videos
-- Podcast script generator with multiple formats:
-  - Interview Style
-  - Discussion Format
-  - Debate Format
-
-## Tech Stack
-
-- **Framework**: Next.js 14 with App Router
-- **Language**: TypeScript
-- **Styling**: TailwindCSS
-- **Icons**: Lucide Icons
-- **State Management**: React Hooks
-- **Data Visualization**: Custom components
-
-## Project Structure
-
-```
-src/
-├── app/
-│   ├── dashboard/
-│   ├── data-input/
-│   ├── outreach/
-│   └── heygen-integration/
-├── components/
-│   ├── LeadsTable.tsx
-│   ├── ContentCalendar.tsx
-│   └── layout/
-├── types/
-│   └── lead.ts
-└── lib/
-```
+- Identify leads with the highest potential interest in lifestyle/cycling fashion
+- Prioritize contacts based on industry relevance
+- Target marketing professionals and decision-makers
+- Schedule outreach to the most promising contacts
+- Track progress of leads through the sales pipeline
 
 ## Getting Started
 
+### Prerequisites
+
+- Node.js 18+ 
+- npm or yarn
+- Supabase account and project
+
+### Installation
+
 1. Clone the repository:
-\`\`\`bash
-git clone <repository-url>
-\`\`\`
+```bash
+git clone https://github.com/Jrogbaaa/Number-3.git
+cd Number-3
+```
 
 2. Install dependencies:
-\`\`\`bash
+```bash
 npm install
-\`\`\`
+```
 
-3. Run the development server:
-\`\`\`bash
+3. Set up environment variables:
+Create a `.env.local` file in the root directory with:
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+4. Run the development server:
+```bash
 npm run dev
-\`\`\`
+```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+## CSV Upload Guidelines
 
-## Data Types
+The platform supports CSV file uploads with flexible data handling:
 
-### Lead
-\`\`\`typescript
-interface Lead {
-  id: string;
-  name: string;
-  email: string;
-  score: number;
-  source: LeadSource;
-  status: LeadStatus;
-  value: number;
-  createdAt: string;
-  lastContactedAt?: string;
-}
-\`\`\`
+### Supported Column Names
 
-### Calendar Event
-\`\`\`typescript
-interface CalendarEvent {
-  id: string;
-  leadName: string;
-  startTime: string;
-  endTime: string;
-  successRate: number;
-}
-\`\`\`
+The system automatically recognizes various common column names:
 
-## Component Documentation
+- **Name**: `name`, `Name`, `contact`, `Contact`
+- **Email**: `email`, `Email`, `E-mail`, `e_mail`
+- **Company**: `company`, `Company`, `organization`, `Organization`
+- **Title**: `title`, `Title`, `position`, `Position`
+- **Source**: `source`, `Source`, `channel`, `Channel`
+- **Value**: `value`, `Value`
 
-### LeadsTable
-Displays lead information in a sortable table format with:
-- Lead name and email
-- Score visualization with star rating
-- Source and status badges
-- Lead value
+### Requirements
 
-### ContentCalendar
-Shows weekly scheduled contacts with:
-- Daily view for Monday through Friday
-- Time slots with lead names
-- Success rate visualization
-- Best practice timing recommendations
+- CSV file must have headers (column names in the first row)
+- File should be UTF-8 encoded
+- No file size limit - large files are automatically processed in batches
 
-### Data Input Form
-Handles data import through:
-- File upload with drag-and-drop
-- Format selection (CSV/JSON)
-- Demo data generation
-- Format guidelines and validation
+### Data Processing
 
-### Script Generator
-Creates customized outreach scripts with:
-- Multiple template options
-- Data-driven insights
-- One-click copy functionality
-- Script regeneration
+- All data rows will be processed, even without complete information
+- Data is processed in batches for handling files of any size
+- The system will generate placeholder values for missing required fields
+- Duplicate records are handled via upsert operations with duplicate skipping
+- Lead scores are automatically calculated based on Chrome Industries relevance
+- Outreach calendar automatically prioritizes high-value leads
+
+## Chrome Industries Scoring Model
+
+Leads are scored on a 0-100 scale based on their relevance to Chrome Industries:
+
+- **Industry Relevance**: Higher scores for fashion, apparel, cycling, and outdoor industries
+- **Role Relevance**: Higher scores for marketing, creative, and product design roles
+- **Decision Authority**: Higher scores for managers, directors, and executives
+- **Lead Source Quality**: Higher scores for referrals, partners, and industry events
+- **Sales Pipeline Status**: Higher scores for leads further along in the pipeline
+
+The dashboard automatically sorts leads by their Chrome Industries relevance score.
+
+## Outreach Calendar
+
+The outreach calendar feature:
+
+- Automatically schedules contact with your highest-value leads
+- Prioritizes the most promising leads for early-week outreach
+- Distributes contacts throughout the week for effective follow-up
+- Shows success probability based on lead relevance scores
+- Updates in real-time as new leads are uploaded
+
+## Recent Updates
+
+### Version 15.4.0
+- Added Chrome Industries specialized scoring model
+- Implemented outreach calendar for lead prioritization
+- Fixed pie chart animation and sizing issues
+- Reorganized dashboard to prioritize outreach calendar
+- Updated documentation to reflect Chrome Industries focus
+
+### Version 15.3.0
+- Fixed data upload functionality with improved error handling
+- Added debug page for troubleshooting database connections
+- Implemented batch processing for files of any size
+- Removed restrictions on required fields (email no longer required)
+- Added ability to download sample data templates
+- Created database setup utilities for easier deployment
+
+### Version 15.2.4
+- Updated to Next.js 15.2.4
+- Improved CSV upload with better error handling
+- Added batch processing for large files
+- Enhanced data validation and error reporting
+- Fixed various type issues and improved TypeScript support
+
+## Tech Stack
+
+- Next.js 15.2.4
+- React 18.3
+- TypeScript
+- Tailwind CSS
+- Supabase
+- Radix UI Components
+- Papa Parse (CSV parsing)
+- Chart.js (data visualization)
 
 ## Contributing
 
 1. Fork the repository
-2. Create your feature branch: `git checkout -b feature/my-feature`
-3. Commit your changes: `git commit -am 'Add my feature'`
-4. Push to the branch: `git push origin feature/my-feature`
-5. Submit a pull request
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Troubleshooting
+
+If you encounter issues with data uploads or database functionality, the application includes a built-in diagnostic tool:
+
+1. Navigate to `/debug` in your browser
+2. The diagnostics page will:
+   - Test your Supabase connection
+   - Verify the leads table structure
+   - Provide tools to download sample data
+   - Allow you to clear all leads if needed
+
+### Common Issues and Solutions
+
+#### CSV Upload Failures
+- Ensure your CSV file is properly formatted with headers
+- Check that your file is UTF-8 encoded
+- Try uploading smaller batches if experiencing timeout issues
+- Try the sample CSV template available at `/sample-leads.csv`
+
+#### Database Connection Issues
+- Verify your Supabase credentials in `.env.local`
+- Ensure that the leads table exists in your Supabase database
+- Check if your IP is allowed in Supabase security settings
+- Use the SQL schema from `/setup-database.sql` to recreate the table if needed
+
+#### Duplicate Email Errors
+- The system now properly handles duplicate emails by skipping them
+- You can see counts of successful uploads vs. skipped duplicates in the console
+- Each lead is identified by email, so duplicates are determined by matching emails 

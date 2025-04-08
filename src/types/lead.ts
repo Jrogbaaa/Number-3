@@ -1,6 +1,31 @@
-export type LeadStatus = 'New' | 'Qualified' | 'Contacted' | 'Converted' | 'Disqualified';
+export type LeadStatus = 
+  | 'New'
+  | 'Contacted'
+  | 'Responded'
+  | 'Qualified'
+  | 'Proposal'
+  | 'Negotiation'
+  | 'Converted'
+  | 'Lost'
+  | 'On Hold';
 
-export type LeadSource = 'Referral' | 'Website' | 'LinkedIn' | 'Conference' | 'Instagram' | 'Webinar';
+export type LeadSource = 
+  | 'Referral'
+  | 'Website'
+  | 'LinkedIn'
+  | 'Conference'
+  | 'Instagram'
+  | 'Cold Call'
+  | 'Email Campaign'
+  | 'Partner'
+  | 'Other';
+
+export interface LeadInsights {
+  topics?: string[];
+  interests?: string[];
+  background?: string[];
+  potentialValue?: number;
+}
 
 export interface Lead {
   id: string;
@@ -10,8 +35,12 @@ export interface Lead {
   source: LeadSource;
   status: LeadStatus;
   value: number;
-  createdAt: string;
-  lastContactedAt?: string;
+  company: string;
+  title: string;
+  created_at: string;
+  last_contacted_at?: string;
+  insights?: LeadInsights;
+  chromeScore?: number;
 }
 
 export interface CalendarEvent {

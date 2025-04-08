@@ -28,6 +28,10 @@ const podcastFormats: PodcastFormat[] = [
 
 const PodcastScriptGenerator = () => {
   const [selectedFormat, setSelectedFormat] = useState<string>('interview');
+  const [numHosts, setNumHosts] = useState<string>('2');
+  const [duration, setDuration] = useState<string>('10');
+  const [voiceStyle, setVoiceStyle] = useState<string>('professional');
+  const [focusArea, setFocusArea] = useState<string>('general');
 
   const handleFormatSelect = (formatId: string) => {
     setSelectedFormat(formatId);
@@ -72,9 +76,13 @@ const PodcastScriptGenerator = () => {
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Number of Hosts
             </label>
-            <select className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
+            <select 
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2"
+              value={numHosts}
+              onChange={(e) => setNumHosts(e.target.value)}
+            >
               <option value="1">1 Host</option>
-              <option value="2" selected>2 Hosts</option>
+              <option value="2">2 Hosts</option>
               <option value="3">3 Hosts</option>
             </select>
           </div>
@@ -83,9 +91,13 @@ const PodcastScriptGenerator = () => {
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Podcast Duration
             </label>
-            <select className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
+            <select 
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2"
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+            >
               <option value="5">5 minutes</option>
-              <option value="10" selected>10 minutes</option>
+              <option value="10">10 minutes</option>
               <option value="15">15 minutes</option>
               <option value="20">20 minutes</option>
             </select>
@@ -95,8 +107,12 @@ const PodcastScriptGenerator = () => {
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Voice Style
             </label>
-            <select className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
-              <option value="professional" selected>Professional</option>
+            <select 
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2"
+              value={voiceStyle}
+              onChange={(e) => setVoiceStyle(e.target.value)}
+            >
+              <option value="professional">Professional</option>
               <option value="casual">Casual</option>
               <option value="energetic">Energetic</option>
             </select>
@@ -106,8 +122,12 @@ const PodcastScriptGenerator = () => {
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Focus Area
             </label>
-            <select className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
-              <option value="general" selected>General Lead Insights</option>
+            <select 
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2"
+              value={focusArea}
+              onChange={(e) => setFocusArea(e.target.value)}
+            >
+              <option value="general">General Lead Insights</option>
               <option value="conversion">Conversion Strategies</option>
               <option value="sources">Lead Sources Analysis</option>
               <option value="nurturing">Lead Nurturing Tips</option>

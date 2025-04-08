@@ -10,9 +10,10 @@ import {
   CategoryScale,
   LinearScale,
 } from 'chart.js';
-import type { Lead } from '@/types/leads';
+import type { Lead } from '@/types/lead';
 import { getLeads, getLeadAnalytics } from '@/lib/supabase';
-import DataUpload from './shared/DataUpload';
+import { DataUpload } from './shared/DataUpload';
+import { toast } from 'sonner';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale);
 
@@ -42,6 +43,21 @@ const Dashboard = () => {
     loadData();
   }, []);
 
+  // Check if we're using sample data
+  useEffect(() => {
+    // If we're using demo data, show a notification
+    if (leads.length > 0 && leads[0].id?.startsWith('mock-')) {
+      const timer = setTimeout(() => {
+        toast.info('Demo Mode Active', {
+          description: 'You\'re viewing sample data. Upload your own leads to see real analytics.',
+          duration: 5000
+        });
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [leads]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -52,14 +68,39 @@ const Dashboard = () => {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-red-400">{error}</div>
+      <div className="flex flex-col items-center justify-center h-full">
+        <div className="text-red-400 mb-4">{error}</div>
+        <a 
+          href="/debug" 
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md"
+        >
+          Troubleshoot Issues
+        </a>
       </div>
     );
   }
 
   if (!leads.length) {
-    return <DataUpload />;
+    return (
+      <div className="space-y-8">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-semibold text-white">Lead Dashboard</h1>
+          <a 
+            href="/debug" 
+            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md"
+          >
+            Debug System
+          </a>
+        </div>
+        <div className="bg-[#1A1F2B] rounded-lg p-8 max-w-2xl mx-auto">
+          <h2 className="text-xl font-semibold text-white text-center mb-4">Upload Your Leads</h2>
+          <p className="text-gray-400 text-center mb-6">
+            Upload a CSV file with your leads to start analyzing and tracking them.
+          </p>
+          <DataUpload onUploadComplete={loadData} />
+        </div>
+      </div>
+    );
   }
 
   const pieData = {
@@ -93,6 +134,29 @@ const Dashboard = () => {
             </svg>
           </button>
           <span className="text-gray-400">{leads.length} leads analyzed</span>
+          <a 
+            href="/debug" 
+            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md"
+          >
+            Debug System
+          </a>
+        </div>
+      </div>
+
+      <div className="bg-[#1A1F2B] p-4 rounded-lg mb-4">
+        <div className="flex items-start">
+          <div className="bg-blue-500/20 p-2 rounded-full mr-3">
+            <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-blue-400 font-medium">Upload More Leads</h3>
+            <p className="text-gray-400 text-sm mt-1">
+              Need to add more leads? Visit <a href="/debug" className="text-blue-400 hover:underline">Debug</a> page to download a sample 
+              template and clear existing data if needed.
+            </p>
+          </div>
         </div>
       </div>
 
