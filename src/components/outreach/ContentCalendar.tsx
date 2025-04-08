@@ -1,117 +1,92 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Lead } from '@/types/lead';
+import { getLeads } from '@/lib/supabase';
 
-// Mock data for the content calendar
-const calendarData = {
-  days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-  slots: [
-    {
-      id: 1,
-      day: 'Monday',
-      lead: 'Emily Johnson',
-      time: '3:00 PM - 5:00 PM',
-      probability: 88,
-    },
-    {
-      id: 2,
-      day: 'Monday',
-      lead: 'Jessica Taylor',
-      time: '3:00 PM - 5:00 PM',
-      probability: 87,
-    },
-    {
-      id: 3,
-      day: 'Monday',
-      lead: 'David Wilson',
-      time: '9:00 AM - 11:00 AM',
-      probability: 77,
-    },
-    {
-      id: 4,
-      day: 'Tuesday',
-      lead: 'John Smith',
-      time: '3:00 PM - 5:00 PM',
-      probability: 77,
-    },
-    {
-      id: 5,
-      day: 'Tuesday',
-      lead: 'Emily Johnson',
-      time: '3:00 PM - 5:00 PM',
-      probability: 83,
-    },
-    {
-      id: 6,
-      day: 'Tuesday',
-      lead: 'Robert Chen',
-      time: '1:00 PM - 3:00 PM',
-      probability: 79,
-    },
-    {
-      id: 7,
-      day: 'Wednesday',
-      lead: 'Sarah Miller',
-      time: '1:00 PM - 3:00 PM',
-      probability: 79,
-    },
-    {
-      id: 8,
-      day: 'Wednesday',
-      lead: 'Amanda Rodriguez',
-      time: '9:00 AM - 11:00 AM',
-      probability: 79,
-    },
-    {
-      id: 9,
-      day: 'Wednesday',
-      lead: 'Thomas Brown',
-      time: '1:00 PM - 3:00 PM',
-      probability: 80,
-    },
-    {
-      id: 10,
-      day: 'Thursday',
-      lead: 'John Smith',
-      time: '9:00 AM - 11:00 AM',
-      probability: 82,
-    },
-    {
-      id: 11,
-      day: 'Thursday',
-      lead: 'Michael Wong',
-      time: '1:00 PM - 3:00 PM',
-      probability: 76,
-    },
-    {
-      id: 12,
-      day: 'Thursday',
-      lead: 'Sarah Miller',
-      time: '3:00 PM - 5:00 PM',
-      probability: 85,
-    },
-    {
-      id: 13,
-      day: 'Friday',
-      lead: 'Michael Wong',
-      time: '3:00 PM - 5:00 PM',
-      probability: 89,
-    },
-    {
-      id: 14,
-      day: 'Friday',
-      lead: 'Sarah Miller',
-      time: '1:00 PM - 3:00 PM',
-      probability: 85,
-    },
-  ],
-};
+const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+interface CalendarSlot {
+  id: string;
+  day: string;
+  lead: string;
+  time: string;
+  probability: number;
+}
 
 const ContentCalendar = () => {
+  const [calendarData, setCalendarData] = useState<Record<string, CalendarSlot[]>>({});
+  const [loading, setLoading] = useState<boolean>(true);
+  
+  useEffect(() => {
+    async function loadLeadsForCalendar() {
+      try {
+        setLoading(true);
+        const leads = await getLeads();
+        
+        // Generate calendar data from real leads
+        const generatedCalendarData = generateCalendarData(leads);
+        setCalendarData(generatedCalendarData);
+      } catch (error) {
+        console.error('Error loading leads for outreach calendar:', error);
+        // Fallback to empty calendar data
+        setCalendarData({});
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    loadLeadsForCalendar();
+  }, []);
+  
+  // Transform leads into calendar slots
+  function generateCalendarData(leads: Lead[]): Record<string, CalendarSlot[]> {
+    // Initialize empty calendar with each weekday
+    const calendar: Record<string, CalendarSlot[]> = {
+      Monday: [],
+      Tuesday: [],
+      Wednesday: [],
+      Thursday: [],
+      Friday: []
+    };
+    
+    // Only use high-value leads (sorted by Chrome score)
+    const highValueLeads = [...leads]
+      .sort((a, b) => (b.chromeScore || 0) - (a.chromeScore || 0))
+      .slice(0, 15);
+    
+    // Distribute leads across weekdays
+    highValueLeads.forEach((lead, index) => {
+      // Determine which day to place the lead (distribute evenly)
+      const dayIndex = Math.min(Math.floor(index / 3), 4); // 0-4 for Monday-Friday
+      const day = WEEKDAYS[dayIndex];
+      
+      // Generate a time slot based on lead score
+      const scoreBasedHour = 9 + (Math.floor((100 - (lead.chromeScore || 0)) / 25) * 2);
+      const startHour = Math.min(Math.max(scoreBasedHour, 9), 15); // Keep between 9am and 3pm
+      const startHourFormatted = startHour % 12 === 0 ? 12 : startHour % 12;
+      const endHourFormatted = (startHour + 2) % 12 === 0 ? 12 : (startHour + 2) % 12;
+      
+      // Create the calendar slot
+      const slot: CalendarSlot = {
+        id: lead.id,
+        day,
+        lead: lead.name,
+        time: `${startHourFormatted}:00 ${startHour < 12 ? 'AM' : 'PM'} - ${endHourFormatted}:00 ${(startHour + 2) < 12 ? 'AM' : 'PM'}`,
+        probability: lead.chromeScore || lead.score || 70,
+      };
+      
+      // Add to the appropriate day
+      calendar[day].push(slot);
+    });
+    
+    return calendar;
+  }
+
   const getSlotsByDay = (day: string) => {
-    return calendarData.slots.filter((slot) => slot.day === day).slice(0, 3);
+    return calendarData[day] || [];
   };
 
   const getMoreCount = (day: string) => {
-    const count = calendarData.slots.filter((slot) => slot.day === day).length - 3;
+    const count = (calendarData[day] || []).length - 3;
     return count > 0 ? count : 0;
   };
 
@@ -126,34 +101,45 @@ const ContentCalendar = () => {
     <div className="space-y-6">
       <h2 className="text-xl font-medium mb-4">Weekly Contact Calendar</h2>
       
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        {calendarData.days.map((day) => (
-          <div key={day} className="space-y-4">
-            <h3 className="text-center font-medium py-2 border-b border-gray-700">
-              {day}
-            </h3>
-            <div className="space-y-2">
-              {getSlotsByDay(day).map((slot) => (
-                <div 
-                  key={slot.id} 
-                  className="p-3 bg-navy border border-gray-800 rounded-lg"
-                >
-                  <div className="font-medium">{slot.lead}</div>
-                  <div className="text-sm text-gray-400">{slot.time}</div>
-                  <div className={`text-right ${getProbabilityColor(slot.probability)}`}>
-                    {slot.probability}%
+      {loading ? (
+        <div className="flex justify-center my-8">
+          <div className="animate-pulse text-gray-400">Loading contact schedule...</div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          {WEEKDAYS.map((day) => (
+            <div key={day} className="space-y-4">
+              <h3 className="text-center font-medium py-2 border-b border-gray-700">
+                {day}
+              </h3>
+              <div className="space-y-2">
+                {getSlotsByDay(day).slice(0, 3).map((slot) => (
+                  <div 
+                    key={slot.id} 
+                    className="p-3 bg-navy border border-gray-800 rounded-lg"
+                  >
+                    <div className="font-medium">{slot.lead}</div>
+                    <div className="text-sm text-gray-400">{slot.time}</div>
+                    <div className={`text-right ${getProbabilityColor(slot.probability)}`}>
+                      {slot.probability}%
+                    </div>
                   </div>
-                </div>
-              ))}
-              {getMoreCount(day) > 0 && (
-                <div className="text-center text-sm text-gray-400">
-                  +{getMoreCount(day)} more
-                </div>
-              )}
+                ))}
+                {getSlotsByDay(day).length === 0 && (
+                  <div className="text-center text-sm text-gray-500 py-6">
+                    No contacts scheduled
+                  </div>
+                )}
+                {getMoreCount(day) > 0 && (
+                  <div className="text-center text-sm text-gray-400">
+                    +{getMoreCount(day)} more
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
       
       <div className="flex items-center gap-2 text-sm text-gray-400">
         <svg 
@@ -168,7 +154,7 @@ const ContentCalendar = () => {
             clipRule="evenodd" 
           />
         </svg>
-        <span>Times are based on lead activity patterns and industry best practices.</span>
+        <span>Contact schedule is based on Chrome Industries relevance score and best contact times.</span>
       </div>
     </div>
   );

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Lead } from '@/types/lead';
+import { getLeads } from '@/lib/supabase';
 
 interface ScriptTemplate {
   id: string;
@@ -32,38 +33,28 @@ const scriptTemplates: ScriptTemplate[] = [
   },
 ];
 
-// Mock leads data - replace with real data from your backend
-const mockLeads: Lead[] = [
-  {
-    id: '1',
-    name: 'Michael Wong',
-    email: 'michael@bigcorp.com',
-    score: 67,
-    source: 'Referral',
-    status: 'Converted',
-    value: 25000,
-    company: 'BigCorp Inc.',
-    title: 'CTO',
-    createdAt: '2024-04-01',
-  },
-  {
-    id: '2',
-    name: 'Sarah Miller',
-    email: 'sarah@techstart.io',
-    score: 82,
-    source: 'LinkedIn',
-    status: 'Qualified',
-    value: 35000,
-    company: 'TechStart',
-    title: 'CEO',
-    createdAt: '2024-04-01',
-  },
-];
-
 export default function ScriptGenerator() {
   const [selectedTemplate, setSelectedTemplate] = useState<string>('personalized-outreach');
   const [selectedLead, setSelectedLead] = useState<string>('');
   const [generatedScript, setGeneratedScript] = useState<string>('');
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const loadLeads = async () => {
+      try {
+        setLoading(true);
+        const fetchedLeads = await getLeads();
+        setLeads(fetchedLeads);
+      } catch (error) {
+        console.error('Error loading leads:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadLeads();
+  }, []);
 
   const generatePersonalizedScript = (lead: Lead) => {
     switch (selectedTemplate) {
@@ -101,7 +92,7 @@ Best regards,
 
   const handleLeadSelect = (leadId: string) => {
     setSelectedLead(leadId);
-    const lead = mockLeads.find(l => l.id === leadId);
+    const lead = leads.find(l => l.id === leadId);
     if (lead) {
       setGeneratedScript(generatePersonalizedScript(lead));
     }
@@ -110,7 +101,7 @@ Best regards,
   const handleTemplateSelect = (templateId: string) => {
     setSelectedTemplate(templateId);
     if (selectedLead) {
-      const lead = mockLeads.find(l => l.id === selectedLead);
+      const lead = leads.find(l => l.id === selectedLead);
       if (lead) {
         setGeneratedScript(generatePersonalizedScript(lead));
       }
@@ -123,7 +114,7 @@ Best regards,
 
   const handleRegenerate = () => {
     if (selectedLead) {
-      const lead = mockLeads.find(l => l.id === selectedLead);
+      const lead = leads.find(l => l.id === selectedLead);
       if (lead) {
         setGeneratedScript(generatePersonalizedScript(lead));
       }
@@ -135,32 +126,41 @@ Best regards,
       <div className="grid grid-cols-2 gap-6">
         <div>
           <h3 className="text-lg font-medium mb-4">Select Lead</h3>
-          <div className="space-y-2">
-            {mockLeads.map((lead) => (
-              <button
-                key={lead.id}
-                onClick={() => handleLeadSelect(lead.id)}
-                className={`w-full p-4 rounded-lg border transition-all duration-200 text-left ${
-                  selectedLead === lead.id
-                    ? 'border-blue-500 bg-blue-500/10 text-blue-400'
-                    : 'border-gray-700 hover:border-gray-600 text-gray-300'
-                }`}
-              >
-                <div className="font-medium">{lead.name}</div>
-                <div className="text-sm text-gray-500">{lead.company}</div>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className={`px-2 py-0.5 rounded-full text-xs 
-                    ${lead.status === 'Converted' ? 'bg-green-500/20 text-green-400' : ''}
-                    ${lead.status === 'Qualified' ? 'bg-blue-500/20 text-blue-400' : ''}
-                  `}>
-                    {lead.status}
-                  </span>
-                  <span className="text-gray-500">•</span>
-                  <span className="text-gray-500 text-sm">{lead.source}</span>
-                </div>
-              </button>
-            ))}
-          </div>
+          {loading ? (
+            <div className="text-center py-8 text-gray-400">Loading leads...</div>
+          ) : leads.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">No leads available</div>
+          ) : (
+            <div className="space-y-2">
+              {leads.map((lead) => (
+                <button
+                  key={lead.id}
+                  onClick={() => handleLeadSelect(lead.id)}
+                  className={`w-full p-4 rounded-lg border transition-all duration-200 text-left ${
+                    selectedLead === lead.id
+                      ? 'border-blue-500 bg-blue-500/10 text-blue-400'
+                      : 'border-gray-700 hover:border-gray-600 text-gray-300'
+                  }`}
+                >
+                  <div className="font-medium">{lead.name}</div>
+                  <div className="text-sm text-gray-500">{lead.company}</div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className={`px-2 py-0.5 rounded-full text-xs 
+                      ${lead.status === 'Converted' ? 'bg-green-500/20 text-green-400' : ''}
+                      ${lead.status === 'Qualified' ? 'bg-blue-500/20 text-blue-400' : ''}
+                      ${lead.status === 'New' ? 'bg-gray-500/20 text-gray-400' : ''}
+                      ${lead.status === 'Contacted' ? 'bg-yellow-500/20 text-yellow-400' : ''}
+                      ${lead.status === 'Proposal' ? 'bg-purple-500/20 text-purple-400' : ''}
+                    `}>
+                      {lead.status}
+                    </span>
+                    <span className="text-gray-500">•</span>
+                    <span className="text-gray-500 text-sm">{lead.source}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div>
