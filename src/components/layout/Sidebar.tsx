@@ -4,7 +4,18 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BarChart2, Database, Mail, Video } from 'lucide-react';
 
-const navItems = [
+interface NavItem {
+  name: string;
+  href: string;
+  icon: React.ReactNode;
+}
+
+interface SidebarProps {
+  navItems?: NavItem[];
+}
+
+// Default nav items as fallback
+const defaultNavItems = [
   {
     name: 'Dashboard',
     href: '/dashboard',
@@ -27,7 +38,7 @@ const navItems = [
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ navItems = defaultNavItems }: SidebarProps) {
   const pathname = usePathname();
 
   return (
