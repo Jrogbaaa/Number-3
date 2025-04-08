@@ -4,6 +4,5 @@
   "installCommand": "npm install",
   "framework": "nextjs",
   "cleanUrls": true,
-  "root": "",
   "outputDirectory": ".next"
 } 
