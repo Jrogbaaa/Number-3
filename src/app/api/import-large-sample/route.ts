@@ -69,7 +69,7 @@ export async function GET(request: Request) {
     
     return NextResponse.json({
       success: result.success,
-      message: `Generated and imported ${result.processedCount || 0} of ${safeCount} leads`,
+      message: `Generated and imported ${result.successCount || 0} of ${safeCount} leads${result.duplicateCount ? ` (${result.duplicateCount} duplicates skipped)` : ''}`,
       result
     });
   } catch (error) {
