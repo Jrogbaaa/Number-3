@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 15, 23, 41;
+  --background-end-rgb: 15, 23, 41;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+    to bottom,
+    rgb(var(--background-start-rgb)),
+    rgb(var(--background-end-rgb))
+  );
+}
+
+@layer components {
+  .card {
+    @apply bg-navy rounded-lg p-6 shadow-lg;
+  }
+  
+  .btn-primary {
+    @apply bg-accent-blue hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition-colors;
+  }
+  
+  .input {
+    @apply bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-accent-blue;
+  }
+  
+  .badge-green {
+    @apply bg-status-green text-white text-xs px-2 py-1 rounded-full;
+  }
+  
+  .badge-yellow {
+    @apply bg-status-yellow text-white text-xs px-2 py-1 rounded-full;
+  }
+  
+  .badge-red {
+    @apply bg-status-red text-white text-xs px-2 py-1 rounded-full;
+  }
+  
+  .badge-blue {
+    @apply bg-status-blue text-white text-xs px-2 py-1 rounded-full;
+  }
+} 
