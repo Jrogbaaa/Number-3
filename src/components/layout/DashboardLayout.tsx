@@ -38,7 +38,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   return (
     <div className="flex h-screen">
       <Sidebar navItems={navItems} />
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto pl-60">
         <main className="p-6 h-full">
           {children}
         </main>

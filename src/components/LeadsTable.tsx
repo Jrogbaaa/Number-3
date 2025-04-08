@@ -1,7 +1,9 @@
 'use client';
 
 import { Lead } from '@/types/lead';
-import { Star } from 'lucide-react';
+import { Star, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -9,6 +11,8 @@ interface LeadsTableProps {
 }
 
 export default function LeadsTable({ leads, showChromeScore = false }: LeadsTableProps) {
+  const router = useRouter();
+  
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'bg-green-500/20 text-green-400';
     if (score >= 60) return 'bg-blue-500/20 text-blue-400';
@@ -32,6 +36,10 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
     
     return stars;
   };
+  
+  const handleLeadClick = (leadId: string) => {
+    router.push(`/outreach/lead/${leadId}`);
+  };
 
   return (
     <div className="overflow-x-auto">
@@ -48,12 +56,30 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
         </thead>
         <tbody className="divide-y divide-gray-700">
           {leads.map((lead) => (
-            <tr key={lead.id} className="hover:bg-gray-800/50">
+            <tr 
+              key={lead.id} 
+              className="hover:bg-gray-800/50 cursor-pointer"
+              onClick={() => handleLeadClick(lead.id)}
+            >
               <td className="py-4 px-6">
                 <div>
-                  <div className="font-medium">{lead.name}</div>
-                  <div className="text-gray-500 text-sm">{lead.email}</div>
-                  <div className="text-gray-500 text-xs">{lead.company}</div>
+                  <div className="font-medium text-blue-400 hover:underline">{lead.name}</div>
+                  <div className="flex items-center gap-2">
+                    {lead.linkedinUrl ? (
+                      <a 
+                        href={lead.linkedinUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-400 text-sm flex items-center hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span>See Profile</span>
+                        <ExternalLink className="w-3 h-3 ml-1" />
+                      </a>
+                    ) : (
+                      <span className="text-gray-500 text-sm">{lead.company}</span>
+                    )}
+                  </div>
                 </div>
               </td>
               {showChromeScore && (

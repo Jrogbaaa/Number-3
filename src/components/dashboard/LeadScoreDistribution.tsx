@@ -11,12 +11,14 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 const LeadScoreDistribution = () => {
   const [distribution, setDistribution] = useState<number[]>([0, 0, 0, 0, 0]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [totalLeads, setTotalLeads] = useState<number>(0);
   
   useEffect(() => {
     async function fetchLeadDistribution() {
       try {
         setLoading(true);
         const leads = await getLeads();
+        setTotalLeads(leads.length);
         
         // Calculate distribution based on Chrome scores
         const scoreDistribution = calculateScoreDistribution(leads);
@@ -25,6 +27,7 @@ const LeadScoreDistribution = () => {
         console.error('Error fetching lead distribution:', error);
         // Fallback to empty distribution
         setDistribution([0, 0, 0, 0, 0]);
+        setTotalLeads(0);
       } finally {
         setLoading(false);
       }
@@ -37,7 +40,10 @@ const LeadScoreDistribution = () => {
     const distribution = [0, 0, 0, 0, 0]; // [0-20, 21-40, 41-60, 61-80, 81-100]
     
     leads.forEach(lead => {
-      const score = lead.chromeScore || lead.score || 0;
+      // Always prioritize chromeScore if available
+      const score = lead.chromeScore !== undefined && lead.chromeScore !== null 
+        ? lead.chromeScore 
+        : (lead.score || 0);
       
       if (score <= 20) distribution[0]++;
       else if (score <= 40) distribution[1]++;
@@ -49,18 +55,21 @@ const LeadScoreDistribution = () => {
     return distribution;
   };
 
+  const scoreLabels = ['0-20', '21-40', '41-60', '61-80', '81-100'];
+  const scoreColors = [
+    '#EF4444', // Red - 0-20
+    '#F97316', // Orange - 21-40
+    '#F59E0B', // Yellow - 41-60
+    '#84CC16', // Green - 61-80
+    '#10B981', // Teal - 81-100
+  ];
+
   const data = {
-    labels: ['0-20', '21-40', '41-60', '61-80', '81-100'],
+    labels: scoreLabels,
     datasets: [
       {
         data: distribution,
-        backgroundColor: [
-          '#EF4444', // Red - 0-20
-          '#F97316', // Orange - 21-40
-          '#F59E0B', // Yellow - 41-60
-          '#84CC16', // Green - 61-80
-          '#10B981', // Teal - 81-100
-        ],
+        backgroundColor: scoreColors,
         borderWidth: 0,
       },
     ],
@@ -70,7 +79,7 @@ const LeadScoreDistribution = () => {
     responsive: true,
     maintainAspectRatio: true,
     animation: {
-      duration: 0 // Disable initial animation
+      duration: 1000 // Add animation for better UX
     },
     plugins: {
       legend: {
@@ -92,8 +101,7 @@ const LeadScoreDistribution = () => {
         callbacks: {
           label: function(context: any) {
             const value = context.raw || 0;
-            const total = distribution.reduce((sum, val) => sum + val, 0);
-            const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+            const percentage = totalLeads > 0 ? Math.round((value / totalLeads) * 100) : 0;
             return `Leads: ${value} (${percentage}%)`;
           }
         }
@@ -116,17 +124,25 @@ const LeadScoreDistribution = () => {
             </div>
           </div>
           <div className="flex flex-wrap justify-center gap-3 mt-4">
-            {data.labels.map((label, index) => (
-              <div key={label} className="flex items-center gap-1.5">
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: data.datasets[0].backgroundColor[index] }}
-                />
-                <span className="text-sm text-gray-300">
-                  {label} ({distribution[index]})
-                </span>
-              </div>
-            ))}
+            {scoreLabels.map((label, index) => {
+              const count = distribution[index];
+              const percentage = totalLeads > 0 ? Math.round((count / totalLeads) * 100) : 0;
+              
+              return (
+                <div key={label} className="flex items-center gap-1.5">
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: scoreColors[index] }}
+                  />
+                  <span className="text-sm text-gray-300">
+                    {label}: {count} ({percentage}%)
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="text-center text-gray-400 text-sm mt-4">
+            Total: {totalLeads} leads analyzed
           </div>
         </>
       )}

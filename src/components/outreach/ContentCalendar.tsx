@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Lead } from '@/types/lead';
 import { getLeads } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
@@ -12,9 +13,15 @@ interface CalendarSlot {
   probability: number;
 }
 
-const ContentCalendar = () => {
+interface ContentCalendarProps {
+  selectedDay?: string | null;
+  onSelectLead?: (leadId: string) => void;
+}
+
+const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarProps) => {
   const [calendarData, setCalendarData] = useState<Record<string, CalendarSlot[]>>({});
   const [loading, setLoading] = useState<boolean>(true);
+  const router = useRouter();
   
   useEffect(() => {
     async function loadLeadsForCalendar() {
@@ -97,6 +104,28 @@ const ContentCalendar = () => {
     return 'text-yellow-500';
   };
 
+  const handleSlotClick = (slotId: string) => {
+    if (onSelectLead) {
+      onSelectLead(slotId);
+    } else {
+      // Navigate directly to lead detail page if no callback is provided
+      router.push(`/outreach/lead/${slotId}`);
+    }
+  };
+
+  const handleViewAll = (day: string) => {
+    // Navigate to outreach page with the day as a query parameter
+    router.push(`/outreach?day=${day}`);
+  };
+
+  const getCurrentDay = () => {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const today = days[new Date().getDay()];
+    return WEEKDAYS.includes(today) ? today : WEEKDAYS[0];
+  };
+
+  const currentDay = getCurrentDay();
+
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-medium mb-4">Weekly Contact Calendar</h2>
@@ -109,16 +138,29 @@ const ContentCalendar = () => {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {WEEKDAYS.map((day) => (
             <div key={day} className="space-y-4">
-              <h3 className="text-center font-medium py-2 border-b border-gray-700">
-                {day}
+              <h3 
+                className={`text-center font-medium py-2 border-b border-gray-700 ${
+                  selectedDay === day ? 'bg-green-900/20 text-green-400 rounded-t-lg' : 
+                  day === currentDay ? 'bg-blue-900/20 text-blue-400 rounded-t-lg' : ''
+                } cursor-pointer hover:bg-gray-800/50`}
+                onClick={() => handleViewAll(day)}
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && handleViewAll(day)}
+                aria-label={`View all leads for ${day}`}
+              >
+                {day} {day === currentDay && '(Today)'}
               </h3>
               <div className="space-y-2">
                 {getSlotsByDay(day).slice(0, 3).map((slot) => (
                   <div 
                     key={slot.id} 
-                    className="p-3 bg-navy border border-gray-800 rounded-lg"
+                    className="p-3 bg-navy border border-gray-800 rounded-lg hover:border-blue-500 transition-colors cursor-pointer"
+                    onClick={() => handleSlotClick(slot.id)}
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSlotClick(slot.id)}
+                    aria-label={`View outreach details for ${slot.lead}`}
                   >
-                    <div className="font-medium">{slot.lead}</div>
+                    <div className="font-medium text-blue-400 hover:underline">{slot.lead}</div>
                     <div className="text-sm text-gray-400">{slot.time}</div>
                     <div className={`text-right ${getProbabilityColor(slot.probability)}`}>
                       {slot.probability}%
@@ -131,7 +173,13 @@ const ContentCalendar = () => {
                   </div>
                 )}
                 {getMoreCount(day) > 0 && (
-                  <div className="text-center text-sm text-gray-400">
+                  <div
+                    className="text-center text-sm text-blue-400 hover:underline cursor-pointer"
+                    onClick={() => handleViewAll(day)}
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && handleViewAll(day)}
+                    aria-label={`View all ${getMoreCount(day)} more leads for ${day}`}
+                  >
                     +{getMoreCount(day)} more
                   </div>
                 )}

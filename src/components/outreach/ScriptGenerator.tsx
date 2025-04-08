@@ -10,6 +10,10 @@ interface ScriptTemplate {
   description: string;
 }
 
+interface ScriptGeneratorProps {
+  initialLeadId?: string | null;
+}
+
 const scriptTemplates: ScriptTemplate[] = [
   {
     id: 'lead-overview',
@@ -33,9 +37,9 @@ const scriptTemplates: ScriptTemplate[] = [
   },
 ];
 
-export default function ScriptGenerator() {
+export default function ScriptGenerator({ initialLeadId = null }: ScriptGeneratorProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<string>('personalized-outreach');
-  const [selectedLead, setSelectedLead] = useState<string>('');
+  const [selectedLead, setSelectedLead] = useState<string | null>(initialLeadId);
   const [generatedScript, setGeneratedScript] = useState<string>('');
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -46,6 +50,15 @@ export default function ScriptGenerator() {
         setLoading(true);
         const fetchedLeads = await getLeads();
         setLeads(fetchedLeads);
+        
+        // If we have an initialLeadId and it's valid, generate the script for it
+        if (initialLeadId) {
+          const lead = fetchedLeads.find(l => l.id === initialLeadId);
+          if (lead) {
+            setSelectedLead(initialLeadId);
+            setGeneratedScript(generatePersonalizedScript(lead));
+          }
+        }
       } catch (error) {
         console.error('Error loading leads:', error);
       } finally {
@@ -54,7 +67,18 @@ export default function ScriptGenerator() {
     };
 
     loadLeads();
-  }, []);
+  }, [initialLeadId]);
+
+  // Update selected lead when initialLeadId changes
+  useEffect(() => {
+    if (initialLeadId && initialLeadId !== selectedLead) {
+      setSelectedLead(initialLeadId);
+      const lead = leads.find(l => l.id === initialLeadId);
+      if (lead) {
+        setGeneratedScript(generatePersonalizedScript(lead));
+      }
+    }
+  }, [initialLeadId, leads, selectedLead]);
 
   const generatePersonalizedScript = (lead: Lead) => {
     switch (selectedTemplate) {

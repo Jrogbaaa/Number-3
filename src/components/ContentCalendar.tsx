@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Lead, CalendarEvent } from '@/types/lead';
 import { getLeads } from '@/lib/supabase';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
@@ -51,6 +53,7 @@ function generateCalendarEvents(leads: Lead[]): Record<string, CalendarEvent[]> 
 export default function ContentCalendar() {
   const [events, setEvents] = useState<Record<string, CalendarEvent[]>>({});
   const [loading, setLoading] = useState<boolean>(true);
+  const router = useRouter();
   
   useEffect(() => {
     async function loadLeadsForCalendar() {
@@ -76,6 +79,24 @@ export default function ContentCalendar() {
     return dayEvents.length > 3 ? dayEvents.length - 3 : 0;
   };
 
+  const handleDayClick = (day: string) => {
+    // Navigate to outreach page with the day as a query parameter
+    router.push(`/outreach?day=${day}`);
+  };
+  
+  const handleLeadClick = (leadId: string) => {
+    // Navigate directly to the lead detail page
+    router.push(`/outreach/lead/${leadId}`);
+  };
+
+  const getCurrentDay = () => {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const today = days[new Date().getDay()];
+    return WEEKDAYS.includes(today) ? today : WEEKDAYS[0];
+  };
+
+  const currentDay = getCurrentDay();
+
   return (
     <div className="bg-[#1A1F2B] rounded-lg p-6">
       <h2 className="text-xl font-medium mb-6">Chrome Industries Outreach</h2>
@@ -89,14 +110,26 @@ export default function ContentCalendar() {
         <div className="grid grid-cols-5 gap-4">
           {WEEKDAYS.map((day) => (
             <div key={day} className="space-y-4">
-              <h4 className="text-center font-medium py-2 border-b border-gray-700">{day}</h4>
+              <h4 
+                className={`text-center font-medium py-2 border-b border-gray-700 ${day === currentDay ? 'bg-green-900/20 text-green-400 rounded-t-lg' : ''} cursor-pointer hover:bg-gray-800/50 transition-colors`}
+                onClick={() => handleDayClick(day)}
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && handleDayClick(day)}
+                aria-label={`View all leads for ${day}`}
+              >
+                {day} {day === currentDay && '(Today)'}
+              </h4>
               <div className="space-y-2">
                 {(events[day] || []).slice(0, 3).map((event) => (
                   <div
                     key={event.id}
-                    className="bg-[#0D1117] border border-gray-800 rounded-lg p-3 space-y-2"
+                    className="bg-[#0D1117] border border-gray-800 rounded-lg p-3 space-y-2 hover:border-blue-500 transition-colors cursor-pointer"
+                    onClick={() => handleLeadClick(event.id)}
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && handleLeadClick(event.id)}
+                    aria-label={`View outreach details for ${event.leadName}`}
                   >
-                    <div className="font-medium">{event.leadName}</div>
+                    <div className="font-medium text-blue-400 hover:underline">{event.leadName}</div>
                     <div className="text-sm text-gray-400">
                       {event.startTime} - {event.endTime}
                     </div>
@@ -111,7 +144,13 @@ export default function ContentCalendar() {
                   </div>
                 )}
                 {getMoreCount(day) > 0 && (
-                  <div className="text-center text-sm text-gray-400">
+                  <div 
+                    className="text-center text-sm text-blue-400 hover:underline cursor-pointer"
+                    onClick={() => handleDayClick(day)}
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && handleDayClick(day)}
+                    aria-label={`View all ${getMoreCount(day)} additional leads for ${day}`}
+                  >
                     +{getMoreCount(day)} more
                   </div>
                 )}
