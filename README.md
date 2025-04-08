@@ -1,36 +1,137 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Props Lead Management Dashboard
 
-## Getting Started
+A modern, scalable lead management dashboard built with Next.js 14, TypeScript, and TailwindCSS.
 
-First, run the development server:
+## 🚀 Quick Start
 
 ```bash
+# Install dependencies
+npm install
+
+# Run development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Build for production
+npm run build
+
+# Start production server
+npm run start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🏗️ Project Structure
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+props-app/
+├── src/
+│   ├── app/                 # Next.js app directory
+│   ├── components/         # Reusable UI components
+│   │   ├── dashboard/     # Dashboard-specific components
+│   │   └── shared/        # Shared/common components
+│   ├── lib/               # Utility functions and shared logic
+│   ├── types/             # TypeScript type definitions
+│   └── styles/            # Global styles and Tailwind config
+├── public/                # Static assets
+└── tests/                # Test files
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🔧 Technology Stack
 
-## Learn More
+- **Framework:** Next.js 14
+- **Language:** TypeScript
+- **Styling:** TailwindCSS
+- **Charts:** Chart.js with react-chartjs-2
+- **Database:** Supabase
+- **State Management:** [To be implemented]
+- **Testing:** [To be implemented]
 
-To learn more about Next.js, take a look at the following resources:
+## 🌱 Future Development
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+This project is designed to be extensible and ready for future enhancements. Here are the key areas planned for development:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Upcoming Features
+- User authentication and authorization
+- Real-time lead tracking
+- Advanced analytics dashboard
+- Email integration
+- Custom reporting
+- Mobile responsiveness improvements
 
-## Deploy on Vercel
+### Architecture Decisions
+- Components are built with modularity in mind
+- Use of TypeScript for better maintainability
+- Client-side components are marked with 'use client' directive
+- Separation of concerns between UI components and business logic
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Contributing Guidelines
+1. Create feature branches from `main`
+2. Follow the existing code style and naming conventions
+3. Add appropriate tests for new features
+4. Update documentation for significant changes
+5. Use conventional commits for clear version history
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📚 Documentation
+
+### Component Guidelines
+- Use TypeScript interfaces for props
+- Implement proper error boundaries
+- Follow accessibility best practices
+- Add JSDoc comments for complex functions
+
+### State Management
+- Currently using React's built-in state management
+- Prepared for integration with global state management if needed
+- Consider using React Context for shared state
+
+### API Integration
+- API routes will be added in `src/app/api`
+- Implement proper error handling and loading states
+- Use TypeScript for API response types
+
+## 🔒 Environment Variables
+
+Required environment variables:
+\`\`\`
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+\`\`\`
+
+## 📈 Performance Considerations
+
+- Use of Next.js Image component for optimized images
+- Client-side components only when necessary
+- Implement proper loading states
+- Consider code splitting for larger features
+
+## 🧪 Testing Strategy
+
+- Unit tests for utility functions
+- Component tests for UI elements
+- Integration tests for API routes
+- E2E tests for critical user flows
+
+## 📱 Responsive Design
+
+- Mobile-first approach
+- Breakpoints:
+  - sm: 640px
+  - md: 768px
+  - lg: 1024px
+  - xl: 1280px
+  - 2xl: 1536px
+
+## 🔄 Version Control
+
+- Use semantic versioning
+- Follow conventional commits
+- Branch naming convention:
+  - feature/feature-name
+  - fix/bug-name
+  - chore/task-name
+
+## 🚀 Deployment
+
+Currently deployed on Vercel with automatic deployments from the main branch.
+
+## 📝 License
+
+[License details to be added]
