@@ -230,10 +230,10 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
         
         if (result.success) {
           toast.success(`Successfully uploaded ${result.count} leads`);
-        } else if (result.processedCount && result.processedCount > 0) {
+        } else if (result.successCount && result.successCount > 0) {
           // Some leads were uploaded successfully
           toast.success(
-            `Partially successful: ${result.processedCount} of ${result.count} leads uploaded`,
+            `Partially successful: ${result.successCount} of ${result.count} leads uploaded`,
             {
               description: 'Some batches encountered errors but data was partially saved.'
             }
