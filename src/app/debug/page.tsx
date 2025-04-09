@@ -255,11 +255,17 @@ export default function DebugPage() {
               onClick={async () => {
                 if (window.confirm('Are you sure you want to delete all leads? This cannot be undone.')) {
                   setIsLoading(true);
+                  setErrorMessage(null);
                   try {
                     const { clearAllLeads } = await import('@/lib/supabase');
-                    await clearAllLeads();
-                    alert('All leads have been deleted successfully.');
-                    window.location.href = '/dashboard';
+                    const result = await clearAllLeads();
+                    
+                    if (result.success) {
+                      alert(`Success: ${result.message || 'All leads have been deleted successfully.'}`);
+                      window.location.href = '/dashboard';
+                    } else {
+                      setErrorMessage(result.message || 'Failed to clear leads. Please try again.');
+                    }
                   } catch (error) {
                     console.error('Error clearing leads:', error);
                     setErrorMessage(error instanceof Error ? error.message : String(error));
@@ -271,7 +277,7 @@ export default function DebugPage() {
               disabled={isLoading}
               className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-800 disabled:text-gray-300 text-white rounded-md"
             >
-              Clear All Leads
+              {isLoading ? 'Processing...' : 'Clear All Leads'}
             </button>
             
             <button

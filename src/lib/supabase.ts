@@ -283,19 +283,97 @@ export async function getLeadAnalytics() {
  */
 export async function clearAllLeads() {
   try {
-    const { error } = await supabase
-      .from('leads')
-      .delete()
-      .neq('id', ''); // Delete all records
+    console.log('Starting to clear all leads...');
     
-    if (error) {
-      console.error('Error clearing leads:', error);
-      throw error;
+    // First try to get the count of leads before deletion
+    const { count: leadCount, error: countError } = await supabase
+      .from('leads')
+      .select('*', { count: 'exact', head: true });
+    
+    if (countError) {
+      console.error('Error counting leads:', countError);
+      // Continue anyway, as we still want to try deletion
+    } else {
+      console.log(`Attempting to delete ${leadCount || 'unknown number of'} leads`);
     }
     
-    return { success: true };
+    // Try to delete in smaller batches to avoid timeouts
+    // First, get all lead IDs
+    const { data: leadIds, error: fetchError } = await supabase
+      .from('leads')
+      .select('id');
+      
+    if (fetchError) {
+      console.error('Error fetching lead IDs:', fetchError);
+      throw new Error(`Failed to fetch lead IDs: ${fetchError.message || JSON.stringify(fetchError)}`);
+    }
+    
+    if (!leadIds || leadIds.length === 0) {
+      console.log('No leads found to delete');
+      return { success: true, message: 'No leads found to delete' };
+    }
+    
+    console.log(`Found ${leadIds.length} leads to delete`);
+    
+    // Delete in batches of 100
+    const batchSize = 100;
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (let i = 0; i < leadIds.length; i += batchSize) {
+      const batch = leadIds.slice(i, i + batchSize);
+      const idsToDelete = batch.map(item => item.id);
+      
+      try {
+        const { error: deleteError } = await supabase
+          .from('leads')
+          .delete()
+          .in('id', idsToDelete);
+        
+        if (deleteError) {
+          console.error(`Error deleting batch ${i/batchSize + 1}:`, deleteError);
+          errorCount++;
+        } else {
+          successCount++;
+          console.log(`Successfully deleted batch ${i/batchSize + 1} (${idsToDelete.length} leads)`);
+        }
+      } catch (batchError) {
+        console.error(`Exception in batch ${i/batchSize + 1}:`, batchError);
+        errorCount++;
+      }
+    }
+    
+    // As a fallback, try one more time with the original method
+    if (errorCount > 0 && successCount === 0) {
+      console.log('Trying fallback method - delete all at once');
+      const { error: fallbackError } = await supabase
+        .from('leads')
+        .delete()
+        .neq('id', ''); // Delete all records
+      
+      if (fallbackError) {
+        console.error('Fallback delete method failed:', fallbackError);
+        throw new Error(`Failed to delete leads using fallback method: ${fallbackError.message || JSON.stringify(fallbackError)}`);
+      } else {
+        console.log('Fallback method succeeded');
+        return { success: true, message: 'All leads deleted using fallback method' };
+      }
+    }
+    
+    return { 
+      success: true, 
+      message: `Deleted leads with ${successCount} successful batches and ${errorCount} failed batches`,
+      successCount,
+      errorCount
+    };
   } catch (error) {
     console.error('Error in clearAllLeads:', error);
-    throw error;
+    // Ensure we return a meaningful error message
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return { 
+      success: false, 
+      message: `Failed to clear leads: ${errorMessage}`,
+      error: errorMessage
+    };
   }
 } 
