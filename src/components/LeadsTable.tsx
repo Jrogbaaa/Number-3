@@ -70,6 +70,21 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                       {lead.name}
                       <ArrowUpRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
+                    
+                    <div className="text-gray-400 text-xs mt-0.5 mb-1">
+                      {!lead.email || lead.email.includes('placeholder') ? (
+                        <span className="text-gray-500">No email available</span>
+                      ) : (
+                        <a 
+                          href={`mailto:${lead.email}`}
+                          className="hover:text-blue-400 hover:underline transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {lead.email}
+                        </a>
+                      )}
+                    </div>
+                    
                     <div className="flex items-center gap-2">
                       {lead.linkedinUrl ? (
                         <a 
