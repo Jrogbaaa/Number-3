@@ -204,7 +204,7 @@ function calculateChromeIndustriesScore(lead: Lead): number {
   }
   
   // Lead source relevance
-  if (lead.source === 'Partner' || lead.source === 'Referral') {
+  if (lead.source === 'Referral' || lead.source === 'Event') {
     score += 20; // High quality lead sources
   } else if (lead.source === 'Website' || lead.source === 'Conference') {
     score += 10; // Medium quality lead sources
