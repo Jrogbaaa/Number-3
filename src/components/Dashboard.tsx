@@ -15,7 +15,7 @@ import { getLeads, getLeadAnalytics } from '@/lib/supabase';
 import { DataUpload } from './shared/DataUpload';
 import { DataClear } from './shared/DataClear';
 import { toast } from 'sonner';
-import { BarChart2, RefreshCw, Upload, AlertCircle, Users, ChevronRight, TrendingUp } from 'lucide-react';
+import { BarChart2, RefreshCw, Upload, AlertCircle, Users, ChevronRight, TrendingUp, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale);
@@ -192,7 +192,7 @@ const Dashboard = () => {
             <BarChart2 className="h-6 w-6 text-blue-400" />
             <h1 className="text-2xl font-semibold text-white">Lead Dashboard</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <div className="text-gray-400 px-2 py-1 bg-gray-800/50 rounded-md border border-gray-800/70 flex items-center gap-1.5">
               <Users className="w-4 h-4" />
               <span className="text-sm">{leads.length} leads</span>
@@ -208,7 +208,35 @@ const Dashboard = () => {
               <span>{refreshing ? 'Refreshing...' : 'Refresh Data'}</span>
             </button>
             
-            <DataClear onClearComplete={loadData} />
+            <button
+              type="button"
+              onClick={async () => {
+                if (window.confirm('Are you sure you want to delete all leads? This cannot be undone.')) {
+                  try {
+                    const { clearAllLeads } = await import('@/lib/supabase');
+                    toast.loading('Clearing all leads...');
+                    const result = await clearAllLeads();
+                    toast.dismiss();
+                    
+                    if (result.success) {
+                      toast.success('All leads deleted successfully');
+                      // Reload data
+                      loadData();
+                    } else {
+                      toast.error(`Failed to delete leads: ${result.message}`);
+                    }
+                  } catch (error) {
+                    toast.dismiss();
+                    toast.error('Error clearing leads');
+                    console.error('Error clearing leads:', error);
+                  }
+                }
+              }}
+              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm rounded-md transition-colors flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Clear All Leads</span>
+            </button>
             
             <a 
               href="/debug" 

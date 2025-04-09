@@ -285,6 +285,30 @@ export async function clearAllLeads() {
   try {
     console.log('Starting to clear all leads...');
     
+    // Try the direct approach first - should work if permissions are set correctly
+    const { error: directDeleteError } = await supabase
+      .from('leads')
+      .delete()
+      .neq('id', ''); // Delete all records
+    
+    if (!directDeleteError) {
+      console.log('Successfully deleted all leads using direct method');
+      
+      // Force clear cache
+      await supabase.auth.refreshSession();
+      await supabase
+        .from('leads')
+        .select('count')
+        .limit(1)
+        .throwOnError();
+      
+      return { success: true, message: 'All leads have been deleted successfully' };
+    }
+    
+    // If direct delete failed, log the error and try the batch approach
+    console.warn('Direct delete failed:', directDeleteError.message);
+    console.log('Falling back to batch delete method...');
+    
     // First try to get the count of leads before deletion
     const { count: leadCount, error: countError } = await supabase
       .from('leads')
@@ -315,8 +339,8 @@ export async function clearAllLeads() {
     
     console.log(`Found ${leadIds.length} leads to delete`);
     
-    // Delete in batches of 100
-    const batchSize = 100;
+    // Delete in batches of 20 instead of 100 to avoid timeout issues
+    const batchSize = 20;
     let successCount = 0;
     let errorCount = 0;
     
@@ -337,50 +361,33 @@ export async function clearAllLeads() {
           successCount++;
           console.log(`Successfully deleted batch ${i/batchSize + 1} (${idsToDelete.length} leads)`);
         }
+        
+        // Add a small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
       } catch (batchError) {
         console.error(`Exception in batch ${i/batchSize + 1}:`, batchError);
         errorCount++;
       }
     }
     
-    // As a fallback, try one more time with the original method
-    if (errorCount > 0 && successCount === 0) {
-      console.log('Trying fallback method - delete all at once');
-      const { error: fallbackError } = await supabase
-        .from('leads')
-        .delete()
-        .neq('id', ''); // Delete all records
-      
-      if (fallbackError) {
-        console.error('Fallback delete method failed:', fallbackError);
-        throw new Error(`Failed to delete leads using fallback method: ${fallbackError.message || JSON.stringify(fallbackError)}`);
-      } else {
-        console.log('Fallback method succeeded');
-        
-        // Clear any cached data by making an empty read request with cache reload
-        await supabase
-          .from('leads')
-          .select('count')
-          .limit(1)
-          .throwOnError();
-          
-        return { success: true, message: 'All leads deleted using fallback method' };
-      }
-    }
-    
-    // Clear any cached data by making an empty read request with cache reload
+    // Force clear cache
+    await supabase.auth.refreshSession();
     await supabase
       .from('leads')
       .select('count')
       .limit(1)
       .throwOnError();
     
-    return { 
-      success: true, 
-      message: `Deleted leads with ${successCount} successful batches and ${errorCount} failed batches`,
-      successCount,
-      errorCount
-    };
+    if (successCount > 0) {
+      return { 
+        success: true, 
+        message: `Deleted ${successCount * batchSize} leads with ${successCount} successful batches${errorCount > 0 ? ` and ${errorCount} failed batches` : ''}`,
+        successCount,
+        errorCount
+      };
+    } else {
+      throw new Error('All batch deletions failed');
+    }
   } catch (error) {
     console.error('Error in clearAllLeads:', error);
     // Ensure we return a meaningful error message

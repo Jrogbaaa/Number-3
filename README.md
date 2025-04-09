@@ -14,6 +14,7 @@ A modern lead management platform built with Next.js 15, React, TypeScript, and 
 - 🎨 Intuitive User Interface with Enhanced Visuals
 - 📱 Responsive Design
 - 📋 Clean Data Presentation with Improved Card Layouts
+- ♻️ Data Management Tools (Add, Clear, Refresh)
 
 ## Chrome Industries Focus
 
@@ -163,6 +164,17 @@ The platform features a carefully designed UI that prioritizes both aesthetics a
 
 ## Recent Updates
 
+### Version 15.7.0
+- Added robust lead management tools for database administration
+- Implemented improved CSV upload with detailed progress tracking
+- Enhanced lead deletion functionality with better feedback and reliability
+- Added batch processing for large datasets with progress indicators
+- Improved error handling for database operations
+- Added dedicated Data Clear component for lead deletion
+- Updated UI to provide better feedback during long-running operations
+- Fixed cache issues to prevent stale data display
+- Enhanced dashboard with more visible admin controls
+
 ### Version 15.6.0
 - Completely redesigned UI for improved user experience
 - Enhanced card layouts with better visual hierarchy and spacing
@@ -239,6 +251,23 @@ If you encounter issues with data uploads or database functionality, the applica
    - Provide tools to download sample data
    - Allow you to clear all leads if needed
 
+### Data Management
+
+#### Clearing All Leads
+You can clear all leads from two locations:
+1. **Dashboard** - Use the red "Clear All Leads" button in the top navigation
+2. **Debug Page** (`/debug`) - Use the "Clear All Leads" button in the Data Management section
+
+If you encounter issues clearing leads:
+- Make sure your Supabase connection is working (check the Debug page)
+- Verify you have proper RLS policies in your Supabase project that allow deletes
+- Try clearing in smaller batches by uploading fewer leads at a time
+
+#### Refreshing Data
+If you see stale data or need to refresh:
+1. Use the "Refresh Data" button on the Dashboard
+2. This forces a full reload from the database, bypassing any cached data
+
 ### Common Issues and Solutions
 
 #### CSV Upload Failures
@@ -248,12 +277,18 @@ If you encounter issues with data uploads or database functionality, the applica
 - Try the sample CSV template available at `/sample-leads.csv`
 
 #### Database Connection Issues
-- Verify your Supabase credentials in `.env.local`
-- Ensure that the leads table exists in your Supabase database
-- Check if your IP is allowed in Supabase security settings
-- Use the SQL schema from `/setup-database.sql` to recreate the table if needed
+- Verify your Supabase URL and anon key are correct in the environment variables
+- Check if your Supabase project is active and not paused
+- Ensure your database has the required 'leads' table (use the Debug page)
+- Check browser console for specific error messages
 
-#### Duplicate Email Errors
-- The system now properly handles duplicate emails by skipping them
-- You can see counts of successful uploads vs. skipped duplicates in the console
-- Each lead is identified by email, so duplicates are determined by matching emails 
+#### Permission Issues
+- The application uses Row Level Security (RLS) policies in Supabase
+- If you can't add, modify or delete leads, check your RLS policies
+- For testing, you can temporarily enable full access by configuring your RLS policy to return true
+
+#### Data Not Displaying After Upload
+- Use the "Refresh Data" button on the dashboard
+- Check the browser console for any API errors
+- Verify the data was successfully uploaded via the Supabase Table Editor
+- Try clearing browser cache and reloading the page 
