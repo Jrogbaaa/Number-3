@@ -356,9 +356,24 @@ export async function clearAllLeads() {
         throw new Error(`Failed to delete leads using fallback method: ${fallbackError.message || JSON.stringify(fallbackError)}`);
       } else {
         console.log('Fallback method succeeded');
+        
+        // Clear any cached data by making an empty read request with cache reload
+        await supabase
+          .from('leads')
+          .select('count')
+          .limit(1)
+          .throwOnError();
+          
         return { success: true, message: 'All leads deleted using fallback method' };
       }
     }
+    
+    // Clear any cached data by making an empty read request with cache reload
+    await supabase
+      .from('leads')
+      .select('count')
+      .limit(1)
+      .throwOnError();
     
     return { 
       success: true, 

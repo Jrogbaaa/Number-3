@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Upload, Check, AlertCircle } from 'lucide-react';
+import { Upload, Check, AlertCircle, CheckCircle, Info, BarChart2 } from 'lucide-react';
 import Papa from 'papaparse';
 import { uploadLeads } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -233,11 +233,16 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
             const resultsMatch = message.match(/Batch results: (\d+) inserted, (\d+) duplicates skipped/);
             if (resultsMatch) {
               const [_, inserted, duplicates] = resultsMatch;
-              setProgress(prev => ({
-                ...prev!,
-                inserted: parseInt(inserted),
-                duplicates: parseInt(duplicates)
-              }));
+              setProgress(prev => {
+                const updatedInserted = (prev?.inserted || 0) + parseInt(inserted);
+                const updatedDuplicates = (prev?.duplicates || 0) + parseInt(duplicates);
+                
+                return {
+                  ...prev!,
+                  inserted: updatedInserted,
+                  duplicates: updatedDuplicates
+                };
+              });
             }
           }
         }
@@ -510,43 +515,78 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
     <div>
       <div className="max-w-xl mx-auto">
         {results ? (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6 transition-all">
+          <div className="bg-gray-800/70 border border-gray-700 rounded-lg p-6 mb-6 transition-all">
             <div className="flex items-center mb-4">
               {results.success ? (
                 <Check className="w-8 h-8 text-green-500 mr-3" />
               ) : (
                 <AlertCircle className="w-8 h-8 text-amber-500 mr-3" />
               )}
-              <h3 className="text-xl font-semibold">Upload Results</h3>
+              <h3 className="text-xl font-semibold text-white">Upload Results</h3>
             </div>
             
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div className="bg-gray-900 p-3 rounded-lg text-center">
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="bg-gray-900/70 p-4 rounded-lg text-center">
                 <p className="text-2xl font-bold text-white">{results.inserted}</p>
                 <p className="text-xs text-gray-400">Leads Added</p>
               </div>
-              <div className="bg-gray-900 p-3 rounded-lg text-center">
-                <p className="text-2xl font-bold text-white">{results.duplicates}</p>
+              <div className="bg-gray-900/70 p-4 rounded-lg text-center">
+                <p className="text-2xl font-bold text-amber-400">{results.duplicates}</p>
                 <p className="text-xs text-gray-400">Duplicates Skipped</p>
               </div>
-              <div className="bg-gray-900 p-3 rounded-lg text-center">
-                <p className="text-2xl font-bold text-white">{results.total}</p>
+              <div className="bg-gray-900/70 p-4 rounded-lg text-center">
+                <p className="text-2xl font-bold text-blue-400">{results.total}</p>
                 <p className="text-xs text-gray-400">Total Processed</p>
               </div>
             </div>
             
-            <button 
-              className="w-full py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
-              onClick={() => setResults(null)}
-            >
-              Upload Another File
-            </button>
+            <div className="flex flex-col gap-3">
+              {results.success && results.inserted > 0 && (
+                <div className="bg-green-900/20 text-green-400 border border-green-900/30 rounded-md p-3 text-sm">
+                  <p className="flex items-center">
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Upload complete! Your leads have been added to the database.
+                  </p>
+                </div>
+              )}
+              
+              {results.duplicates > 0 && (
+                <div className="bg-amber-900/20 text-amber-400 border border-amber-900/30 rounded-md p-3 text-sm">
+                  <p className="flex items-center">
+                    <Info className="w-4 h-4 mr-2" />
+                    {results.duplicates} {results.duplicates === 1 ? 'lead' : 'leads'} {results.duplicates === 1 ? 'was' : 'were'} skipped because {results.duplicates === 1 ? 'it has' : 'they have'} duplicate email addresses.
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-3 mt-6">
+              <button 
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                onClick={() => {
+                  setResults(null);
+                  if (onUploadComplete) {
+                    onUploadComplete();
+                  }
+                }}
+              >
+                Upload Another File
+              </button>
+              
+              <button 
+                className="py-2.5 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors flex items-center gap-2"
+                onClick={() => window.location.href = '/dashboard'}
+              >
+                <BarChart2 className="w-4 h-4" />
+                <span>View Dashboard</span>
+              </button>
+            </div>
           </div>
         ) : (
           <label
             htmlFor="dropzone-file"
-            className={`flex flex-col items-center justify-center w-full h-60 border-2 border-dashed rounded-lg cursor-pointer ${
-              isProcessing ? 'border-gray-600 bg-gray-800' : 'border-gray-600 hover:border-gray-500 hover:bg-gray-800'
+            className={`flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer ${
+              isProcessing ? 'border-gray-600 bg-gray-800/50' : 'border-gray-600 hover:border-gray-500 hover:bg-gray-800/40'
             } transition-colors`}
             onDragOver={(e) => e.preventDefault()}
             onDragEnter={(e) => e.preventDefault()}
@@ -555,31 +595,55 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
             <div className="flex flex-col items-center justify-center pt-5 pb-6">
               {isProcessing ? (
                 <div className="text-center">
-                  <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-gray-400 border-r-transparent mb-4" />
+                  <div className="inline-block h-10 w-10 animate-spin rounded-full border-4 border-solid border-blue-400 border-r-transparent mb-4" />
                   {progress && progress.currentBatch && (
-                    <p className="mb-2 text-sm text-gray-400">
-                      Processing batch {progress.currentBatch}/{progress.totalBatches || '?'}
-                    </p>
+                    <div className="mb-4">
+                      <p className="mb-1 text-sm text-blue-400 font-medium">
+                        Processing batch {progress.currentBatch}/{progress.totalBatches || '?'}
+                      </p>
+                      <div className="w-full bg-gray-700 rounded-full h-2 mb-1">
+                        <div 
+                          className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                          style={{ 
+                            width: `${progress.totalBatches 
+                              ? Math.round((progress.currentBatch / progress.totalBatches) * 100) 
+                              : 0}%` 
+                          }}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-400">
+                        {Math.round(progress.totalBatches 
+                          ? (progress.currentBatch / progress.totalBatches) * 100 
+                          : 0)}% complete
+                      </p>
+                    </div>
                   )}
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-300 mb-2">
                     {progress ? (
                       <>
                         {progress.processed} of {progress.total} leads processed
-                        {progress.inserted !== undefined && (
-                          <span className="block text-xs mt-1 text-green-500">
-                            {progress.inserted} added, {progress.duplicates || 0} duplicates skipped
-                          </span>
-                        )}
                       </>
                     ) : (
                       'Processing...'
                     )}
                   </p>
+                  {progress?.inserted !== undefined && (
+                    <div className="flex justify-center gap-3 text-xs mt-1">
+                      <span className="text-green-400">
+                        {progress.inserted} added
+                      </span>
+                      {progress.duplicates ? (
+                        <span className="text-amber-400">
+                          {progress.duplicates} duplicates skipped
+                        </span>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <>
-                  <Upload className="w-10 h-10 mb-3 text-gray-400" />
-                  <p className="mb-2 text-sm text-gray-500">
+                  <Upload className="w-10 h-10 mb-3 text-blue-400" />
+                  <p className="mb-2 text-sm text-gray-300">
                     <span className="font-semibold">Click to upload</span> or drag and drop
                   </p>
                   <p className="text-xs text-gray-500">CSV files only</p>
@@ -598,13 +662,13 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
           </label>
         )}
         {!isProcessing && !results && (
-          <div className="mt-4 text-center text-gray-500 text-xs">
+          <div className="mt-4 text-center text-gray-400 text-xs">
             <p>The CSV file should contain columns for name, email, company, title, etc.</p>
             <p className="mt-1">Files of any size can be processed - large files will be handled in batches automatically.</p>
             <p className="mt-1">
               Need a sample? <a href="/sample-leads.csv" className="text-blue-400 hover:underline">Download template</a>
             </p>
-            <p className="mt-3 text-xs text-gray-400">
+            <p className="mt-3 text-xs text-gray-500">
               For large datasets (1000+ records), you can also visit the <a href="/debug" className="text-blue-400 hover:underline">Debug</a> page to generate test data.
             </p>
           </div>

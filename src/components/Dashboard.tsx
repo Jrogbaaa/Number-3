@@ -13,8 +13,10 @@ import {
 import type { Lead } from '@/types/lead';
 import { getLeads, getLeadAnalytics } from '@/lib/supabase';
 import { DataUpload } from './shared/DataUpload';
+import { DataClear } from './shared/DataClear';
 import { toast } from 'sonner';
 import { BarChart2, RefreshCw, Upload, AlertCircle, Users, ChevronRight, TrendingUp } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale);
 
@@ -23,10 +25,12 @@ const Dashboard = () => {
   const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadData = async () => {
     try {
       setLoading(true);
+      setError(null);
       const [leadsData, analyticsData] = await Promise.all([
         getLeads(),
         getLeadAnalytics()
@@ -37,6 +41,42 @@ const Dashboard = () => {
       setError(err instanceof Error ? err.message : 'Error loading data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Force reload data completely from Supabase
+  const forceRefresh = async () => {
+    try {
+      setRefreshing(true);
+      setLeads([]); // Clear local data first
+      setAnalytics(null);
+      
+      // Force Supabase to revalidate cache by triggering a specific query
+      await supabase
+        .from('leads')
+        .select('count')
+        .limit(1)
+        .throwOnError();
+      
+      // Now get fresh data
+      const freshLeads = await getLeads();
+      setLeads(freshLeads);
+      
+      // Also reload analytics
+      const analyticsData = await getLeadAnalytics();
+      setAnalytics(analyticsData);
+      
+      toast.success('Data refreshed successfully', {
+        description: `${freshLeads.length} leads loaded from database`,
+        duration: 3000
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error refreshing data');
+      toast.error('Failed to refresh data', {
+        description: err instanceof Error ? err.message : 'Unknown error occurred',
+      });
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -145,130 +185,137 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <BarChart2 className="h-6 w-6 text-blue-400" />
-          <h1 className="text-2xl font-semibold text-white">Lead Dashboard</h1>
-        </div>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={loadData}
-            className="text-gray-400 hover:text-white transition-colors p-1.5 bg-gray-800/50 rounded-md flex items-center gap-1.5"
-            aria-label="Refresh dashboard data"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span className="text-xs">Refresh</span>
-          </button>
-          <div className="text-gray-400 px-2 py-1 bg-gray-800/50 rounded-md border border-gray-800/70 flex items-center gap-1.5">
-            <Users className="w-4 h-4" />
-            <span className="text-sm">{leads.length} leads</span>
+    <div className="container mx-auto p-4">
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <BarChart2 className="h-6 w-6 text-blue-400" />
+            <h1 className="text-2xl font-semibold text-white">Lead Dashboard</h1>
           </div>
-          <a 
-            href="/debug" 
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors flex items-center gap-1.5"
-            aria-label="Debug system"
-          >
-            Debug System
-            <ChevronRight className="h-3.5 w-3.5" />
-          </a>
-        </div>
-      </div>
-
-      <div className="bg-blue-900/10 p-4 rounded-xl mb-6 border border-blue-800/30 flex items-start gap-3">
-        <div className="bg-blue-500/20 p-2 rounded-full">
-          <AlertCircle className="w-5 h-5 text-blue-400" />
-        </div>
-        <div>
-          <h3 className="text-blue-400 font-medium">Add More Leads</h3>
-          <p className="text-gray-400 text-sm mt-1">
-            Need to add more leads? Visit the <a href="/data-input" className="text-blue-400 hover:underline font-medium">Data Input</a> page to upload additional leads, or download a sample template from the <a href="/debug" className="text-blue-400 hover:underline font-medium">Debug</a> page.
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-gray-900/70 rounded-xl p-6 border border-gray-800/50 shadow-md">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white">Score Distribution</h2>
-            <div className="text-xs text-gray-500 bg-gray-800/70 px-2 py-1 rounded">Lead Quality</div>
+          <div className="flex items-center gap-2">
+            <div className="text-gray-400 px-2 py-1 bg-gray-800/50 rounded-md border border-gray-800/70 flex items-center gap-1.5">
+              <Users className="w-4 h-4" />
+              <span className="text-sm">{leads.length} leads</span>
+            </div>
+            
+            <button
+              onClick={forceRefresh}
+              disabled={refreshing || loading}
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors flex items-center gap-2 disabled:opacity-70"
+              aria-label="Refresh data"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              <span>{refreshing ? 'Refreshing...' : 'Refresh Data'}</span>
+            </button>
+            
+            <DataClear onClearComplete={loadData} />
+            
+            <a 
+              href="/debug" 
+              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white text-sm rounded-md transition-colors flex items-center gap-1.5"
+              aria-label="Debug system"
+            >
+              Debug
+              <ChevronRight className="h-3.5 w-3.5" />
+            </a>
           </div>
-          <div className="h-64 relative">
-            <Pie data={pieData} options={{ 
-              maintainAspectRatio: false,
-              plugins: {
-                legend: {
-                  position: 'bottom',
-                  labels: {
-                    color: '#9ca3af',
-                    padding: 15,
+        </div>
+
+        <div className="bg-blue-900/10 p-4 rounded-xl mb-6 border border-blue-800/30 flex items-start gap-3">
+          <div className="bg-blue-500/20 p-2 rounded-full">
+            <AlertCircle className="w-5 h-5 text-blue-400" />
+          </div>
+          <div>
+            <h3 className="text-blue-400 font-medium">Add More Leads</h3>
+            <p className="text-gray-400 text-sm mt-1">
+              Need to add more leads? Visit the <a href="/data-input" className="text-blue-400 hover:underline font-medium">Data Input</a> page to upload additional leads, or download a sample template from the <a href="/debug" className="text-blue-400 hover:underline font-medium">Debug</a> page.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-gray-900/70 rounded-xl p-6 border border-gray-800/50 shadow-md">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-white">Score Distribution</h2>
+              <div className="text-xs text-gray-500 bg-gray-800/70 px-2 py-1 rounded">Lead Quality</div>
+            </div>
+            <div className="h-64 relative">
+              <Pie data={pieData} options={{ 
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'bottom',
+                    labels: {
+                      color: '#9ca3af',
+                      padding: 15,
+                      usePointStyle: true,
+                      font: {
+                        size: 11
+                      }
+                    }
+                  },
+                  tooltip: {
+                    backgroundColor: 'rgba(17, 24, 39, 0.9)',
+                    titleColor: '#f3f4f6',
+                    bodyColor: '#e5e7eb',
+                    borderColor: 'rgba(75, 85, 99, 0.3)',
+                    borderWidth: 1,
+                    padding: 10,
+                    boxPadding: 5,
                     usePointStyle: true,
-                    font: {
-                      size: 11
+                    titleFont: {
+                      weight: 'bold'
                     }
                   }
-                },
-                tooltip: {
-                  backgroundColor: 'rgba(17, 24, 39, 0.9)',
-                  titleColor: '#f3f4f6',
-                  bodyColor: '#e5e7eb',
-                  borderColor: 'rgba(75, 85, 99, 0.3)',
-                  borderWidth: 1,
-                  padding: 10,
-                  boxPadding: 5,
-                  usePointStyle: true,
-                  titleFont: {
-                    weight: 'bold'
-                  }
                 }
-              }
-            }} />
+              }} />
+            </div>
           </div>
-        </div>
 
-        <div className="bg-gray-900/70 rounded-xl p-6 border border-gray-800/50 shadow-md">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white">High-Value Leads</h2>
-            <div className="text-xs text-gray-500 bg-gray-800/70 px-2 py-1 rounded">Top prospects</div>
-          </div>
-          <div className="space-y-3 overflow-auto max-h-64 pr-1">
-            {leads.slice(0, 5).map((lead) => (
-              <div 
-                key={lead.email} 
-                className="flex items-center justify-between p-3 bg-gray-900/90 rounded-lg border border-gray-800/60 
-                  hover:border-blue-500/30 hover:bg-gray-800/50 transition-all duration-200 cursor-pointer shadow-sm"
-                onClick={() => window.location.href = `/outreach/lead/${lead.id}`}
-              >
-                <div>
-                  <p className="text-white font-medium">{lead.name}</p>
-                  <div className="flex items-center gap-2 text-gray-400 text-xs">
-                    <span className="truncate max-w-[180px]">{lead.email}</span>
-                    {lead.company && (
-                      <>
-                        <span className="text-gray-600">•</span>
-                        <span>{lead.company}</span>
-                      </>
-                    )}
+          <div className="bg-gray-900/70 rounded-xl p-6 border border-gray-800/50 shadow-md">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-white">High-Value Leads</h2>
+              <div className="text-xs text-gray-500 bg-gray-800/70 px-2 py-1 rounded">Top prospects</div>
+            </div>
+            <div className="space-y-3 overflow-auto max-h-64 pr-1">
+              {leads.slice(0, 5).map((lead) => (
+                <div 
+                  key={lead.email} 
+                  className="flex items-center justify-between p-3 bg-gray-900/90 rounded-lg border border-gray-800/60 
+                    hover:border-blue-500/30 hover:bg-gray-800/50 transition-all duration-200 cursor-pointer shadow-sm"
+                  onClick={() => window.location.href = `/outreach/lead/${lead.id}`}
+                >
+                  <div>
+                    <p className="text-white font-medium">{lead.name}</p>
+                    <div className="flex items-center gap-2 text-gray-400 text-xs">
+                      <span className="truncate max-w-[180px]">{lead.email}</span>
+                      {lead.company && (
+                        <>
+                          <span className="text-gray-600">•</span>
+                          <span>{lead.company}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                      lead.status === 'Converted' ? 'bg-green-900/30 text-green-400 border border-green-900/30' :
+                      lead.status === 'Qualified' ? 'bg-blue-900/30 text-blue-400 border border-blue-900/30' :
+                      'bg-gray-800/80 text-gray-300 border border-gray-700/30'
+                    }`}>
+                      {lead.status}
+                    </div>
+                    <div className="flex items-center gap-1 text-green-400 text-sm font-medium">
+                      <TrendingUp className="w-3.5 h-3.5" />
+                      <span>${lead.value.toLocaleString()}</span>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                    lead.status === 'Converted' ? 'bg-green-900/30 text-green-400 border border-green-900/30' :
-                    lead.status === 'Qualified' ? 'bg-blue-900/30 text-blue-400 border border-blue-900/30' :
-                    'bg-gray-800/80 text-gray-300 border border-gray-700/30'
-                  }`}>
-                    {lead.status}
-                  </div>
-                  <div className="flex items-center gap-1 text-green-400 text-sm font-medium">
-                    <TrendingUp className="w-3.5 h-3.5" />
-                    <span>${lead.value.toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-            <a href="/outreach" className="block text-center text-sm text-blue-400 hover:text-blue-300 py-2 border-t border-gray-800/50 mt-2 transition-colors">
-              View all leads →
-            </a>
+              ))}
+              <a href="/outreach" className="block text-center text-sm text-blue-400 hover:text-blue-300 py-2 border-t border-gray-800/50 mt-2 transition-colors">
+                View all leads →
+              </a>
+            </div>
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { checkLeadsTable, testSupabaseConnection } from '@/lib/debug';
 import { supabase } from '@/lib/supabase';
+import { DataClear } from '@/components/shared/DataClear';
 
 export default function DebugPage() {
   const [connectionStatus, setConnectionStatus] = useState<any>(null);
@@ -59,6 +60,10 @@ export default function DebugPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleClearComplete = () => {
+    window.location.href = '/dashboard';
   };
 
   return (
@@ -251,34 +256,7 @@ export default function DebugPage() {
           </div>
           
           <div className="flex flex-wrap gap-4">
-            <button
-              onClick={async () => {
-                if (window.confirm('Are you sure you want to delete all leads? This cannot be undone.')) {
-                  setIsLoading(true);
-                  setErrorMessage(null);
-                  try {
-                    const { clearAllLeads } = await import('@/lib/supabase');
-                    const result = await clearAllLeads();
-                    
-                    if (result.success) {
-                      alert(`Success: ${result.message || 'All leads have been deleted successfully.'}`);
-                      window.location.href = '/dashboard';
-                    } else {
-                      setErrorMessage(result.message || 'Failed to clear leads. Please try again.');
-                    }
-                  } catch (error) {
-                    console.error('Error clearing leads:', error);
-                    setErrorMessage(error instanceof Error ? error.message : String(error));
-                  } finally {
-                    setIsLoading(false);
-                  }
-                }
-              }}
-              disabled={isLoading}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-800 disabled:text-gray-300 text-white rounded-md"
-            >
-              {isLoading ? 'Processing...' : 'Clear All Leads'}
-            </button>
+            <DataClear onClearComplete={handleClearComplete} />
             
             <button
               onClick={async () => {
