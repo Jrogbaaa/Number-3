@@ -36,11 +36,13 @@ const navItems = [
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-gradient-to-b from-gray-900 to-gray-950">
       <Sidebar navItems={navItems} />
       <div className="flex-1 overflow-auto pl-60">
-        <main className="p-6 h-full">
-          {children}
+        <main className="p-8 h-full max-w-7xl mx-auto">
+          <div className="bg-gray-900/30 backdrop-blur-sm p-6 rounded-xl border border-gray-800/50 shadow-lg">
+            {children}
+          </div>
         </main>
       </div>
     </div>

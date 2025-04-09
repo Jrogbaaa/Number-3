@@ -5,6 +5,7 @@ import { Lead, CalendarEvent } from '@/types/lead';
 import { getLeads } from '@/lib/supabase';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Calendar, Clock, TrendingUp, Info } from 'lucide-react';
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
@@ -98,60 +99,91 @@ export default function ContentCalendar() {
   const currentDay = getCurrentDay();
 
   return (
-    <div className="bg-[#1A1F2B] rounded-lg p-6">
-      <h2 className="text-xl font-medium mb-6">Chrome Industries Outreach</h2>
-      <h3 className="text-lg font-medium mb-4">Recommended Contact Schedule</h3>
+    <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-800/40 shadow-lg">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <Calendar className="w-5 h-5 text-blue-400" />
+          <h2 className="text-xl font-medium">Chrome Industries Outreach</h2>
+        </div>
+        <div className="text-sm text-gray-400 px-2 py-1 rounded-md bg-gray-800/50 border border-gray-700/50">
+          Weekly Schedule
+        </div>
+      </div>
+      
+      <h3 className="text-base font-medium mb-4 text-gray-300">Recommended Contact Schedule</h3>
       
       {loading ? (
-        <div className="flex justify-center my-8">
-          <div className="animate-pulse text-gray-400">Loading contact schedule...</div>
+        <div className="flex justify-center my-8 bg-gray-800/30 rounded-lg p-8">
+          <div className="animate-pulse flex items-center gap-3">
+            <div className="w-5 h-5 rounded-full bg-gray-700 animate-pulse"></div>
+            <div className="text-gray-400">Loading contact schedule...</div>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-5 gap-4">
           {WEEKDAYS.map((day) => (
-            <div key={day} className="space-y-4">
-              <h4 
-                className={`text-center font-medium py-2 border-b border-gray-700 ${day === currentDay ? 'bg-green-900/20 text-green-400 rounded-t-lg' : ''} cursor-pointer hover:bg-gray-800/50 transition-colors`}
+            <div key={day} className="space-y-3">
+              <div 
+                className={`text-center font-medium py-2 rounded-lg 
+                  ${day === currentDay 
+                    ? 'bg-green-900/30 text-green-400 ring-1 ring-green-800/50' 
+                    : 'bg-gray-800/80 text-gray-300'} 
+                  cursor-pointer hover:bg-gray-800 transition-colors shadow-sm`}
                 onClick={() => handleDayClick(day)}
                 tabIndex={0}
                 onKeyDown={(e) => e.key === 'Enter' && handleDayClick(day)}
                 aria-label={`View all leads for ${day}`}
               >
-                {day} {day === currentDay && '(Today)'}
-              </h4>
-              <div className="space-y-2">
+                {day === currentDay ? (
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                    <span>{day}</span>
+                  </div>
+                ) : (
+                  day
+                )}
+              </div>
+              <div className="space-y-2.5">
                 {(events[day] || []).slice(0, 3).map((event) => (
                   <div
                     key={event.id}
-                    className="bg-[#0D1117] border border-gray-800 rounded-lg p-3 space-y-2 hover:border-blue-500 transition-colors cursor-pointer"
+                    className="bg-gray-900/90 border border-gray-800/80 rounded-lg p-3 space-y-2 
+                      hover:border-blue-500/70 hover:shadow-md hover:shadow-blue-900/20 
+                      transition-all duration-200 cursor-pointer group"
                     onClick={() => handleLeadClick(event.id)}
                     tabIndex={0}
                     onKeyDown={(e) => e.key === 'Enter' && handleLeadClick(event.id)}
                     aria-label={`View outreach details for ${event.leadName}`}
                   >
-                    <div className="font-medium text-blue-400 hover:underline">{event.leadName}</div>
-                    <div className="text-sm text-gray-400">
-                      {event.startTime} - {event.endTime}
+                    <div className="font-medium text-blue-400 group-hover:text-blue-300 transition-colors">
+                      {event.leadName}
                     </div>
-                    <div className="text-right text-green-400">
-                      {event.successRate}%
+                    <div className="flex items-center text-sm text-gray-400 gap-1.5">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>{event.startTime} - {event.endTime}</span>
+                    </div>
+                    <div className="flex items-center justify-end gap-1.5 text-green-400">
+                      <TrendingUp className="w-3.5 h-3.5" />
+                      <span className="font-medium">{event.successRate}%</span>
                     </div>
                   </div>
                 ))}
                 {(events[day] || []).length === 0 && (
-                  <div className="text-center text-sm text-gray-500 py-6">
+                  <div className="text-center text-sm text-gray-500 py-8 bg-gray-900/50 rounded-lg border border-gray-800/30">
                     No contacts scheduled
                   </div>
                 )}
                 {getMoreCount(day) > 0 && (
                   <div 
-                    className="text-center text-sm text-blue-400 hover:underline cursor-pointer"
+                    className="text-center text-xs font-medium text-blue-400 py-1.5 px-2 rounded-md 
+                      bg-blue-900/20 hover:bg-blue-900/30 border border-blue-800/30 
+                      cursor-pointer transition-colors"
                     onClick={() => handleDayClick(day)}
                     tabIndex={0}
                     onKeyDown={(e) => e.key === 'Enter' && handleDayClick(day)}
                     aria-label={`View all ${getMoreCount(day)} additional leads for ${day}`}
                   >
-                    +{getMoreCount(day)} more
+                    +{getMoreCount(day)} more leads
                   </div>
                 )}
               </div>
@@ -160,21 +192,9 @@ export default function ContentCalendar() {
         </div>
       )}
       
-      <div className="mt-6 text-sm text-gray-400 flex items-center gap-2">
-        <svg
-          viewBox="0 0 24 24"
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-        Contacts are prioritized based on Chrome Industries relevance score.
+      <div className="mt-6 text-sm text-gray-400 flex items-center gap-2 bg-gray-800/30 p-2 rounded-md border border-gray-800/30">
+        <Info className="w-4 h-4 text-blue-400" />
+        <span>Contacts are prioritized based on Chrome Industries relevance score.</span>
       </div>
     </div>
   );
