@@ -51,7 +51,6 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
             <th className="py-3 px-6">Lead Score</th>
             <th className="py-3 px-6">Source</th>
             <th className="py-3 px-6">Status</th>
-            <th className="py-3 px-6 text-right">Potential Value</th>
           </tr>
         </thead>
         <tbody className="bg-gray-900/50 divide-y divide-gray-800/50">
@@ -125,14 +124,11 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                   {lead.status}
                 </span>
               </td>
-              <td className="py-4 px-6 text-right">
-                <span className="font-medium text-green-400">${lead.value.toLocaleString()}</span>
-              </td>
             </tr>
           ))}
           {leads.length === 0 && (
             <tr>
-              <td colSpan={showChromeScore ? 6 : 5} className="py-8 text-center text-gray-500">
+              <td colSpan={showChromeScore ? 5 : 4} className="py-8 text-center text-gray-500">
                 No leads found. Try adjusting your filters.
               </td>
             </tr>

@@ -413,8 +413,28 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
                 // Analyze the row data for insights
                 const insights = analyzeLeadData(row);
 
-                // Generate placeholder values for missing required fields
-                const generatedName = name || `Contact ${index + 1}`;
+                // Generate better placeholder values for missing required fields
+                let generatedName = name;
+                if (!generatedName) {
+                  // Try to extract name from email if available
+                  if (email && email.includes('@')) {
+                    const emailParts = email.split('@')[0].split('.');
+                    if (emailParts.length > 0) {
+                      // Convert first part to capitalized name
+                      generatedName = emailParts.map(part => 
+                        part.charAt(0).toUpperCase() + part.slice(1)
+                      ).join(' ');
+                    }
+                  }
+                  
+                  // If still no name, use company or a placeholder with company
+                  if (!generatedName && company) {
+                    generatedName = `Lead from ${company}`;
+                  } else if (!generatedName) {
+                    generatedName = `Unnamed Lead ${index + 1}`;
+                  }
+                }
+
                 // Generate a unique ID for the email if missing
                 const generatedEmail = email || `lead_${Date.now()}_${index}_${Math.random().toString(36).slice(2)}@placeholder.com`;
 
