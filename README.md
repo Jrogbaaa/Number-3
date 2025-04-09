@@ -8,6 +8,7 @@ A modern lead management platform built with Next.js 15, React, TypeScript, and 
 - 📈 Industry-Specific Lead Scoring
 - 📥 CSV Data Import
 - 📅 Chrome Industries Outreach Calendar
+- 🎙️ Personalized Audio Messages
 - 🔄 Real-time Updates
 - 🌙 Dark Mode UI
 - 📱 Responsive Design
@@ -107,7 +108,36 @@ The outreach calendar feature:
 - Shows success probability based on lead relevance scores
 - Updates in real-time as new leads are uploaded
 
+## Lead Outreach Features
+
+### Personalized Messaging Templates
+
+The platform provides pre-written templates for different outreach scenarios:
+- LinkedIn messages
+- Email outreach
+- Follow-up communications
+
+Templates are automatically personalized with lead details including:
+- Name
+- Company
+- Job title
+
+### Audio Message Recording
+
+New in this version, the outreach page now features audio message recording:
+
+- Record personalized voice messages for leads
+- Play back recordings to verify quality before sending
+- Download audio messages in WAV format for sharing via other platforms
+- Voice messages are proven to increase engagement by up to 3x compared to text-only outreach
+
 ## Recent Updates
+
+### Version 15.5.0
+- Added audio message recording feature to lead outreach
+- Improved lead detail pages with direct LinkedIn profile links
+- Enhanced calendar navigation with clickable day headers
+- Implemented Suspense boundaries for better loading states
 
 ### Version 15.4.0
 - Added Chrome Industries specialized scoring model
@@ -141,6 +171,7 @@ The outreach calendar feature:
 - Radix UI Components
 - Papa Parse (CSV parsing)
 - Chart.js (data visualization)
+- MediaRecorder API (audio recording)
 
 ## Contributing
 
