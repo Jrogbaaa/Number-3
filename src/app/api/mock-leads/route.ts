@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import type { Lead } from '@/types/lead';
+import type { Lead, LeadSource } from '@/types/lead';
 
 // Generate mock leads for testing and demo purposes
 function generateMockLeads(count: number = 25): Lead[] {
   const companies = ['Acme Inc', 'Tech Solutions', 'Growth Co', 'InnovateTech', 'Finance Pro', 'DevShop', 'Data Insights'];
   const titles = ['CEO', 'CTO', 'Marketing Director', 'Product Manager', 'CFO', 'Engineering Lead', 'Sales Manager'];
-  const sources = ['LinkedIn', 'Website', 'Referral', 'Conference', 'Instagram', 'Cold Call', 'Email Campaign'] as const;
+  const sources: LeadSource[] = ['LinkedIn', 'Website', 'Referral', 'Cold Outreach', 'Event', 'Conference', 'Other'];
   const statuses = ['New', 'Contacted', 'Qualified', 'Proposal', 'Converted'] as const;
   
   return Array(count).fill(null).map((_, index) => {
