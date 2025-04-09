@@ -285,6 +285,9 @@ export async function clearAllLeads() {
   try {
     console.log('Starting to clear all leads...');
     
+    // Force refresh auth session first
+    await supabase.auth.refreshSession();
+    
     // Try the direct approach first - should work if permissions are set correctly
     const { error: directDeleteError } = await supabase
       .from('leads')
@@ -294,13 +297,19 @@ export async function clearAllLeads() {
     if (!directDeleteError) {
       console.log('Successfully deleted all leads using direct method');
       
-      // Force clear cache
+      // Force clear cache with multiple approaches
       await supabase.auth.refreshSession();
-      await supabase
+      
+      // Force a cache refresh by making a direct count query
+      const { count, error: countError } = await supabase
         .from('leads')
-        .select('count')
-        .limit(1)
-        .throwOnError();
+        .select('*', { count: 'exact', head: true });
+      
+      if (!countError && count === 0) {
+        console.log('Verified all leads were deleted, count is now 0');
+      } else if (!countError) {
+        console.log(`Warning: After deletion, lead count is ${count}`);
+      }
       
       return { success: true, message: 'All leads have been deleted successfully' };
     }
@@ -339,8 +348,8 @@ export async function clearAllLeads() {
     
     console.log(`Found ${leadIds.length} leads to delete`);
     
-    // Delete in batches of 20 instead of 100 to avoid timeout issues
-    const batchSize = 20;
+    // Delete in batches of 10 instead of 20 to avoid timeout issues
+    const batchSize = 10;
     let successCount = 0;
     let errorCount = 0;
     
@@ -363,20 +372,24 @@ export async function clearAllLeads() {
         }
         
         // Add a small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 150));
       } catch (batchError) {
         console.error(`Exception in batch ${i/batchSize + 1}:`, batchError);
         errorCount++;
       }
     }
     
-    // Force clear cache
+    // Force clear cache with multiple approaches
     await supabase.auth.refreshSession();
-    await supabase
+    
+    // Force a cache refresh by making a direct count query
+    const { count, error } = await supabase
       .from('leads')
-      .select('count')
-      .limit(1)
-      .throwOnError();
+      .select('*', { count: 'exact', head: true });
+    
+    if (!error) {
+      console.log(`After deletion, lead count is now: ${count}`);
+    }
     
     if (successCount > 0) {
       return { 
@@ -395,6 +408,70 @@ export async function clearAllLeads() {
     return { 
       success: false, 
       message: `Failed to clear leads: ${errorMessage}`,
+      error: errorMessage
+    };
+  }
+}
+
+/**
+ * Emergency reset of leads table - CAUTION: This will completely reset the table
+ */
+export async function emergencyResetLeadsTable() {
+  try {
+    console.log('Starting emergency reset of leads table...');
+    
+    // Force refresh auth session first
+    await supabase.auth.refreshSession();
+    
+    // This drastic approach recreates the table schema
+    const { error } = await supabase.rpc('run_sql_query', {
+      query: `
+        -- Drop existing table
+        DROP TABLE IF EXISTS leads;
+        
+        -- Recreate the table with proper schema
+        CREATE TABLE leads (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          name TEXT NOT NULL,
+          email TEXT UNIQUE NOT NULL,
+          company TEXT,
+          title TEXT,
+          source TEXT NOT NULL,
+          status TEXT NOT NULL,
+          score INTEGER NOT NULL,
+          value INTEGER NOT NULL,
+          insights JSONB DEFAULT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+          modified_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+          last_contacted_at TIMESTAMP WITH TIME ZONE
+        );
+        
+        -- Create indexes
+        CREATE INDEX IF NOT EXISTS leads_email_idx ON leads(email);
+        CREATE INDEX IF NOT EXISTS leads_score_idx ON leads(score);
+        CREATE INDEX IF NOT EXISTS leads_value_idx ON leads(value);
+        CREATE INDEX IF NOT EXISTS leads_status_idx ON leads(status);
+        CREATE INDEX IF NOT EXISTS leads_source_idx ON leads(source);
+        CREATE INDEX IF NOT EXISTS leads_insights_idx ON leads USING GIN (insights);
+      `
+    });
+    
+    if (error) {
+      console.error('Error during emergency reset:', error);
+      throw new Error(`Failed to reset leads table: ${error.message}`);
+    }
+    
+    console.log('Successfully reset leads table');
+    return { 
+      success: true, 
+      message: 'Leads table has been completely reset. You can now upload fresh data.'
+    };
+  } catch (error) {
+    console.error('Error in emergencyResetLeadsTable:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return { 
+      success: false, 
+      message: `Failed to reset leads table: ${errorMessage}`,
       error: errorMessage
     };
   }

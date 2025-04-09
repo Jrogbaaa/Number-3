@@ -4,12 +4,15 @@ import { useState, useEffect } from 'react';
 import { checkLeadsTable, testSupabaseConnection } from '@/lib/debug';
 import { supabase } from '@/lib/supabase';
 import { DataClear } from '@/components/shared/DataClear';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 export default function DebugPage() {
   const [connectionStatus, setConnectionStatus] = useState<any>(null);
   const [tableStatus, setTableStatus] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const runTests = async () => {
@@ -263,17 +266,26 @@ export default function DebugPage() {
                   setErrorMessage(null);
                   try {
                     const { clearAllLeads } = await import('@/lib/supabase');
+                    // Force refresh auth session before attempting deletion
+                    await supabase.auth.refreshSession();
+                    
                     const result = await clearAllLeads();
                     
                     if (result.success) {
-                      alert(`Success: ${result.message || 'All leads have been deleted successfully.'}`);
-                      window.location.href = '/dashboard';
+                      toast.success(`Success: ${result.message || 'All leads have been deleted successfully.'}`);
+                      router.refresh();
+                      // Wait a moment before redirecting
+                      setTimeout(() => {
+                        window.location.href = '/dashboard';
+                      }, 1500);
                     } else {
                       setErrorMessage(result.message || 'Failed to clear leads. Please try again.');
+                      toast.error(`Failed to clear leads: ${result.message}`);
                     }
                   } catch (error) {
                     console.error('Error clearing leads:', error);
                     setErrorMessage(error instanceof Error ? error.message : String(error));
+                    toast.error('Error clearing leads');
                   } finally {
                     setIsLoading(false);
                   }
@@ -287,30 +299,71 @@ export default function DebugPage() {
             
             <button
               onClick={async () => {
-                if (window.confirm('This will generate 500 test leads for demonstration purposes. Continue?')) {
+                if (window.confirm('Are you sure you want to clear all leads and re-upload? This cannot be undone.')) {
                   setIsLoading(true);
+                  setErrorMessage(null);
                   try {
-                    const response = await fetch('/api/import-large-sample');
-                    const result = await response.json();
+                    const { clearAllLeads } = await import('@/lib/supabase');
+                    // Force refresh auth session before attempting deletion
+                    await supabase.auth.refreshSession();
+                    
+                    const result = await clearAllLeads();
                     
                     if (result.success) {
-                      alert(`Successfully generated ${result.message}`);
-                      window.location.href = '/dashboard';
+                      toast.success('All leads cleared successfully');
+                      // Go to data input page
+                      router.push('/data-input');
                     } else {
-                      throw new Error(result.message || 'Failed to generate test data');
+                      setErrorMessage(result.message || 'Failed to clear leads. Please try again.');
+                      toast.error(`Failed to clear leads: ${result.message}`);
                     }
                   } catch (error) {
-                    console.error('Error generating test data:', error);
+                    console.error('Error clearing leads:', error);
                     setErrorMessage(error instanceof Error ? error.message : String(error));
+                    toast.error('Error clearing leads');
                   } finally {
                     setIsLoading(false);
                   }
                 }
               }}
               disabled={isLoading}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:text-gray-300 text-white rounded-md"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:text-gray-300 text-white rounded-md"
             >
-              Generate Test Data
+              {isLoading ? 'Processing...' : 'Clear & Go to Upload'}
+            </button>
+            
+            <button
+              onClick={async () => {
+                if (window.confirm('⚠️ EMERGENCY RESET: This will completely recreate the leads table. All data will be lost permanently. Continue?')) {
+                  setIsLoading(true);
+                  setErrorMessage(null);
+                  try {
+                    const { emergencyResetLeadsTable } = await import('@/lib/supabase');
+                    
+                    const result = await emergencyResetLeadsTable();
+                    
+                    if (result.success) {
+                      toast.success('Emergency reset successful');
+                      alert('Database table has been reset. You will now be redirected to the data upload page.');
+                      // Go to data input page
+                      router.push('/data-input');
+                    } else {
+                      setErrorMessage(result.message || 'Failed to reset table. Please try again.');
+                      toast.error(`Failed to reset table: ${result.message}`);
+                    }
+                  } catch (error) {
+                    console.error('Error during emergency reset:', error);
+                    setErrorMessage(error instanceof Error ? error.message : String(error));
+                    toast.error('Error during emergency reset');
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }
+              }}
+              disabled={isLoading}
+              className="px-4 py-2 bg-red-800 hover:bg-red-900 disabled:bg-red-900 disabled:text-gray-300 text-white rounded-md"
+            >
+              {isLoading ? 'Processing...' : '⚠️ Emergency DB Reset'}
             </button>
             
             <button

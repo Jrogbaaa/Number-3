@@ -36,12 +36,12 @@ type ProcessedLead = Omit<Lead, 'last_contacted_at'> & {
 };
 
 const COMMON_FIELD_MAPPINGS = {
-  name: ['name', 'full name', 'contact', 'person'],
-  email: ['email', 'e-mail', 'mail'],
+  name: ['name', 'full name', 'contact', 'person', 'first name', 'last name'],
+  email: ['email', 'e-mail', 'mail', 'email address', 'contact email'],
   company: ['company', 'organization', 'employer', 'business'],
   title: ['title', 'position', 'role', 'job title'],
   phone: ['phone', 'mobile', 'cell', 'contact number'],
-  linkedin: ['linkedin', 'linkedin url', 'linkedin profile'],
+  linkedin: ['linkedin', 'linkedin url', 'linkedin profile', 'profile url', 'social media', 'linkedin link'],
   industry: ['industry', 'sector', 'market'],
   interests: ['interests', 'focus', 'specialties', 'expertise'],
   background: ['background', 'experience', 'about'],
@@ -422,23 +422,52 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
                   // Search through all values for anything that looks like a LinkedIn URL
                   for (const key of Object.keys(row)) {
                     const value = row[key];
-                    if (value && typeof value === 'string' && 
-                        (value.includes('linkedin.com/') || 
-                         value.includes('linked.in/') || 
-                         value.toLowerCase().includes('linkedin'))) {
-                      // Extract URL if it's part of a longer text
-                      const urlMatch = value.match(/(https?:\/\/)?(www\.)?linkedin\.com\/[a-zA-Z0-9\/-]+/);
-                      if (urlMatch) {
-                        enhancedLinkedinUrl = urlMatch[0];
-                        if (!enhancedLinkedinUrl.startsWith('http')) {
-                          enhancedLinkedinUrl = 'https://' + enhancedLinkedinUrl;
-                        }
+                    if (!value || typeof value !== 'string') continue;
+                    
+                    const lowerValue = value.toLowerCase();
+                    
+                    // Check if this is potentially an email that's actually a LinkedIn URL
+                    if (lowerValue.includes('linkedin.com') || 
+                        lowerValue.includes('linked.in') || 
+                        lowerValue.includes('lnkd.in') ||
+                        lowerValue.includes('/li/') ||
+                        /linkedin\.[a-z]+\/in\//.test(lowerValue)) {
+                      
+                      // Extract URL pattern
+                      const urlMatches = [
+                        // Standard LinkedIn URL patterns
+                        value.match(/(https?:\/\/)?(www\.)?(linkedin\.com\/in\/[a-zA-Z0-9_-]+)/i),
+                        value.match(/(https?:\/\/)?(www\.)?(linkedin\.com\/company\/[a-zA-Z0-9_-]+)/i),
+                        value.match(/(https?:\/\/)?(www\.)?(linked\.in\/[a-zA-Z0-9_-]+)/i),
+                        value.match(/(https?:\/\/)?(www\.)?(lnkd\.in\/[a-zA-Z0-9_-]+)/i),
+                        // Handle profile URLs with query parameters
+                        value.match(/(https?:\/\/)?(www\.)?linkedin\.com\/[a-zA-Z0-9\/-]+(\?[a-zA-Z0-9=&-]+)?/i)
+                      ].filter(Boolean)[0];
+                      
+                      if (urlMatches) {
+                        const fullUrl = urlMatches[0];
+                        enhancedLinkedinUrl = fullUrl.startsWith('http') ? fullUrl : `https://${fullUrl}`;
                         break;
-                      } else if (value.toLowerCase().startsWith('linkedin:')) {
-                        // Handle "linkedin: username" format
-                        const username = value.split(':')[1].trim();
-                        if (username) {
-                          enhancedLinkedinUrl = `https://linkedin.com/in/${username}`;
+                      } 
+                    } 
+                    // Check if value is just a username that looks like "username" or "linkedin: username"
+                    else if (lowerValue.startsWith('linkedin:') || lowerValue.startsWith('li:')) {
+                      const username = value.split(':')[1]?.trim();
+                      if (username) {
+                        enhancedLinkedinUrl = `https://linkedin.com/in/${username}`;
+                        break;
+                      }
+                    }
+                    // Sometimes LinkedIn URLs are placed in the email field
+                    else if (key.toLowerCase().includes('email') && !lowerValue.includes('@')) {
+                      // If there's no @ symbol in an email field, it might be a LinkedIn URL
+                      if (lowerValue.includes('linkedin') || lowerValue.includes('li/')) {
+                        const urlMatch = value.match(/(https?:\/\/)?(www\.)?linkedin\.com\/[a-zA-Z0-9\/-]+/i);
+                        if (urlMatch) {
+                          enhancedLinkedinUrl = urlMatch[0];
+                          if (!enhancedLinkedinUrl.startsWith('http')) {
+                            enhancedLinkedinUrl = 'https://' + enhancedLinkedinUrl;
+                          }
                           break;
                         }
                       }

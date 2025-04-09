@@ -10,14 +10,12 @@ export type LeadStatus =
   | 'On Hold';
 
 export type LeadSource = 
-  | 'Referral'
-  | 'Website'
   | 'LinkedIn'
+  | 'Website'
+  | 'Referral'
+  | 'Cold Outreach'
+  | 'Event'
   | 'Conference'
-  | 'Instagram'
-  | 'Cold Call'
-  | 'Email Campaign'
-  | 'Partner'
   | 'Other';
 
 export interface LeadInsights {
@@ -25,6 +23,8 @@ export interface LeadInsights {
   interests?: string[];
   background?: string[];
   potentialValue?: number;
+  lastInteraction?: string;
+  notes?: string;
 }
 
 export interface Lead {
@@ -42,6 +42,9 @@ export interface Lead {
   insights?: LeadInsights;
   chromeScore?: number;
   linkedinUrl?: string;
+  phone?: string;
+  location?: string;
+  tags?: string[];
 }
 
 export interface CalendarEvent {
