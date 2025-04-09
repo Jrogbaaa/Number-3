@@ -21,27 +21,62 @@ export async function GET() {
   try {
     console.log('Starting emergency reset of leads table...');
     
-    // First approach: Try to delete all records
+    // Delete all existing leads
     const { error: deleteError } = await supabase
       .from('leads')
       .delete()
-      .neq('id', '');
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // Use a valid UUID for filtering
     
     if (deleteError) {
       console.error('Delete error:', deleteError);
-      
-      // Second approach: Try to truncate the table via SQL
-      const { error: sqlError } = await supabase.rpc('run_sql_query', {
-        query: 'TRUNCATE TABLE leads RESTART IDENTITY;'
+      return NextResponse.json({ 
+        success: false, 
+        error: `Failed to reset leads: ${deleteError.message || JSON.stringify(deleteError)}` 
+      }, { status: 500 });
+    }
+    
+    // Create a test lead to validate the schema
+    const { error: insertError } = await supabase
+      .from('leads')
+      .insert({
+        name: 'SYSTEM_TEST_USER',
+        email: 'system.test@example.com',
+        company: 'System Test',
+        title: 'Test',
+        source: 'Website',
+        status: 'New',
+        score: 0,
+        value: 0,
+        linkedinUrl: 'https://linkedin.com/test',
+        insights: null
       });
+    
+    if (insertError) {
+      console.error('Insert error:', insertError);
       
-      if (sqlError) {
-        console.error('SQL error:', sqlError);
+      // Check if the error is about a missing column
+      if (insertError.message.includes('column') && insertError.message.includes('does not exist')) {
         return NextResponse.json({ 
           success: false, 
-          error: `Failed to reset leads: ${sqlError.message || JSON.stringify(sqlError)}` 
+          error: `Database schema needs to be updated in Supabase. Please add the missing columns: ${insertError.message}` 
         }, { status: 500 });
       }
+      
+      return NextResponse.json({ 
+        success: false, 
+        error: `Failed to validate table structure: ${insertError.message}` 
+      }, { status: 500 });
+    }
+    
+    // Clean up the test user
+    const { error: cleanupError } = await supabase
+      .from('leads')
+      .delete()
+      .eq('email', 'system.test@example.com');
+    
+    if (cleanupError) {
+      console.error('Cleanup error:', cleanupError);
+      // Not failing the operation for cleanup errors
     }
     
     // Verify the result
