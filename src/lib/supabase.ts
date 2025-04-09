@@ -414,69 +414,74 @@ export async function clearAllLeads() {
 }
 
 /**
- * Emergency reset of leads table - CAUTION: This will completely reset the table
+ * Emergency method to completely reset the leads table
+ * This should only be used in development or for critical production fixes
  */
-export async function emergencyResetLeadsTable() {
+export const emergencyResetLeadsTable = async () => {
+  console.log('Starting emergency reset of leads table...');
+  
   try {
-    console.log('Starting emergency reset of leads table...');
+    // First, delete all existing leads
+    const { error: deleteError } = await supabase
+      .from('leads')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all records
     
-    // Force refresh auth session first
-    await supabase.auth.refreshSession();
-    
-    // This drastic approach recreates the table schema
-    const { error } = await supabase.rpc('run_sql_query', {
-      query: `
-        -- Drop existing table
-        DROP TABLE IF EXISTS leads;
-        
-        -- Recreate the table with proper schema
-        CREATE TABLE leads (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          name TEXT NOT NULL,
-          email TEXT UNIQUE NOT NULL,
-          company TEXT,
-          title TEXT,
-          source TEXT NOT NULL,
-          status TEXT NOT NULL,
-          score INTEGER NOT NULL,
-          value INTEGER NOT NULL,
-          linkedinUrl TEXT,
-          phone TEXT,
-          location TEXT,
-          tags JSONB,
-          insights JSONB DEFAULT NULL,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
-          modified_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
-          last_contacted_at TIMESTAMP WITH TIME ZONE
-        );
-        
-        -- Create indexes
-        CREATE INDEX IF NOT EXISTS leads_email_idx ON leads(email);
-        CREATE INDEX IF NOT EXISTS leads_score_idx ON leads(score);
-        CREATE INDEX IF NOT EXISTS leads_value_idx ON leads(value);
-        CREATE INDEX IF NOT EXISTS leads_status_idx ON leads(status);
-        CREATE INDEX IF NOT EXISTS leads_source_idx ON leads(source);
-        CREATE INDEX IF NOT EXISTS leads_insights_idx ON leads USING GIN (insights);
-      `
-    });
-    
-    if (error) {
-      console.error('Error during emergency reset:', error);
-      throw new Error(`Failed to reset leads table: ${error.message}`);
+    if (deleteError) {
+      console.error('Delete error:', deleteError);
+      throw new Error(`Failed to delete existing leads: ${deleteError.message}`);
     }
     
-    console.log('Successfully reset leads table');
-    return { 
-      success: true, 
-      message: 'Leads table has been completely reset. You can now upload fresh data.'
-    };
+    // Create a new lead to ensure table has the right structure
+    // This won't actually recreate the table, but it will validate our schema
+    const { error: insertError } = await supabase
+      .from('leads')
+      .insert({
+        name: 'SYSTEM_TEST_USER',
+        email: 'system.test@example.com',
+        company: 'System Test',
+        title: 'Test',
+        source: 'Website',
+        status: 'New',
+        score: 0,
+        value: 0,
+        linkedinUrl: 'https://linkedin.com/test',
+        insights: null
+      });
+    
+    if (insertError) {
+      console.error('Insert error:', insertError);
+      
+      // If the error is about missing columns, we need to create an alter table SQL query
+      if (insertError.message.includes('column') && insertError.message.includes('does not exist')) {
+        console.log('Column missing, need to update database structure in Supabase directly');
+        return {
+          success: false,
+          message: `Database schema needs to be updated in Supabase. Please add the missing columns: ${insertError.message}`
+        };
+      }
+      
+      throw new Error(`Failed to validate table structure: ${insertError.message}`);
+    }
+    
+    // Delete our test user
+    const { error: cleanupError } = await supabase
+      .from('leads')
+      .delete()
+      .eq('email', 'system.test@example.com');
+    
+    if (cleanupError) {
+      console.error('Cleanup error:', cleanupError);
+      // Not throwing here as this is just cleanup
+    }
+    
+    console.log('Emergency reset completed successfully');
+    return { success: true, message: 'Leads table reset successfully' };
   } catch (error) {
-    console.error('Error in emergencyResetLeadsTable:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    console.error('Reset error:', error);
     return { 
       success: false, 
-      message: `Failed to reset leads table: ${errorMessage}`,
-      error: errorMessage
+      message: `Failed to reset leads: ${error instanceof Error ? error.message : String(error)}` 
     };
   }
-} 
+}; 
