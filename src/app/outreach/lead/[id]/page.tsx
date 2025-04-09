@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { getLeads } from '@/lib/supabase';
 import { Lead } from '@/types/lead';
-import { ExternalLink, Briefcase, Award, Calendar, Mail, Phone, MessageSquare, Linkedin } from 'lucide-react';
+import { ExternalLink, Briefcase, Award, Calendar, Mail, Phone, MessageSquare, Linkedin, Mic, StopCircle, Play, Pause, Save } from 'lucide-react';
 
 interface OutreachTemplate {
   id: string;
@@ -61,6 +61,203 @@ Best regards,
   }
 ];
 
+// Audio recorder component
+function AudioRecorder({ leadName }: { leadName: string }) {
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioURL, setAudioURL] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [hasRecording, setHasRecording] = useState(false);
+  
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Format seconds into MM:SS
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+  
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+      
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data);
+      };
+      
+      mediaRecorderRef.current.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        const url = URL.createObjectURL(audioBlob);
+        setAudioURL(url);
+        setHasRecording(true);
+        
+        if (audioRef.current) {
+          audioRef.current.src = url;
+        }
+        
+        // Release stream tracks
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      // Start recording
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      
+      // Start timer
+      timerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      alert('Unable to access your microphone. Please check permissions and try again.');
+    }
+  };
+  
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      
+      // Clear timer
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    }
+  };
+  
+  const playPauseAudio = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+  
+  const downloadAudio = () => {
+    if (audioURL) {
+      const a = document.createElement('a');
+      a.href = audioURL;
+      a.download = `Audio_Message_For_${leadName.replace(/\s+/g, '_')}.wav`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
+  
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      if (audioURL) {
+        URL.revokeObjectURL(audioURL);
+      }
+    };
+  }, [audioURL]);
+  
+  // Handle audio ended event
+  useEffect(() => {
+    const audio = audioRef.current;
+    
+    const handleEnded = () => {
+      setIsPlaying(false);
+    };
+    
+    if (audio) {
+      audio.addEventListener('ended', handleEnded);
+      return () => {
+        audio.removeEventListener('ended', handleEnded);
+      };
+    }
+  }, []);
+  
+  return (
+    <div className="space-y-4">
+      <div className="mb-6">
+        <h3 className="text-lg font-medium mb-2">Personal Audio Message</h3>
+        <p className="text-gray-400 text-sm">
+          Record a personalized audio message to send to {leadName}. Personalized voice messages can increase engagement by up to 3x compared to text-only outreach.
+        </p>
+      </div>
+      
+      <div className="bg-[#0D1117] rounded-lg p-6">
+        <div className="flex flex-col items-center gap-6">
+          <div className="flex items-center justify-center gap-6">
+            {!isRecording ? (
+              <button
+                onClick={startRecording}
+                className="flex items-center justify-center w-16 h-16 bg-red-500 hover:bg-red-600 rounded-full text-white transition-colors"
+                disabled={isPlaying}
+              >
+                <Mic size={28} />
+              </button>
+            ) : (
+              <button
+                onClick={stopRecording}
+                className="flex items-center justify-center w-16 h-16 bg-gray-700 hover:bg-gray-600 rounded-full text-white transition-colors animate-pulse"
+              >
+                <StopCircle size={28} />
+              </button>
+            )}
+            
+            {hasRecording && !isRecording && (
+              <button
+                onClick={playPauseAudio}
+                className="flex items-center justify-center w-12 h-12 bg-blue-500 hover:bg-blue-600 rounded-full text-white transition-colors"
+              >
+                {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+              </button>
+            )}
+            
+            {hasRecording && !isRecording && (
+              <button
+                onClick={downloadAudio}
+                className="flex items-center justify-center w-12 h-12 bg-green-500 hover:bg-green-600 rounded-full text-white transition-colors"
+              >
+                <Save size={20} />
+              </button>
+            )}
+          </div>
+          
+          <div className="text-center text-lg font-mono">
+            {isRecording ? (
+              <div className="text-red-400 flex items-center animate-pulse">
+                <span className="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
+                Recording: {formatTime(recordingTime)}
+              </div>
+            ) : (
+              hasRecording && <div className="text-gray-400">Recording length: {formatTime(recordingTime)}</div>
+            )}
+          </div>
+        </div>
+        
+        <audio ref={audioRef} className="hidden" />
+        
+        {hasRecording && (
+          <div className="mt-6 pt-4 border-t border-gray-700">
+            <div className="text-gray-400 mb-2 text-sm">Suggested script for audio message:</div>
+            <p className="text-gray-300 text-sm">
+              Hi {leadName}, this is [Your Name] from Chrome Industries. I noticed your impressive work at your company and wanted to personally reach out. I'd love to discuss how our solutions might align with your needs. Feel free to call me back at [phone number] or respond to my email. Looking forward to connecting!
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Client component that uses useParams
 function LeadDetailContent() {
   const params = useParams();
@@ -68,6 +265,7 @@ function LeadDetailContent() {
   
   const [lead, setLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [activeTab, setActiveTab] = useState<'templates' | 'audio'>('templates');
   const [selectedTemplate, setSelectedTemplate] = useState<string>('linkedin');
   const [personalizedMessage, setPersonalizedMessage] = useState<string>('');
   
@@ -268,39 +466,74 @@ function LeadDetailContent() {
         <div className="bg-[#1A1F2B] rounded-lg p-6 col-span-2">
           <h2 className="text-xl font-medium mb-6">Personalized Outreach</h2>
           
-          <div className="flex space-x-4 mb-6">
-            {OUTREACH_TEMPLATES.map((template) => (
-              <button
-                key={template.id}
-                onClick={() => handleTemplateSelect(template.id)}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  selectedTemplate === template.id
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                }`}
-              >
-                {template.name}
-              </button>
-            ))}
+          {/* Tabs */}
+          <div className="flex border-b border-gray-700 mb-6">
+            <button
+              onClick={() => setActiveTab('templates')}
+              className={`px-4 py-2 border-b-2 ${
+                activeTab === 'templates' 
+                  ? 'border-blue-500 text-blue-400' 
+                  : 'border-transparent text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              Text Templates
+            </button>
+            <button
+              onClick={() => setActiveTab('audio')}
+              className={`px-4 py-2 border-b-2 flex items-center ${
+                activeTab === 'audio' 
+                  ? 'border-blue-500 text-blue-400' 
+                  : 'border-transparent text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              <Mic className="w-4 h-4 mr-2" />
+              Audio Message
+            </button>
           </div>
           
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-medium">Personalized Message</h3>
-              <button
-                onClick={handleCopy}
-                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
-              >
-                Copy
-              </button>
-            </div>
-            
-            <div className="bg-[#0D1117] rounded-lg p-4">
-              <pre className="whitespace-pre-wrap font-mono text-sm text-gray-300">
-                {personalizedMessage}
-              </pre>
-            </div>
-          </div>
+          {/* Text Templates Tab */}
+          {activeTab === 'templates' && (
+            <>
+              <div className="flex space-x-4 mb-6">
+                {OUTREACH_TEMPLATES.map((template) => (
+                  <button
+                    key={template.id}
+                    onClick={() => handleTemplateSelect(template.id)}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      selectedTemplate === template.id
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                    }`}
+                  >
+                    {template.name}
+                  </button>
+                ))}
+              </div>
+              
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-medium">Personalized Message</h3>
+                  <button
+                    onClick={handleCopy}
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                  >
+                    Copy
+                  </button>
+                </div>
+                
+                <div className="bg-[#0D1117] rounded-lg p-4">
+                  <pre className="whitespace-pre-wrap font-mono text-sm text-gray-300">
+                    {personalizedMessage}
+                  </pre>
+                </div>
+              </div>
+            </>
+          )}
+          
+          {/* Audio Message Tab */}
+          {activeTab === 'audio' && (
+            <AudioRecorder leadName={lead.name} />
+          )}
           
           <div className="mt-8">
             <h3 className="text-lg font-medium mb-4">Outreach History</h3>
