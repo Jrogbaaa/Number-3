@@ -5,6 +5,26 @@ All notable changes to the Chrome Lead Management Platform will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [15.9.0] - 2024-04-10
+
+### Added
+- Accessible ARIA attributes to all interactive elements
+- Improved touch area for mobile interaction
+- Standardized mobile UI patterns across all pages
+
+### Changed
+- Enhanced sidebar navigation with better mobile visibility
+- Improved hamburger menu toggle functionality
+- Added consistent padding between sidebar and content
+- Optimized calendars for better touch interaction on mobile
+- Replaced "Number 3" references with "CHROME" throughout the app
+
+### Fixed
+- Mobile menu visibility issues
+- Spacing inconsistencies in mobile layouts
+- Touch interaction issues on calendar components
+- Z-index conflicts causing overlay display issues
+
 ## [15.8.0] - 2024-04-09
 
 ### Added

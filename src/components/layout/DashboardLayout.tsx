@@ -43,35 +43,37 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
+    console.log("Toggle sidebar:", !isSidebarOpen);
+  };
+
+  const closeSidebar = () => {
+    setIsSidebarOpen(false);
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-gradient-to-b from-gray-900 to-gray-950">
-      {/* Mobile header with menu button */}
-      <div className="md:hidden flex items-center justify-between p-4 bg-gray-900 border-b border-gray-800/50">
-        <h1 className="text-xl font-bold">CHROME</h1>
-        <button 
-          onClick={toggleSidebar} 
-          className="p-2 rounded-md bg-gray-800/50"
-          aria-label={isSidebarOpen ? "Close menu" : "Open menu"}
-        >
-          {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
-      </div>
-
-      {/* Sidebar - hidden on mobile by default, shown when toggled */}
-      <Sidebar 
-        navItems={navItems} 
-        isOpen={isSidebarOpen} 
-        onClose={() => setIsSidebarOpen(false)} 
-      />
+    <div className="flex h-screen bg-gray-950">
+      <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} navItems={navItems} />
       
-      {/* Main content area */}
-      <div className="flex-1 overflow-auto md:pl-60 w-full">
-        <main className="p-4 md:p-8 h-full max-w-7xl mx-auto">
-          <div className="bg-gray-900/30 backdrop-blur-sm p-4 md:p-6 rounded-xl border border-gray-800/50 shadow-lg">
-            {children}
-          </div>
+      <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Mobile header - only visible on small screens */}
+        <header className="md:hidden bg-gray-900 p-4 flex items-center justify-between shadow-md">
+          <div className="text-white font-bold">CHROME</div>
+          <button
+            onClick={toggleSidebar}
+            className="text-white p-2 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-600"
+            aria-label="Toggle navigation menu"
+            aria-expanded={isSidebarOpen}
+            aria-controls="sidebar"
+          >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </header>
+        
+        {/* Main content */}
+        <main className="flex-1 overflow-y-auto bg-gray-950">
+          {children}
         </main>
       </div>
     </div>

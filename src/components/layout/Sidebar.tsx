@@ -50,10 +50,20 @@ export default function Sidebar({
 
   // Close sidebar when navigating on mobile
   useEffect(() => {
-    if (isOpen && onClose) {
-      onClose();
+    if (onClose) {
+      const handleRouteChange = () => {
+        if (isOpen) {
+          onClose();
+        }
+      };
+      
+      // Only close when the route changes, not when isOpen changes
+      window.addEventListener('popstate', handleRouteChange);
+      return () => {
+        window.removeEventListener('popstate', handleRouteChange);
+      };
     }
-  }, [pathname, isOpen, onClose]);
+  }, [isOpen, onClose]);
 
   // Handle clicks outside on mobile to close the sidebar
   useEffect(() => {
@@ -78,22 +88,36 @@ export default function Sidebar({
       {/* Overlay for mobile - only shown when sidebar is open */}
       {isOpen && (
         <div 
-          className="md:hidden fixed inset-0 bg-black/50 z-20"
+          className="md:hidden fixed inset-0 bg-black/50 z-40 touch-auto"
           onClick={onClose}
-          aria-hidden="true"
+          role="button"
+          tabIndex={-1}
+          aria-label="Close menu overlay"
         />
       )}
 
       {/* Sidebar */}
       <div 
         id="sidebar"
-        className={`fixed md:sticky top-0 z-30 h-screen bg-gray-900/95 p-5 shadow-xl border-r border-gray-800/50
+        className={`fixed md:sticky top-0 z-50 h-screen bg-gray-900/95 p-5 shadow-xl border-r border-gray-800/50
           ${isOpen ? 'left-0' : '-left-64'} w-64 md:w-60 md:left-0
           transition-all duration-300 ease-in-out flex flex-col`}
       >
-        <div className="mb-10 px-2">
-          <h1 className="text-2xl font-bold text-white tracking-tight">CHROME</h1>
-          <p className="text-xs text-gray-500 mt-1">Lead Management Platform</p>
+        <div className="mb-8 px-2 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">CHROME</h1>
+            <p className="text-xs text-gray-500 mt-1">Lead Management Platform</p>
+          </div>
+          {/* Close button - only visible on mobile */}
+          <button 
+            onClick={onClose}
+            className="md:hidden p-2 rounded-md hover:bg-gray-800/80 text-gray-400 hover:text-white"
+            aria-label="Close sidebar"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
         </div>
         
         <nav className="flex-1">

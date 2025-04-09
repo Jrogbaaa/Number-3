@@ -132,9 +132,11 @@ function OutreachLoadingFallback() {
 export default function OutreachPage() {
   return (
     <DashboardLayout>
-      <Suspense fallback={<OutreachLoadingFallback />}>
-        <OutreachContent />
-      </Suspense>
+      <div className="p-6 md:p-8 space-y-8">
+        <Suspense fallback={<OutreachLoadingFallback />}>
+          <OutreachContent />
+        </Suspense>
+      </div>
     </DashboardLayout>
   );
 } 

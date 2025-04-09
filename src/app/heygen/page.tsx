@@ -5,9 +5,9 @@ import PodcastScriptGenerator from '@/components/heygen/PodcastScriptGenerator';
 export default function HeygenIntegrationPage() {
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="p-6 md:p-8 space-y-8">
+        <h1 className="text-2xl font-semibold">Heygen AI Video Integration</h1>
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Heygen Integration</h1>
           <div className="text-blue-300">Using data from 10 leads</div>
         </div>
 

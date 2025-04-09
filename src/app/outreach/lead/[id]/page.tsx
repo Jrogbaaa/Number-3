@@ -614,9 +614,11 @@ function LeadDetailLoadingFallback() {
 export default function LeadDetailPage() {
   return (
     <DashboardLayout>
-      <Suspense fallback={<LeadDetailLoadingFallback />}>
-        <LeadDetailContent />
-      </Suspense>
+      <div className="p-6 md:p-8">
+        <Suspense fallback={<LeadDetailLoadingFallback />}>
+          <LeadDetailContent />
+        </Suspense>
+      </div>
     </DashboardLayout>
   );
 } 

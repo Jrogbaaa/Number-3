@@ -21,7 +21,7 @@ export default function DataInputPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="p-6 md:p-8 space-y-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Database className="h-6 w-6 text-blue-400" />

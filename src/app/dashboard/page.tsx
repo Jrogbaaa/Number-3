@@ -38,7 +38,7 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 p-6 md:p-8">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Lead Dashboard</h1>
           <div className="text-gray-400">{leads.length} leads analyzed</div>

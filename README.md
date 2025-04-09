@@ -38,8 +38,8 @@ This platform is specifically designed to help Chrome Industries:
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/Jrogbaaa/Number-3.git
-cd Number-3
+git clone https://github.com/Jrogbaaa/Chrome-Lead-Management.git
+cd Chrome-Lead-Management
 ```
 
 2. Install dependencies:
@@ -172,6 +172,16 @@ The platform features a carefully designed UI that prioritizes both aesthetics a
 - Mobile-optimized data presentation with prioritized information
 
 ## Recent Updates
+
+### Version 15.9.0
+- Improved mobile hamburger menu for better usability
+- Enhanced sidebar navigation accessibility
+- Improved content spacing for mobile and tablet views
+- Optimized calendars for touch interaction on mobile devices
+- Added proper spacing between sidebar and main content
+- Fixed mobile UI inconsistencies for better user experience
+- Added accessible ARIA attributes to interactive elements
+- Standardized mobile UI patterns across all pages
 
 ### Version 15.8.0
 - Implemented comprehensive mobile responsiveness across all app components
