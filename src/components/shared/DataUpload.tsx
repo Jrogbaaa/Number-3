@@ -409,7 +409,38 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
                 const email = extractFieldValue(row, COMMON_FIELD_MAPPINGS.email);
                 const company = extractFieldValue(row, COMMON_FIELD_MAPPINGS.company);
                 const title = extractFieldValue(row, COMMON_FIELD_MAPPINGS.title);
+                const linkedinUrl = extractFieldValue(row, COMMON_FIELD_MAPPINGS.linkedin);
                 
+                // Try to find LinkedIn URL in any field if not explicitly labeled
+                let enhancedLinkedinUrl = linkedinUrl;
+                if (!enhancedLinkedinUrl) {
+                  // Search through all values for anything that looks like a LinkedIn URL
+                  for (const key of Object.keys(row)) {
+                    const value = row[key];
+                    if (value && typeof value === 'string' && 
+                        (value.includes('linkedin.com/') || 
+                         value.includes('linked.in/') || 
+                         value.toLowerCase().includes('linkedin'))) {
+                      // Extract URL if it's part of a longer text
+                      const urlMatch = value.match(/(https?:\/\/)?(www\.)?linkedin\.com\/[a-zA-Z0-9\/-]+/);
+                      if (urlMatch) {
+                        enhancedLinkedinUrl = urlMatch[0];
+                        if (!enhancedLinkedinUrl.startsWith('http')) {
+                          enhancedLinkedinUrl = 'https://' + enhancedLinkedinUrl;
+                        }
+                        break;
+                      } else if (value.toLowerCase().startsWith('linkedin:')) {
+                        // Handle "linkedin: username" format
+                        const username = value.split(':')[1].trim();
+                        if (username) {
+                          enhancedLinkedinUrl = `https://linkedin.com/in/${username}`;
+                          break;
+                        }
+                      }
+                    }
+                  }
+                }
+
                 // Analyze the row data for insights
                 const insights = analyzeLeadData(row);
 
@@ -450,6 +481,7 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
                   value: 0, // Default value
                   created_at: new Date().toISOString(),
                   last_contacted_at: undefined,
+                  linkedinUrl: enhancedLinkedinUrl || undefined,
                   insights
                 };
               });

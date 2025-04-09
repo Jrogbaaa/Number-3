@@ -361,26 +361,49 @@ function LeadDetailContent() {
             <h2 className="text-xl font-semibold text-center">{lead.name}</h2>
             <p className="text-gray-400 text-center">{lead.title}</p>
             
-            {lead.linkedinUrl && (
+            <div className="mt-4 flex flex-col items-center gap-2 w-full">
+              {/* Email button */}
               <a 
-                href={lead.linkedinUrl} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="mt-2 text-blue-400 flex items-center hover:underline"
+                href={`mailto:${lead.email}`}
+                className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg transition-colors"
               >
-                <Linkedin className="w-4 h-4 mr-1" />
-                <span>View LinkedIn Profile</span>
-                <ExternalLink className="w-3 h-3 ml-1" />
+                <Mail className="w-4 h-4" />
+                <span className="text-sm">Send Email</span>
               </a>
-            )}
+              
+              {/* LinkedIn profile */}
+              {lead.linkedinUrl ? (
+                <a 
+                  href={lead.linkedinUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg transition-colors"
+                >
+                  <Linkedin className="w-4 h-4" />
+                  <span className="text-sm">View LinkedIn Profile</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              ) : (
+                <a 
+                  href={`https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(lead.name)}${lead.company ? '%20' + encodeURIComponent(lead.company) : ''}`}
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-gray-700/50 hover:bg-gray-700/70 text-gray-300 rounded-lg transition-colors"
+                >
+                  <Linkedin className="w-4 h-4" />
+                  <span className="text-sm">Search on LinkedIn</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+            </div>
           </div>
           
-          <div className="space-y-4">
+          <div className="space-y-4 mt-4 border-t border-gray-700 pt-4">
             <div className="flex items-center gap-3">
               <Briefcase className="w-5 h-5 text-gray-400" />
               <div>
                 <p className="text-sm text-gray-400">Company</p>
-                <p className="font-medium">{lead.company}</p>
+                <p className="font-medium">{lead.company || 'Not specified'}</p>
               </div>
             </div>
             
@@ -396,7 +419,18 @@ function LeadDetailContent() {
               <Mail className="w-5 h-5 text-gray-400" />
               <div>
                 <p className="text-sm text-gray-400">Email</p>
-                <p className="font-medium">{lead.email}</p>
+                <p className="font-medium break-all">
+                  {lead.email.includes('placeholder') ? (
+                    <span className="text-yellow-400">No email available</span>
+                  ) : (
+                    <a 
+                      href={`mailto:${lead.email}`}
+                      className="text-blue-400 hover:underline"
+                    >
+                      {lead.email}
+                    </a>
+                  )}
+                </p>
               </div>
             </div>
             
