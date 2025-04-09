@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Upload } from 'lucide-react';
+import { Upload, Check, AlertCircle } from 'lucide-react';
 import Papa from 'papaparse';
 import { uploadLeads } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -13,6 +13,10 @@ import type { FC } from 'react';
 interface UploadProgress {
   processed: number;
   total: number;
+  currentBatch?: number;
+  totalBatches?: number;
+  inserted?: number;
+  duplicates?: number;
 }
 
 interface CSVRow {
@@ -108,6 +112,12 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [results, setResults] = useState<{
+    success: boolean;
+    inserted: number;
+    duplicates: number;
+    total: number;
+  } | null>(null);
 
   const handleDrop = async (e: React.DragEvent<HTMLLabelElement>) => {
     e.preventDefault();
@@ -144,6 +154,7 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
     }
 
     setIsProcessing(true);
+    setResults(null);
     const loadingToast = toast.loading('Processing CSV file...');
     setProgress({ processed: 0, total: 0 });
 
@@ -183,11 +194,61 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
       
       // Start uploading to Supabase
       const uploadingToast = toast.loading(`Uploading ${processedLeads.length} leads to database...`);
-      setProgress({ processed: 0, total: processedLeads.length });
+      setProgress({ 
+        processed: 0, 
+        total: processedLeads.length,
+        inserted: 0,
+        duplicates: 0
+      });
+
+      // Setup a listener for batch progress updates
+      const batchSize = 25; // Match the batch size in uploadLeads function
+      const totalBatches = Math.ceil(processedLeads.length / batchSize);
+      
+      // Create a listener for console messages to update progress
+      const originalConsoleLog = console.log;
+      console.log = function(...args) {
+        originalConsoleLog.apply(console, args);
+        
+        // Check for batch processing messages
+        const message = args[0];
+        if (typeof message === 'string') {
+          // Process batch message
+          if (message.includes('Processing batch')) {
+            const batchMatch = message.match(/Processing batch (\d+)\/(\d+) \((\d+)\/(\d+)\)/);
+            if (batchMatch) {
+              const [_, currentBatch, totalBatches, processed, total] = batchMatch;
+              setProgress(prev => ({
+                ...prev!,
+                currentBatch: parseInt(currentBatch),
+                totalBatches: parseInt(totalBatches),
+                processed: parseInt(processed),
+                total: parseInt(total)
+              }));
+            }
+          }
+          
+          // Process batch results message
+          if (message.includes('Batch results:')) {
+            const resultsMatch = message.match(/Batch results: (\d+) inserted, (\d+) duplicates skipped/);
+            if (resultsMatch) {
+              const [_, inserted, duplicates] = resultsMatch;
+              setProgress(prev => ({
+                ...prev!,
+                inserted: parseInt(inserted),
+                duplicates: parseInt(duplicates)
+              }));
+            }
+          }
+        }
+      };
 
       try {
         const result = await uploadLeads(processedLeads);
         toast.dismiss(uploadingToast);
+        
+        // Restore original console.log
+        console.log = originalConsoleLog;
         
         // Check if we're in mock mode (fallback)
         if (result.mockMode) {
@@ -229,17 +290,46 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
         }
         
         if (result.success) {
-          toast.success(`Successfully uploaded ${result.count} leads`);
+          // Save the final results
+          setResults({
+            success: true,
+            inserted: result.successCount || 0,
+            duplicates: result.duplicateCount || 0,
+            total: result.count
+          });
+          
+          // Show success notification with detailed stats
+          toast.success(
+            `Upload Complete: ${result.successCount || 0} leads added`, 
+            {
+              description: `${result.duplicateCount || 0} duplicates were skipped.`,
+              duration: 5000
+            }
+          );
         } else if (result.successCount && result.successCount > 0) {
           // Some leads were uploaded successfully
+          setResults({
+            success: true,
+            inserted: result.successCount,
+            duplicates: result.duplicateCount || 0,
+            total: result.count
+          });
+          
           toast.success(
             `Partially successful: ${result.successCount} of ${result.count} leads uploaded`,
             {
-              description: 'Some batches encountered errors but data was partially saved.'
+              description: `${result.duplicateCount || 0} duplicates skipped. Some batches encountered errors.`
             }
           );
         } else {
           // No leads were uploaded successfully
+          setResults({
+            success: false,
+            inserted: 0,
+            duplicates: result.duplicateCount || 0,
+            total: result.count
+          });
+          
           toast.error(`Failed to upload leads: ${result.errors?.length || 0} batch errors`);
         }
         
@@ -256,6 +346,9 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
         console.error('Upload error:', error);
         toast.dismiss(uploadingToast);
         
+        // Restore original console.log
+        console.log = originalConsoleLog;
+        
         // Get error message
         let errorMessage = 'Upload failed: Unknown error occurred';
         
@@ -271,7 +364,6 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
       toast.error(error.message || 'Error processing CSV file');
     } finally {
       setIsProcessing(false);
-      setProgress(null);
     }
   };
 
@@ -365,44 +457,95 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
   return (
     <div>
       <div className="max-w-xl mx-auto">
-        <label
-          htmlFor="dropzone-file"
-          className={`flex flex-col items-center justify-center w-full h-60 border-2 border-dashed rounded-lg cursor-pointer ${
-            isProcessing ? 'border-gray-600 bg-gray-800' : 'border-gray-600 hover:border-gray-500 hover:bg-gray-800'
-          } transition-colors`}
-          onDragOver={(e) => e.preventDefault()}
-          onDragEnter={(e) => e.preventDefault()}
-          onDrop={handleDrop}
-        >
-          <div className="flex flex-col items-center justify-center pt-5 pb-6">
-            {isProcessing ? (
-              <div className="text-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-gray-400 border-r-transparent mb-4" />
-                <p className="text-sm text-gray-500">
-                  {progress ? `Processing: ${progress.processed} of ${progress.total}` : 'Processing...'}
-                </p>
+        {results ? (
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6 transition-all">
+            <div className="flex items-center mb-4">
+              {results.success ? (
+                <Check className="w-8 h-8 text-green-500 mr-3" />
+              ) : (
+                <AlertCircle className="w-8 h-8 text-amber-500 mr-3" />
+              )}
+              <h3 className="text-xl font-semibold">Upload Results</h3>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="bg-gray-900 p-3 rounded-lg text-center">
+                <p className="text-2xl font-bold text-white">{results.inserted}</p>
+                <p className="text-xs text-gray-400">Leads Added</p>
               </div>
-            ) : (
-              <>
-                <Upload className="w-10 h-10 mb-3 text-gray-400" />
-                <p className="mb-2 text-sm text-gray-500">
-                  <span className="font-semibold">Click to upload</span> or drag and drop
-                </p>
-                <p className="text-xs text-gray-500">CSV files only</p>
-              </>
-            )}
+              <div className="bg-gray-900 p-3 rounded-lg text-center">
+                <p className="text-2xl font-bold text-white">{results.duplicates}</p>
+                <p className="text-xs text-gray-400">Duplicates Skipped</p>
+              </div>
+              <div className="bg-gray-900 p-3 rounded-lg text-center">
+                <p className="text-2xl font-bold text-white">{results.total}</p>
+                <p className="text-xs text-gray-400">Total Processed</p>
+              </div>
+            </div>
+            
+            <button 
+              className="w-full py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+              onClick={() => setResults(null)}
+            >
+              Upload Another File
+            </button>
           </div>
-          <input
-            ref={fileInputRef}
-            id="dropzone-file"
-            type="file"
-            className="hidden"
-            accept=".csv"
-            onChange={handleUpload}
-            disabled={isProcessing}
-          />
-        </label>
-        {!isProcessing && (
+        ) : (
+          <label
+            htmlFor="dropzone-file"
+            className={`flex flex-col items-center justify-center w-full h-60 border-2 border-dashed rounded-lg cursor-pointer ${
+              isProcessing ? 'border-gray-600 bg-gray-800' : 'border-gray-600 hover:border-gray-500 hover:bg-gray-800'
+            } transition-colors`}
+            onDragOver={(e) => e.preventDefault()}
+            onDragEnter={(e) => e.preventDefault()}
+            onDrop={handleDrop}
+          >
+            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+              {isProcessing ? (
+                <div className="text-center">
+                  <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-gray-400 border-r-transparent mb-4" />
+                  {progress && progress.currentBatch && (
+                    <p className="mb-2 text-sm text-gray-400">
+                      Processing batch {progress.currentBatch}/{progress.totalBatches || '?'}
+                    </p>
+                  )}
+                  <p className="text-sm text-gray-500">
+                    {progress ? (
+                      <>
+                        {progress.processed} of {progress.total} leads processed
+                        {progress.inserted !== undefined && (
+                          <span className="block text-xs mt-1 text-green-500">
+                            {progress.inserted} added, {progress.duplicates || 0} duplicates skipped
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      'Processing...'
+                    )}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <Upload className="w-10 h-10 mb-3 text-gray-400" />
+                  <p className="mb-2 text-sm text-gray-500">
+                    <span className="font-semibold">Click to upload</span> or drag and drop
+                  </p>
+                  <p className="text-xs text-gray-500">CSV files only</p>
+                </>
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              id="dropzone-file"
+              type="file"
+              className="hidden"
+              accept=".csv"
+              onChange={handleUpload}
+              disabled={isProcessing}
+            />
+          </label>
+        )}
+        {!isProcessing && !results && (
           <div className="mt-4 text-center text-gray-500 text-xs">
             <p>The CSV file should contain columns for name, email, company, title, etc.</p>
             <p className="mt-1">Files of any size can be processed - large files will be handled in batches automatically.</p>
