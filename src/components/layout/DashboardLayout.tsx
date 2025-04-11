@@ -57,7 +57,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Mobile header - only visible on small screens */}
         <header className="md:hidden bg-gray-900 p-4 flex items-center justify-between shadow-md">
-          <div className="text-white font-bold">CHROME</div>
+          <div className="text-white font-bold">PROPS</div>
           <button
             onClick={toggleSidebar}
             className="text-white p-2 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-600"

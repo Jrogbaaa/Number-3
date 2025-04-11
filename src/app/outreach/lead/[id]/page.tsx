@@ -249,7 +249,7 @@ function AudioRecorder({ leadName }: { leadName: string }) {
           <div className="mt-6 pt-4 border-t border-gray-700">
             <div className="text-gray-400 mb-2 text-sm">Suggested script for audio message:</div>
             <p className="text-gray-300 text-sm">
-              Hi {leadName}, this is [Your Name] from Chrome Industries. I noticed your impressive work at your company and wanted to personally reach out. I'd love to discuss how our solutions might align with your needs. Feel free to call me back at [phone number] or respond to my email. Looking forward to connecting!
+              Hi {leadName}, this is [Your Name] from PROPS. I noticed your impressive work at your company and wanted to personally reach out. I'd love to discuss how our solutions might align with your needs. Feel free to call me back at [phone number] or respond to my email. Looking forward to connecting!
             </p>
           </div>
         )}
@@ -410,7 +410,7 @@ function LeadDetailContent() {
             <div className="flex items-center gap-3">
               <Award className="w-5 h-5 text-gray-400" />
               <div>
-                <p className="text-sm text-gray-400">Chrome Score</p>
+                <p className="text-sm text-gray-400">PROPS Score</p>
                 <p className="font-medium text-green-400">{lead.chromeScore || lead.score}%</p>
               </div>
             </div>

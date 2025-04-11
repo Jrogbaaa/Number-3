@@ -277,7 +277,7 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
             clipRule="evenodd" 
           />
         </svg>
-        <span>Contact schedule is based on Chrome Industries relevance score and best contact times.</span>
+        <span>Contact schedule is based on PROPS relevance score and best contact times.</span>
       </div>
     </div>
   );

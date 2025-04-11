@@ -111,7 +111,9 @@ const LeadScoreDistribution = () => {
 
   return (
     <div>
-      <h3 className="text-lg font-medium mb-3">Chrome Score Distribution</h3>
+      <div className="text-center">
+        <h3 className="text-lg font-medium mb-3">PROPS Score Distribution</h3>
+      </div>
       {loading ? (
         <div className="h-64 w-full flex items-center justify-center">
           <div className="animate-pulse text-gray-400">Loading distribution data...</div>

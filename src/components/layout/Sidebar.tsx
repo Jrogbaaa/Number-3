@@ -105,7 +105,7 @@ export default function Sidebar({
       >
         <div className="mb-8 px-2 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">CHROME</h1>
+            <h1 className="text-2xl font-bold text-white tracking-tight">PROPS</h1>
             <p className="text-xs text-gray-500 mt-1">Lead Management Platform</p>
           </div>
           {/* Close button - only visible on mobile */}

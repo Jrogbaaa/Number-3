@@ -57,10 +57,10 @@ export default function DashboardPage() {
             <ContentCalendar />
             
             <div className="card">
-              <h2 className="text-xl font-medium mb-4">Chrome Industries Lead Scoring</h2>
+              <h2 className="text-xl font-medium mb-4">PROPS Lead Scoring</h2>
               <div className="p-4 mb-4 bg-blue-50 text-blue-600 rounded border border-blue-200">
-                <h3 className="font-medium">Chrome Industries Relevance</h3>
-                <p className="text-sm">Leads are scored based on relevance to Chrome Industries lifestyle brand:</p>
+                <h3 className="font-medium">PROPS Relevance</h3>
+                <p className="text-sm">Leads are scored based on relevance to PROPS lifestyle brand:</p>
                 <ul className="text-sm list-disc list-inside ml-2 mt-1">
                   <li>Fashion/apparel/outdoor industry connections</li>
                   <li>Marketing and design roles</li>
@@ -71,7 +71,7 @@ export default function DashboardPage() {
               <div className="space-y-6">
                 <LeadScoreDistribution />
                 <div>
-                  <h3 className="text-lg font-medium mb-3">Top Leads for Chrome Industries</h3>
+                  <h3 className="text-lg font-medium mb-3">Top Leads for PROPS</h3>
                   <LeadsTable leads={leads} showChromeScore={true} />
                 </div>
               </div>

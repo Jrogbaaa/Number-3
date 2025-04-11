@@ -1,9 +1,16 @@
 # Changelog
 
-All notable changes to the Chrome Lead Management Platform will be documented in this file.
+All notable changes to the PROPS Lead Management Platform will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [15.10.0] - 2024-04-11
+
+### Changed
+- Rebranded application from "CHROME" to "PROPS"
+- Updated all documentation to reflect new branding
+- Updated UI elements with new brand name
 
 ## [15.9.0] - 2024-04-10
 
@@ -88,12 +95,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [15.4.0] - 2024-04-05
 
 ### Added
-- Chrome Industries specialized scoring model
+- PROPS specialized scoring model
 - Outreach calendar for lead prioritization
 
 ### Changed
 - Reorganized dashboard to prioritize outreach calendar
-- Updated documentation to reflect Chrome Industries focus
+- Updated documentation to reflect PROPS focus
 
 ### Fixed
 - Pie chart animation and sizing issues

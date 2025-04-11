@@ -1,7 +1,7 @@
 'use client';
 
 import { Lead } from '@/types/lead';
-import { Star, ExternalLink, User, ArrowUpRight, Building2, Briefcase } from 'lucide-react';
+import { Star, ExternalLink, User, ArrowUpRight, Building2, Briefcase, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -124,7 +124,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
         
         <div className="bg-gray-800/50 p-2 rounded-md">
           <div className="text-xs text-gray-400 mb-1">
-            {showChromeScore ? 'Chrome Score' : 'Lead Score'}
+            {showChromeScore ? 'PROPS Score' : 'Lead Score'}
           </div>
           <div className="flex items-center">
             <span className={`px-2 py-0.5 rounded-md text-xs font-medium mr-2 ${getScoreColor(showChromeScore ? (lead.chromeScore || 0) : lead.score)}`}>
@@ -162,7 +162,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
           <thead className="bg-gray-800/50">
             <tr className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
               <th className="py-3 px-6">Lead Information</th>
-              {showChromeScore && <th className="py-3 px-6">Chrome Score</th>}
+              {showChromeScore && <th className="py-3 px-6">PROPS Score</th>}
               <th className="py-3 px-6">Lead Score</th>
               <th className="py-3 px-6">Source</th>
               <th className="py-3 px-6">Status</th>

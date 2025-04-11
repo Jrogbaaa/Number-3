@@ -134,7 +134,7 @@ export default function ContentCalendar() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <Calendar className="w-5 h-5 text-blue-400" />
-          <h2 className="text-xl font-medium">Chrome Industries Outreach</h2>
+          <h2 className="text-xl font-medium">PROPS Outreach</h2>
         </div>
         <div className="text-sm text-gray-400 px-2 py-1 rounded-md bg-gray-800/50 border border-gray-700/50">
           Weekly Schedule
@@ -286,7 +286,7 @@ export default function ContentCalendar() {
       
       <div className="mt-6 text-sm text-gray-400 flex items-center gap-2 bg-gray-800/30 p-3 rounded-md border border-gray-800/30">
         <Info className="w-4 h-4 text-blue-400 flex-shrink-0" />
-        <span>Contacts are prioritized based on Chrome Industries relevance score.</span>
+        <span>Contacts are prioritized based on PROPS relevance score.</span>
       </div>
     </div>
   );

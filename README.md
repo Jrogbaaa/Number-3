@@ -1,13 +1,13 @@
-# Chrome Industries Lead Management Platform
+# PROPS Lead Management Platform
 
-A modern lead management platform built with Next.js 15, React, TypeScript, and Supabase, specialized for Chrome Industries lifestyle brand.
+A modern lead management platform built with Next.js 15, React, TypeScript, and Supabase, specialized for PROPS lifestyle brand.
 
 ## Features
 
 - 📊 Lead Analytics Dashboard
 - 📈 Industry-Specific Lead Scoring
 - 📥 CSV Data Import
-- 📅 Chrome Industries Outreach Calendar
+- 📅 PROPS Outreach Calendar
 - 🎙️ Personalized Audio Messages
 - 🔄 Real-time Updates
 - 🌙 Dark Mode UI with Modern Design
@@ -16,9 +16,9 @@ A modern lead management platform built with Next.js 15, React, TypeScript, and 
 - 📋 Clean Data Presentation with Improved Card Layouts
 - ♻️ Data Management Tools (Add, Clear, Refresh)
 
-## Chrome Industries Focus
+## PROPS Focus
 
-This platform is specifically designed to help Chrome Industries:
+This platform is specifically designed to help PROPS:
 
 - Identify leads with the highest potential interest in lifestyle/cycling fashion
 - Prioritize contacts based on industry relevance
@@ -86,12 +86,12 @@ The system automatically recognizes various common column names:
 - Data is processed in batches for handling files of any size
 - The system will generate placeholder values for missing required fields
 - Duplicate records are handled via upsert operations with duplicate skipping
-- Lead scores are automatically calculated based on Chrome Industries relevance
+- Lead scores are automatically calculated based on PROPS relevance
 - Outreach calendar automatically prioritizes high-value leads
 
-## Chrome Industries Scoring Model
+## PROPS Scoring Model
 
-Leads are scored on a 0-100 scale based on their relevance to Chrome Industries:
+Leads are scored on a 0-100 scale based on their relevance to PROPS:
 
 - **Industry Relevance**: Higher scores for fashion, apparel, cycling, and outdoor industries
 - **Role Relevance**: Higher scores for marketing, creative, and product design roles
@@ -99,7 +99,7 @@ Leads are scored on a 0-100 scale based on their relevance to Chrome Industries:
 - **Lead Source Quality**: Higher scores for referrals, partners, and industry events
 - **Sales Pipeline Status**: Higher scores for leads further along in the pipeline
 
-The dashboard automatically sorts leads by their Chrome Industries relevance score.
+The dashboard automatically sorts leads by their PROPS relevance score.
 
 ## Outreach Calendar
 
@@ -182,6 +182,7 @@ The platform features a carefully designed UI that prioritizes both aesthetics a
 - Fixed mobile UI inconsistencies for better user experience
 - Added accessible ARIA attributes to interactive elements
 - Standardized mobile UI patterns across all pages
+- Rebranded from "CHROME" to "PROPS" throughout the app
 
 ### Version 15.8.0
 - Implemented comprehensive mobile responsiveness across all app components
@@ -222,11 +223,11 @@ The platform features a carefully designed UI that prioritizes both aesthetics a
 - Implemented Suspense boundaries for better loading states
 
 ### Version 15.4.0
-- Added Chrome Industries specialized scoring model
+- Added PROPS specialized scoring model
 - Implemented outreach calendar for lead prioritization
 - Fixed pie chart animation and sizing issues
 - Reorganized dashboard to prioritize outreach calendar
-- Updated documentation to reflect Chrome Industries focus
+- Updated documentation to reflect PROPS focus
 
 ### Version 15.3.0
 - Fixed data upload functionality with improved error handling
