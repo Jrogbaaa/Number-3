@@ -41,6 +41,7 @@ export interface Lead {
   last_contacted_at?: string;
   insights?: LeadInsights;
   chromeScore?: number;
+  propsScore?: number;
   linkedinUrl?: string;
   phone?: string;
   location?: string;

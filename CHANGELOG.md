@@ -5,66 +5,77 @@ All notable changes to the PROPS Lead Management Platform will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [15.10.0] - 2024-04-11
-
-### Changed
-- Rebranded application from "CHROME" to "PROPS"
-- Updated all documentation to reflect new branding
-- Updated UI elements with new brand name
-
-## [15.9.0] - 2024-04-10
+## [15.10.0] - 2024-06-19
 
 ### Added
-- Accessible ARIA attributes to all interactive elements
-- Improved touch area for mobile interaction
-- Standardized mobile UI patterns across all pages
+- Enhanced PROPS lead scoring algorithm based on industry best practices
+- Implemented sophisticated scoring system incorporating both explicit (fit) and implicit (engagement/intent) data
+- Added LinkedIn data analysis to improve scoring precision
+- Added detailed tooltips with percentage information to pie chart
+- Added lead quality descriptions in tooltips
+- Added center display of average score in the pie chart
+- Added explanatory text about scoring criteria below the pie chart
 
 ### Changed
-- Enhanced sidebar navigation with better mobile visibility
-- Improved hamburger menu toggle functionality
-- Added consistent padding between sidebar and content
-- Optimized calendars for better touch interaction on mobile
-- Replaced "Number 3" references with "CHROME" throughout the app
+- Completely revised lead scoring methodology with more sophisticated criteria
+- Optimized score distribution for better lead qualification
+- Redesigned pie chart visualization with improved color scheme
+- Enhanced visual appeal with white borders and exploded pie segments
+- Increased pie chart animation duration for better visual effect
+- Updated dashboard header to clearly indicate PROPS branding
+- Improved sorting of top leads list to use the new scoring system
 
 ### Fixed
-- Mobile menu visibility issues
-- Spacing inconsistencies in mobile layouts
-- Touch interaction issues on calendar components
-- Z-index conflicts causing overlay display issues
+- Fixed TypeScript errors in chart rendering components
+- Fixed calculation of percentages in pie chart tooltips
+- Resolved issues with score distribution clustering in a single segment
 
-## [15.8.0] - 2024-04-09
-
-### Added
-- Comprehensive mobile responsiveness across all app components
-- Collapsible sidebar navigation with touch-friendly controls
-- Mobile-first layout adaptations that maintain complete functionality
-- Mobile-specific troubleshooting section in documentation
+## [15.9.0] - 2024-06-10
 
 ### Changed
-- Transformed table layouts into card views on small screens
+- Improved mobile hamburger menu for better usability
+- Enhanced sidebar navigation accessibility
+- Improved content spacing for mobile and tablet views
+- Optimized calendars for touch interaction on mobile devices
+
+### Fixed
+- Added proper spacing between sidebar and main content
+- Fixed mobile UI inconsistencies for better user experience
+
+### Added
+- Added accessible ARIA attributes to interactive elements
+- Standardized mobile UI patterns across all pages
+- Rebranded from "CHROME" to "PROPS" throughout the app
+
+## [15.8.0] - 2024-05-27
+
+### Added
+- Implemented comprehensive mobile responsiveness across all app components
+- Added collapsible sidebar navigation with touch-friendly controls
+- Created responsive table-to-card transformations for small screens
 - Enhanced touch targets and spacing for mobile interaction
+- Added mobile-first layout adaptations that maintain complete functionality
 - Optimized data presentation hierarchy for smaller screens
 
 ### Fixed
-- Layout issues across various device sizes and orientations
-- Sidebar positioning and animation on mobile devices
-- Table overflow issues on smaller screens
+- Fixed layout issues across various device sizes and orientations
 
-## [15.7.0] - 2024-04-08
+## [15.7.0] - 2024-05-12
 
 ### Added
-- Robust lead management tools for database administration
-- Improved CSV upload with detailed progress tracking
-- Batch processing for large datasets with progress indicators
-- Dedicated Data Clear component for lead deletion
-
-### Changed
+- Added robust lead management tools for database administration
+- Implemented improved CSV upload with detailed progress tracking
 - Enhanced lead deletion functionality with better feedback and reliability
-- Improved error handling for database operations
-- Enhanced dashboard with more visible admin controls
+- Added batch processing for large datasets with progress indicators
+- Added dedicated Data Clear component for lead deletion
+- Updated UI to provide better feedback during long-running operations
 
 ### Fixed
-- Cache issues to prevent stale data display
+- Improved error handling for database operations
+- Fixed cache issues to prevent stale data display
+
+### Changed
+- Enhanced dashboard with more visible admin controls
 
 ## [15.6.0] - 2024-04-07
 

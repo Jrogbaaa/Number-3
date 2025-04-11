@@ -91,15 +91,31 @@ The system automatically recognizes various common column names:
 
 ## PROPS Scoring Model
 
-Leads are scored on a 0-100 scale based on their relevance to PROPS:
+Leads are scored on a 0-100 scale based on an advanced methodology that incorporates both explicit (fit) and implicit (engagement/intent) data:
 
-- **Industry Relevance**: Higher scores for fashion, apparel, cycling, and outdoor industries
-- **Role Relevance**: Higher scores for marketing, creative, and product design roles
-- **Decision Authority**: Higher scores for managers, directors, and executives
-- **Lead Source Quality**: Higher scores for referrals, partners, and industry events
-- **Sales Pipeline Status**: Higher scores for leads further along in the pipeline
+### Explicit Data (Fit) Factors:
+- **Job Title/Role**: Higher scores for marketing leadership (CMO, VP Marketing, Head of Growth), director-level positions, and marketing managers
+- **Industry/Company Relevance**: Prioritizes companies in target industries (e-commerce, tech, SaaS, CPG, retail, travel, hospitality)
+- **Lead Source Quality**: Higher scores for referrals, events, and website visits compared to cold outreach
+- **Company Size Estimation**: Additional points for identifiable company size indicators
 
-The dashboard automatically sorts leads by their PROPS relevance score.
+### Implicit Data (Interest/Intent) Factors:
+- **Lead Status**: Points allocated based on position in the sales pipeline (Converted, Proposal, Qualified, etc.)
+- **Lead Value**: Potential deal size contribution to the overall score
+- **LinkedIn Data**: Analysis of LinkedIn profiles, URLs, and seniority indicators
+- **Contact Information Quality**: Scores based on phone, location, and communications data
+- **Recency of Contact**: Higher scores for recent interactions
+- **Insights & Engagement**: Additional points for topics, interests, background information and notes
+- **Email Domain Quality**: Business domains preferred over personal email addresses
+
+The scoring system creates a balanced distribution across five quality tiers:
+- Very Low (0-20): Leads unlikely to convert
+- Low (21-40): Leads requiring significant nurturing
+- Medium (41-60): Average leads with moderate conversion potential
+- High (61-80): Quality leads showing strong engagement
+- Very High (81-100): Excellent leads with high conversion potential
+
+The dashboard visualization presents this distribution with color-coded segments for easy identification of lead quality distribution.
 
 ## Outreach Calendar
 
@@ -172,6 +188,18 @@ The platform features a carefully designed UI that prioritizes both aesthetics a
 - Mobile-optimized data presentation with prioritized information
 
 ## Recent Updates
+
+### Version 15.10.0
+- Enhanced PROPS lead scoring algorithm based on industry best practices
+- Implemented sophisticated scoring with both explicit (fit) and implicit (engagement/intent) data
+- Added LinkedIn data analysis to improve scoring precision
+- Optimized score distribution for better lead qualification
+- Redesigned pie chart visualization with improved color scheme and interactivity
+- Added detailed tooltips with percentage information and lead quality descriptions
+- Improved dashboard UI with clearer data representation
+- Added center display of average score in the pie chart
+- Added explanatory text about scoring criteria
+- Enhanced visual appeal with improved color contrast and visual separation
 
 ### Version 15.9.0
 - Improved mobile hamburger menu for better usability
@@ -257,13 +285,35 @@ The platform features a carefully designed UI that prioritizes both aesthetics a
 - MediaRecorder API (audio recording)
 - Lucide Icons
 
-## Contributing
+## Contributing and Source Control
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+### Pushing Changes to GitHub
+
+After making updates to the codebase, follow these steps to push your changes to GitHub:
+
+1. Check the status of your changes:
+```bash
+git status
+```
+
+2. Add all modified and new files to the staging area:
+```bash
+git add .
+```
+
+3. Commit your changes with a descriptive message:
+```bash
+git commit -m "Enhanced lead scoring algorithm and improved pie chart visualization"
+```
+
+4. Push your changes to the remote repository:
+```bash
+git push origin main
+```
+
+5. Verify your changes have been pushed by checking the GitHub repository.
+
+Always make sure to update the version number in the README.md when making significant changes to the codebase.
 
 ## License
 

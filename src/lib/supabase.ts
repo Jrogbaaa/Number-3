@@ -161,10 +161,14 @@ export async function getLeads() {
       // Calculate Chrome Industries relevance score
       const chromeScore = calculateChromeIndustriesScore(lead);
       
+      // Calculate the new Props.co score
+      const propsScore = calculatePropsScore(lead);
+      
       return {
         ...lead,
         insights: parsedInsights,
-        chromeScore
+        chromeScore,
+        propsScore
       };
     }) as Lead[];
   } catch (error) {
@@ -224,6 +228,311 @@ function calculateChromeIndustriesScore(lead: Lead): number {
   return Math.min(Math.round(score), 100);
 }
 
+/**
+ * Calculate a sophisticated lead score for Props.co based on industry best practices
+ * Incorporates both fit (explicit) and engagement/intent (implicit) data
+ * Higher score = more relevant (0-100)
+ */
+function calculatePropsScore(lead: Lead): number {
+  // Start with zero and build up the score based on multiple factors
+  let score = 0;
+  
+  // ===============================================
+  // EXPLICIT DATA (FIT) - Max 50 points
+  // ===============================================
+  
+  // 1. Job Title/Role - Max 25 points (increased from 20)
+  if (lead.title) {
+    const title = lead.title.toLowerCase();
+    
+    // Marketing leadership roles (high value)
+    if (title.includes('cmo') || 
+        title.includes('chief marketing') ||
+        title.includes('vp marketing') || 
+        title.includes('vp of marketing') ||
+        title.includes('head of marketing') || 
+        title.includes('head of growth')) {
+      score += 25; // Top decision maker (increased from 20)
+    }
+    // Director level roles (high influence)
+    else if (title.includes('director of marketing') || 
+             title.includes('marketing director') ||
+             title.includes('growth director') ||
+             title.includes('director of content') ||
+             title.includes('director of digital')) {
+      score += 22; // Senior decision maker (increased from 18)
+    }
+    // Marketing managers (mid-level influence)
+    else if (title.includes('marketing manager') || 
+             title.includes('growth manager') ||
+             title.includes('digital marketing manager') ||
+             title.includes('content manager')) {
+      score += 18; // Mid-level influencer (increased from 15)
+    }
+    // Digital/content specific roles
+    else if (title.includes('marketing') || 
+             title.includes('digital') ||
+             title.includes('content') ||
+             title.includes('social media') ||
+             title.includes('brand') ||
+             title.includes('growth')) {
+      score += 15; // Marketing-related role (increased from 10)
+    }
+    // Non-marketing business roles
+    else if (title.includes('ceo') || 
+             title.includes('founder') ||
+             title.includes('owner') ||
+             title.includes('president') ||
+             title.includes('chief')) {
+      score += 18; // Other executive, may have decision power (increased from 12)
+    }
+    // Any position is better than nothing
+    else if (title.length > 0) {
+      score += 8; // At least we know their role
+    }
+    // Negative - Unqualified or irrelevant roles
+    if (title.includes('intern') || 
+        title.includes('student') ||
+        title.includes('assistant') ||
+        title.includes('junior')) {
+      score -= 8; // Likely not a decision maker (increased penalty from 5)
+    }
+  }
+  
+  // 2. Industry/Company relevance - Max 15 points
+  if (lead.company) {
+    const company = lead.company.toLowerCase();
+    
+    // Target industries (expanded list)
+    const targetIndustries = [
+      'e-commerce', 'ecommerce', 'retail', 'consumer', 'shop', 'store',
+      'tech', 'software', 'saas', 'platform', 'digital', 'app', 'application',
+      'cpg', 'consumer goods', 'consumer packaged goods', 'product',
+      'travel', 'hospitality', 'entertainment', 'media', 'content', 'creative',
+      'marketing', 'agency', 'brand', 'direct-to-consumer', 'd2c', 'dtc'
+    ];
+    
+    // Check for target industry match
+    if (targetIndustries.some(industry => company.includes(industry))) {
+      score += 15;
+    }
+    // Tier 2 industries that might still be valuable
+    else if (['finance', 'health', 'education', 'service', 'consulting'].some(industry => company.includes(industry))) {
+      score += 10;
+    }
+    // Give partial points for having any company information
+    else if (company.length > 0) {
+      score += 7; // Increased from 5
+    }
+    
+    // Company size estimation based on domain or name
+    if (company.includes('.co') || company.includes('startup') || company.includes('ventures')) {
+      score += 5; // Likely a startup or growth company
+    } else if (company.includes('inc') || company.includes('corp') || company.includes('group')) {
+      score += 3; // Established company
+    }
+  }
+  
+  // 3. Lead Source quality - Max 15 points (unchanged)
+  if (lead.source) {
+    if (lead.source === 'Referral') {
+      score += 15; // Highest quality source
+    } else if (lead.source === 'Event' || lead.source === 'Conference') {
+      score += 12; // High quality in-person interaction
+    } else if (lead.source === 'Website') {
+      score += 10; // Good intent, visited our site
+    } else if (lead.source === 'LinkedIn') {
+      score += 10; // Professional connection (increased from 8)
+    } else if (lead.source === 'Cold Outreach') {
+      score += 7; // Lower quality initial contact (increased from 5)
+    } else {
+      score += 5; // Other sources (increased from 3)
+    }
+  }
+  
+  // ===============================================
+  // IMPLICIT DATA (INTEREST/INTENT) - Max 50 points
+  // ===============================================
+  
+  // 1. Lead Status - Max 25 points (unchanged)
+  // This is a strong indicator of where they are in the pipeline
+  if (lead.status === 'Converted') {
+    score += 25; // Already a customer
+  } else if (lead.status === 'Proposal' || lead.status === 'Negotiation') {
+    score += 22; // Late stage pipeline
+  } else if (lead.status === 'Qualified') {
+    score += 20; // Qualified lead
+  } else if (lead.status === 'Responded') {
+    score += 15; // Showed interest by responding
+  } else if (lead.status === 'Contacted') {
+    score += 12; // Initial contact made (increased from 10)
+  } else if (lead.status === 'New') {
+    score += 8; // Fresh lead (increased from 5)
+  } else if (lead.status === 'Lost' || lead.status === 'On Hold') {
+    score -= 10; // Negative status (increased penalty from 5)
+  }
+  
+  // 2. Lead Value (potential deal size) - Max 15 points
+  const value = lead.value || 0;
+  if (value > 50000) {
+    score += 15; // High value opportunity
+  } else if (value > 25000) {
+    score += 12; // Good value opportunity
+  } else if (value > 10000) {
+    score += 10; // Moderate value
+  } else if (value > 5000) {
+    score += 8; // Smaller value
+  } else if (value > 0) {
+    score += 5; // Some value identified
+  }
+  
+  // 3. LinkedIn and Contact Information - Max 15 points (increased from 10)
+  // LinkedIn URL presence is a strong signal for B2B marketing
+  if (lead.linkedinUrl) {
+    // Basic points for having a LinkedIn profile
+    score += 7; // Increased from 3
+    
+    // Additional points for LinkedIn URL quality
+    if (lead.linkedinUrl.includes('/in/')) {
+      score += 3; // Proper LinkedIn profile format
+    }
+    
+    // Check for seniority indicators in LinkedIn URL
+    const linkedinPath = lead.linkedinUrl.toLowerCase();
+    if (linkedinPath.includes('cxo') || 
+        linkedinPath.includes('chief') || 
+        linkedinPath.includes('director') || 
+        linkedinPath.includes('manager')) {
+      score += 5; // LinkedIn URL suggests seniority
+    }
+  }
+  
+  // Phone number availability suggests higher quality contact
+  if (lead.phone) {
+    score += 5; // Increased from 2
+  }
+  
+  // Location information availability and quality
+  if (lead.location) {
+    const location = lead.location.toLowerCase();
+    // Base points for having location
+    score += 2; // Increased from 1
+    
+    // Target locations that might indicate higher value
+    const keyLocations = ['new york', 'san francisco', 'sf', 'chicago', 'boston', 'los angeles', 'la', 'seattle', 'austin', 'miami', 'london', 'toronto'];
+    if (keyLocations.some(loc => location.includes(loc))) {
+      score += 3; // Key business hub
+    }
+  }
+  
+  // Recent contact is a positive signal
+  if (lead.last_contacted_at) {
+    const lastContactedDate = new Date(lead.last_contacted_at);
+    const now = new Date();
+    const daysSinceContact = Math.floor((now.getTime() - lastContactedDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysSinceContact < 7) {
+      score += 10; // Very recent contact
+    } else if (daysSinceContact < 30) {
+      score += 7; // Recent contact
+    } else if (daysSinceContact < 90) {
+      score += 4; // Somewhat recent
+    } else {
+      score += 2; // Old contact
+    }
+  }
+  
+  // 4. Insights and Engagement Data - Max 10 points
+  // Extra points for rich insights data
+  if (lead.insights) {
+    // Each insight category adds value
+    if (lead.insights.topics && lead.insights.topics.length > 0) {
+      score += 2; // Increased from 1
+      
+      // Check for topics that align with our target market
+      const relevantTopics = ['marketing', 'creator', 'content', 'social media', 'influencer', 'brand', 'digital'];
+      if (lead.insights.topics.some(topic => 
+          relevantTopics.some(relevant => topic.toLowerCase().includes(relevant)))) {
+        score += 3; // Topics align with our focus
+      }
+    }
+    
+    if (lead.insights.interests && lead.insights.interests.length > 0) {
+      score += 2; // Increased from 1
+    }
+    
+    if (lead.insights.background && lead.insights.background.length > 0) {
+      score += 2; // Increased from 1
+    }
+    
+    if (lead.insights.notes) {
+      score += 2; // Increased from 1
+      
+      // Check for positive sentiment in notes
+      const positiveIndicators = ['interested', 'positive', 'follow up', 'opportunity', 'potential'];
+      if (positiveIndicators.some(indicator => 
+          lead.insights?.notes?.toLowerCase().includes(indicator))) {
+        score += 3; // Positive engagement noted
+      }
+    }
+    
+    // High potential value noted in insights
+    if (lead.insights.potentialValue && lead.insights.potentialValue > 10000) {
+      score += 5; // Increased from 3
+    }
+  }
+  
+  // 5. Additional Tags and Metadata - Max 10 points (new category)
+  if (lead.tags && lead.tags.length > 0) {
+    // Base points for having tags
+    score += 2;
+    
+    // Check for high-value tags
+    const highValueTags = ['vip', 'decision maker', 'hot lead', 'priority', 'key account'];
+    if (lead.tags.some(tag => 
+        highValueTags.some(valuable => tag.toLowerCase().includes(valuable)))) {
+      score += 8;
+    }
+    
+    // Check for moderate-value tags
+    const moderateValueTags = ['interested', 'follow up', 'nurture', 'potential'];
+    if (lead.tags.some(tag => 
+        moderateValueTags.some(valuable => tag.toLowerCase().includes(valuable)))) {
+      score += 5;
+    }
+  }
+  
+  // Email domain quality score - Max 5 points (new factor)
+  if (lead.email) {
+    const domain = lead.email.split('@')[1]?.toLowerCase();
+    
+    if (domain) {
+      // Premium business domains
+      if (['gmail.com', 'hotmail.com', 'yahoo.com', 'outlook.com', 'aol.com'].includes(domain)) {
+        // Personal email domains are less valuable for B2B
+        score -= 2;
+      } else {
+        // Business domain is a positive signal
+        score += 3;
+        
+        // Check for premium domains
+        if (['google.com', 'facebook.com', 'amazon.com', 'apple.com', 'microsoft.com'].includes(domain)) {
+          score += 2; // Big tech companies
+        }
+      }
+    }
+  }
+  
+  // Include original lead score as a small factor (max 5 points) - unchanged
+  score += Math.min(lead.score || 0, 100) / 20;
+  
+  // Random variation to spread out identical leads slightly (max ±3 points)
+  score += (Math.random() * 6) - 3;
+  
+  // Ensure the score stays within 0-100 range and is rounded
+  return Math.max(0, Math.min(Math.round(score), 100));
+}
+
 export async function getLeadAnalytics() {
   try {
     // Get the actual leads from Supabase
@@ -235,6 +544,8 @@ export async function getLeadAnalytics() {
     const conversionRate = totalLeads ? (convertedLeads / totalLeads) * 100 : 0;
     const averageScore = totalLeads ? 
       leads.reduce((sum, lead) => sum + lead.score, 0) / totalLeads : 0;
+    const averagePropsScore = totalLeads ? 
+      leads.reduce((sum, lead) => sum + (lead.propsScore || 0), 0) / totalLeads : 0;
 
     const sourceDistribution = leads.reduce((acc, lead) => {
       acc[lead.source] = (acc[lead.source] || 0) + 1;
@@ -254,15 +565,29 @@ export async function getLeadAnalytics() {
         count: leads.filter(lead => lead.score >= min && lead.score <= max).length
       };
     });
+    
+    // Add distribution for the new Props.co score
+    const propsScoreDistribution = scoreRanges.map(range => {
+      const [min, max] = range.split('-').map(Number);
+      return {
+        range,
+        count: leads.filter(lead => {
+          const score = lead.propsScore !== undefined ? lead.propsScore : (lead.score || 0);
+          return score >= min && score <= max;
+        }).length
+      };
+    });
 
     return {
       totalLeads,
       totalValue,
       conversionRate,
       averageScore,
+      averagePropsScore,
       sourceDistribution,
       statusDistribution,
-      scoreDistribution
+      scoreDistribution,
+      propsScoreDistribution
     };
   } catch (error) {
     console.error('Error generating analytics:', error);
@@ -271,9 +596,11 @@ export async function getLeadAnalytics() {
       totalValue: 0,
       conversionRate: 0,
       averageScore: 0,
+      averagePropsScore: 0,
       sourceDistribution: {},
       statusDistribution: {},
-      scoreDistribution: []
+      scoreDistribution: [],
+      propsScoreDistribution: []
     };
   }
 }
