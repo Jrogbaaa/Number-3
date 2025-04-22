@@ -1,9 +1,54 @@
 # Changelog
 
-All notable changes to the PROPS Lead Management Platform will be documented in this file.
+All notable changes to this Contact Scoring Platform will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased] - YYYY-MM-DD
+
+### Added
+- **Lead Enrichment**: Implemented automatic enrichment of leads with `location`, `timezone`, `optimal_outreach_time`, `optimal_outreach_time_eastern`, and `outreach_reason` using `src/lib/leadEnrichment.ts` and external APIs.
+- **Audio Message Recording**: Added a feature in the Lead Outreach page (`src/app/outreach/lead/[id]/page.tsx`) allowing users to record, play, and download personalized audio messages for leads.
+
+### Changed
+- **Lead Scoring**: Updated `getLeads` in `src/lib/supabase.ts` to integrate newly calculated scores (`marketingScore`, `budgetPotential`, `budgetConfidence`, `businessOrientation`, `orientationConfidence`) into the returned `Lead` objects.
+- **UI Layout**: Improved padding, spacing, and typography on the Lead Outreach page (`src/app/outreach/lead/[id]/page.tsx`) for better readability and presentation.
+
+### Fixed
+- **CSV Upload**: 
+    - Resolved database column mismatch error (`optimalOutreachTime`) by adding `.select('*')` to the Supabase insert query in `src/lib/supabase.ts`.
+    - Fixed "No data found in CSV file" errors by improving parsing logic in `src/components/shared/DataUpload.tsx`, adding pre-checks, fallback delimiter handling, and better logging.
+    - Improved cancellation handling in the `DataUpload.tsx` component UI.
+- **Database Schema**: Added necessary columns to the `leads` table to support enrichment and new scoring features (e.g., `location`, `timezone`, `optimal_outreach_time`, `marketingScore`, etc.).
+
+### Removed
+- Old `/api/enrich-lead-location`, `/api/leads/[id]`, `/api/update-lead`, `/api/add-database-columns` API routes as logic moved to `src/lib/supabase.ts` and `src/lib/leadEnrichment.ts`.
+- `OutreachTimeEnricher` component and related demo page/integrations as enrichment is now handled server-side during upload/fetch.
+
+## [15.11.0] - 2024-06-19
+
+### Added
+- New Contact Scoring System with three dimensions:
+  - **Marketing Activity Score**: Quantifies marketing focus based on title, company, source, insights, tags, and activity.
+  - **Budget Potential Estimation**: Estimates budget potential (0-100) with confidence levels (Low, Medium, High) based on seniority, lead value, company type, industry, location, tags, and insights.
+  - **Business Orientation Classification**: Categorizes contacts as B2B, B2C, Mixed, or Unknown with confidence levels (Low, Medium, High) based on email domain, company name, title, source, and tags.
+- Enhanced `LeadsTable` component with search, sorting by multiple columns, and CSV export functionality.
+- New helper functions for calculating the new scoring dimensions in `src/lib/supabase.ts`.
+- Updated `Lead` type definition in `src/types/lead.ts` with new scoring fields.
+
+### Changed
+- **Major Overhaul**: Replaced previous lead scoring model (`calculatePropsScore`, `calculateChromeIndustriesScore`) with the new three-dimensional contact scoring system.
+- Refocused application from "PROPS Lead Management" to a more general "Contact Scoring Platform".
+- Simplified `Dashboard` component, removing the pie chart and focusing on the enhanced `LeadsTable`.
+- Renamed "Leads" to "Contacts" in various UI elements (Dashboard title, buttons, table labels).
+- Updated `getLeads` function to compute and return the new scoring metrics for each contact.
+- Refined scoring logic to utilize more fields (`insights`, `tags`, `location`, `status`, `last_contacted_at`) for better accuracy.
+
+### Removed
+- Pie chart visualization from the dashboard.
+- Old scoring functions (`calculatePropsScore`, `calculateChromeIndustriesScore`) from `src/lib/supabase.ts`.
+- `analytics` state and related logic from `Dashboard.tsx` (as `getLeadAnalytics` wasn't updated for new scores).
 
 ## [15.10.0] - 2024-06-19
 

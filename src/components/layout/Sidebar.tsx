@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BarChart2, Database, Mail, Video } from 'lucide-react';
 import { useEffect } from 'react';
+import Image from 'next/image';
 
 interface NavItem {
   name: string;
@@ -104,10 +105,16 @@ export default function Sidebar({
           transition-all duration-300 ease-in-out flex flex-col`}
       >
         <div className="mb-8 px-2 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">PROPS</h1>
-            <p className="text-xs text-gray-500 mt-1">Lead Management Platform</p>
-          </div>
+          <Link href="/dashboard" aria-label="Go to dashboard">
+             <Image 
+                src="/props-logo.png"
+                alt="PROPS Logo"
+                width={100}
+                height={32}
+                className="h-8 w-auto"
+                priority
+             />
+          </Link>
           {/* Close button - only visible on mobile */}
           <button 
             onClick={onClose}

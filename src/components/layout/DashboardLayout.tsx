@@ -17,7 +17,7 @@ interface DashboardLayoutProps {
 
 const navItems = [
   {
-    name: 'Dashboard',
+    name: 'Your Leads',
     href: '/dashboard',
     icon: <BarChart2 className="w-5 h-5" />,
   },
@@ -25,11 +25,6 @@ const navItems = [
     name: 'Data Input',
     href: '/data-input',
     icon: <Database className="w-5 h-5" />,
-  },
-  {
-    name: 'Outreach',
-    href: '/outreach',
-    icon: <Mail className="w-5 h-5" />,
   },
   {
     name: 'Heygen Integration',

@@ -1,14 +1,40 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Upload, Check, AlertCircle, CheckCircle, Info, BarChart2 } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Upload, Check, AlertCircle, CheckCircle, Info, BarChart2, X } from 'lucide-react';
 import Papa from 'papaparse';
-import { uploadLeads } from '@/lib/supabase';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+import { uploadLeads } from '@/lib/supabase';
 import type { Lead, LeadSource, LeadStatus } from '@/types/lead';
-import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import type { FC } from 'react';
+
+// Define the structure for the upload result directly here
+// as it is not exported from supabase.ts
+interface SupabaseUploadResult {
+  success: boolean;
+  count: number;
+  successCount?: number;
+  duplicateCount?: number;
+  error?: string;
+  errors?: any[];
+  mockMode?: boolean;
+  message?: string;
+}
+
+// Define the structure for the results state
+interface UploadResults {
+  success: boolean;
+  inserted: number;
+  duplicates: number;
+  total: number;
+}
 
 interface UploadProgress {
   processed: number;
@@ -112,12 +138,9 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [results, setResults] = useState<{
-    success: boolean;
-    inserted: number;
-    duplicates: number;
-    total: number;
-  } | null>(null);
+  const [isCancelled, setIsCancelled] = useState(false);
+  const [results, setResults] = useState<UploadResults | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleDrop = async (e: React.DragEvent<HTMLLabelElement>) => {
     e.preventDefault();
@@ -154,118 +177,104 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
     }
 
     setIsProcessing(true);
+    setIsCancelled(false);
     setResults(null);
+    setProgress(null);
+    setError(null);
+
+    const batchSize = 25; // Define batchSize here to match uploadLeads
+
     const loadingToast = toast.loading('Processing CSV file...');
-    setProgress({ processed: 0, total: 0 });
 
     try {
-      // Process the CSV file
       const processedLeads = await processCSV(file);
-      
       toast.dismiss(loadingToast);
-      
-      if (!processedLeads.length) {
-        toast.error('No valid leads found in the CSV file');
-        setProgress(null);
+
+      // Check for cancellation *after* parsing and *before* starting upload
+      if (isCancelled) {
+        toast.info("Upload cancelled after processing, before database upload.");
         setIsProcessing(false);
-        return;
+        setProgress(null);
+        return; // Stop before calling uploadLeads
       }
 
-      // Show a debug message with the first lead data
-      if (processedLeads.length > 0) {
-        console.log('First processed lead:', processedLeads[0]);
-        
-        // Show sample in UI via toast
-        const sampleLead = processedLeads[0];
-        toast.info(
-          <div className="max-w-md">
-            <p className="font-semibold mb-2">Sample processed lead:</p>
-            <ul className="text-xs">
-              <li>Name: {sampleLead.name}</li>
-              <li>Email: {sampleLead.email}</li>
-              <li>Company: {sampleLead.company}</li>
-              <li>Title: {sampleLead.title}</li>
-              <li>Source: {sampleLead.source}</li>
-            </ul>
-          </div>,
-          { duration: 5000 }
-        );
-      }
-      
-      // Start uploading to Supabase
-      const uploadingToast = toast.loading(`Uploading ${processedLeads.length} leads to database...`);
-      setProgress({ 
-        processed: 0, 
-        total: processedLeads.length,
-        inserted: 0,
-        duplicates: 0
-      });
+      const uploadingToast = toast.loading('Uploading leads to database...');
+      setProgress({ processed: 0, total: processedLeads.length });
 
-      // Setup a listener for batch progress updates
-      const batchSize = 25; // Match the batch size in uploadLeads function
-      const totalBatches = Math.ceil(processedLeads.length / batchSize);
-      
-      // Create a listener for console messages to update progress
+      // --- Setup Console Listener ---
       const originalConsoleLog = console.log;
-      console.log = function(...args) {
+      const logMessages: string[] = [];
+      const progressRegex = /Processing batch (\d+)\/(\d+) \((\d+)\/(\d+)\)/;
+      const batchResultsRegex = /Batch results: (\d+) inserted, (\d+) duplicates skipped/;
+
+      console.log = (...args: any[]) => {
         originalConsoleLog.apply(console, args);
-        
-        // Check for batch processing messages
-        const message = args[0];
-        if (typeof message === 'string') {
-          // Process batch message
-          if (message.includes('Processing batch')) {
-            const batchMatch = message.match(/Processing batch (\d+)\/(\d+) \((\d+)\/(\d+)\)/);
-            if (batchMatch) {
-              const [_, currentBatch, totalBatches, processed, total] = batchMatch;
-              setProgress(prev => ({
-                ...prev!,
-                currentBatch: parseInt(currentBatch),
-                totalBatches: parseInt(totalBatches),
-                processed: parseInt(processed),
-                total: parseInt(total)
-              }));
-            }
-          }
+        const message = args.map(arg => String(arg)).join(' ');
+        logMessages.push(message);
+
+        // Match batch processing progress
+        const progressMatch = message.match(progressRegex);
+        if (progressMatch) {
+          const currentBatch = parseInt(progressMatch[1], 10);
+          const totalBatches = parseInt(progressMatch[2], 10);
+          const processed = parseInt(progressMatch[3], 10);
+          const total = parseInt(progressMatch[4], 10);
           
-          // Process batch results message
-          if (message.includes('Batch results:')) {
-            const resultsMatch = message.match(/Batch results: (\d+) inserted, (\d+) duplicates skipped/);
-            if (resultsMatch) {
-              const [_, inserted, duplicates] = resultsMatch;
-              setProgress(prev => {
-                const updatedInserted = (prev?.inserted || 0) + parseInt(inserted);
-                const updatedDuplicates = (prev?.duplicates || 0) + parseInt(duplicates);
-                
-                return {
-                  ...prev!,
-                  inserted: updatedInserted,
-                  duplicates: updatedDuplicates
-                };
-              });
-            }
-          }
+          // Update progress with detailed information
+          setProgress({
+            processed,
+            total,
+            currentBatch,
+            totalBatches
+          });
+        }
+        
+        // Match batch results
+        const batchResultsMatch = message.match(batchResultsRegex);
+        if (batchResultsMatch) {
+          const inserted = parseInt(batchResultsMatch[1], 10);
+          const duplicates = parseInt(batchResultsMatch[2], 10);
+          
+          // Update inserted/duplicates count with proper typing
+          setProgress(prev => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              inserted: (prev.inserted || 0) + inserted,
+              duplicates: (prev.duplicates || 0) + duplicates
+            };
+          });
         }
       };
+      // --- End Console Listener Setup ---
 
+      let uploadResult: SupabaseUploadResult | null = null;
       try {
-        const result = await uploadLeads(processedLeads);
+        // --- Call uploadLeads ---
+        uploadResult = await uploadLeads(processedLeads);
+        // --- End uploadLeads Call ---
+      } catch (uploadError: any) {
+        console.error('Upload error:', uploadError);
         toast.dismiss(uploadingToast);
-        
-        // Restore original console.log
+        toast.error(`Upload failed: ${uploadError.message || 'Unknown database error'}`);
+        setError(uploadError.message || 'Unknown database error');
+      } finally {
+        // --- Restore console.log ---
         console.log = originalConsoleLog;
-        
-        // Check if we're in mock mode (fallback)
-        if (result.mockMode) {
+        // --- End Restore ---
+        toast.dismiss(uploadingToast); // Ensure loading toast is dismissed
+      }
+
+      // --- Process Results ---
+      if (uploadResult) {
+        if (uploadResult.mockMode) {
           toast.info(
-            'Demo Mode Active', 
-            { 
-              description: result.message || 'Using sample data instead of actual database', 
+            'Demo Mode Active',
+            {
+              description: uploadResult.message || 'Using sample data instead of actual database',
               duration: 5000
             }
           );
-          
-          // Show a more detailed message in the console
           console.info(`
             🛈 DEMO MODE ACTIVE
             -------------------
@@ -273,134 +282,143 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
             This could be because:
             1. The 'leads' table doesn't exist in your Supabase database
             2. There's an issue with your Supabase connection or permissions
-            
+
             Your data is being displayed as sample data for demonstration purposes.
-            
+
             To fix this:
             - Visit the /debug page to set up your database
             - Download and run the SQL script in your Supabase project
           `);
-          
-          // Still consider this a success for UX purposes
-          if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-          }
-          
-          if (onUploadComplete) {
-            onUploadComplete();
-          }
-          
-          router.refresh();
-          return;
-        }
-        
-        if (result.success) {
-          // Save the final results
+          // Set results to show something in demo mode
+           setResults({
+              success: true, // Treat as success for UI
+              inserted: processedLeads.length, // Show all processed as 'inserted'
+              duplicates: 0,
+              total: processedLeads.length
+          });
+
+        } else if (uploadResult.success) {
           setResults({
             success: true,
-            inserted: result.successCount || 0,
-            duplicates: result.duplicateCount || 0,
-            total: result.count
+            inserted: uploadResult.successCount || 0,
+            duplicates: uploadResult.duplicateCount || 0,
+            total: uploadResult.count
           });
-          
-          // Show success notification with detailed stats
           toast.success(
-            `Upload Complete: ${result.successCount || 0} leads added`, 
+            `Upload Complete: ${uploadResult.successCount || 0} leads added`,
             {
-              description: `${result.duplicateCount || 0} duplicates were skipped.`,
+              description: `${uploadResult.duplicateCount || 0} duplicates were skipped.`,
               duration: 5000
             }
           );
-        } else if (result.successCount && result.successCount > 0) {
-          // Some leads were uploaded successfully
+        } else if (uploadResult.successCount && uploadResult.successCount > 0) {
+          // Partial success
           setResults({
-            success: true,
-            inserted: result.successCount,
-            duplicates: result.duplicateCount || 0,
-            total: result.count
+            success: true, // Still consider overall success=true if some were inserted
+            inserted: uploadResult.successCount,
+            duplicates: uploadResult.duplicateCount || 0,
+            total: uploadResult.count
           });
-          
-          toast.success(
-            `Partially successful: ${result.successCount} of ${result.count} leads uploaded`,
+          toast.warning( // Use warning for partial success
+            `Partially successful: ${uploadResult.successCount} of ${uploadResult.count} leads uploaded`,
             {
-              description: `${result.duplicateCount || 0} duplicates skipped. Some batches encountered errors.`
+              description: `${uploadResult.duplicateCount || 0} duplicates skipped. ${uploadResult.errors?.length || 0} batch errors.`
             }
           );
         } else {
-          // No leads were uploaded successfully
+          // Complete failure
           setResults({
             success: false,
             inserted: 0,
-            duplicates: result.duplicateCount || 0,
-            total: result.count
+            duplicates: uploadResult.duplicateCount || 0,
+            total: uploadResult.count
           });
-          
-          toast.error(`Failed to upload leads: ${result.errors?.length || 0} batch errors`);
+          const errorMsg = uploadResult.error || `${uploadResult.errors?.length || 0} batch errors occurred.`;
+          toast.error(`Upload failed: ${errorMsg}`);
+          setError(errorMsg);
         }
-        
+
+        // --- Final Steps on Success/Completion (even mock mode) ---
         if (fileInputRef.current) {
-          fileInputRef.current.value = '';
+           fileInputRef.current.value = ''; // Clear file input
         }
-        
         if (onUploadComplete) {
-          onUploadComplete();
+           onUploadComplete(); // Notify parent component
         }
-        
-        router.refresh();
-      } catch (error: any) {
-        console.error('Upload error:', error);
-        toast.dismiss(uploadingToast);
-        
-        // Restore original console.log
-        console.log = originalConsoleLog;
-        
-        // Get error message
-        let errorMessage = 'Upload failed: Unknown error occurred';
-        
-        if (error.message) {
-          errorMessage = `Upload failed: ${error.message}`;
-        }
-        
-        toast.error(errorMessage);
+        router.refresh(); // Refresh data on page
       }
+      // --- End Process Results ---
+
     } catch (error: any) {
+      // Catch errors from processCSV or other setup steps
       console.error('Processing error:', error);
-      toast.dismiss();
-      toast.error(error.message || 'Error processing CSV file');
+      toast.dismiss(loadingToast); // Dismiss initial loading toast if it was still active
+      toast.error(`Processing failed: ${error.message || 'Could not process CSV file'}`);
+      setError(error.message || 'Could not process CSV file');
     } finally {
-      setIsProcessing(false);
+      setIsProcessing(false); // Ensure processing state is always turned off
+      // Cancellation state is handled earlier or implicitly by finishing
     }
   };
 
+  // --- Function to handle cancellation ---
+  const handleCancelUpload = () => {
+    console.log("Cancellation requested...");
+    setIsCancelled(true);
+    
+    // If we actually have data ready but the UI isn't showing it properly
+    // Check if we might have completed processing but UI is stuck
+    if (progress && progress.processed > 0) {
+      console.log("Upload was in progress - checking if data is available");
+      
+      // Force refresh to show data that might actually be there
+      setIsProcessing(false);
+      toast.info("Upload canceled. Some data may have been processed successfully.");
+      
+      // Reset state and refresh router to capture any successful uploads
+      if (onUploadComplete) {
+        onUploadComplete();
+      }
+      router.refresh();
+    } else {
+      // Standard cancellation for early stages
+      setIsProcessing(false);
+      setProgress(null);
+      toast.info("Upload cancelled.");
+    }
+  };
+  // --- End Cancellation Handling ---
+
   const processCSV = async (file: File): Promise<ProcessedLead[]> => {
     return new Promise((resolve, reject) => {
-      Papa.parse<CSVRow>(file, {
-        header: true,
-        skipEmptyLines: true,
-        delimiter: '', // Auto-detect delimiter
-        transformHeader: (header: string) => {
-          return header.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-        },
-        complete: (results: Papa.ParseResult<CSVRow>) => {
-          console.log('Papa Parse results:', {
-            data: results.data.slice(0, 2),
-            errors: results.errors,
-            meta: results.meta
-          });
-
-          // Check for critical errors
-          const criticalErrors = results.errors.filter(err => err.type === 'Delimiter' || err.type === 'FieldMismatch');
-          if (criticalErrors.length > 0) {
-            console.error('Critical CSV parsing errors:', criticalErrors);
-            reject(new Error('Invalid CSV format. Please check your file format and try again.'));
-            return;
-          }
-
-          if (!Array.isArray(results.data) || results.data.length === 0) {
-            reject(new Error('No data found in CSV file'));
-            return;
-          }
-
+      // First read the file as text to verify it has content
+      const reader = new FileReader();
+      
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        
+        // Check if the file has any content
+        if (!text || text.trim() === '') {
+          console.error('CSV file is empty');
+          reject(new Error('The CSV file is empty - please check your file'));
+          return;
+        }
+        
+        // Log first 500 chars to verify file content
+        console.log('CSV file content preview:', text.substring(0, 500));
+        
+        // Count lines in file
+        const lineCount = text.split('\n').filter(line => line.trim() !== '').length;
+        console.log(`CSV contains ${lineCount} non-empty lines`);
+        
+        // If file has content but only 1 line, it might be just headers
+        if (lineCount <= 1) {
+          console.warn('CSV file contains only headers or a single line');
+          // Continue anyway to let PapaParse try
+        }
+        
+        // Helper function to process the parsed data
+        const processParsedData = (results: Papa.ParseResult<CSVRow>): void => {
           try {
             const processedData = results.data
               .filter(row => {
@@ -531,12 +549,94 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
             console.error('Error processing CSV data:', error);
             reject(new Error('Error processing CSV data: ' + (error as Error).message));
           }
-        },
-        error: (error: Error) => {
-          console.error('CSV parsing error:', error);
-          reject(new Error('Failed to parse CSV file: ' + error.message));
-        }
-      });
+        };
+        
+        // Now parse with PapaParse
+        Papa.parse<CSVRow>(file, {
+          header: true,
+          skipEmptyLines: true,
+          delimiter: '', // Auto-detect delimiter
+          transformHeader: (header: string) => {
+            return header.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+          },
+          complete: (results: Papa.ParseResult<CSVRow>) => {
+            // Enhanced logging:
+            console.log('Papa Parse Detailed Results:', {
+              dataPreview: results.data.slice(0, 5), // Log first 5 rows
+              rowCount: results.data.length,
+              errors: results.errors, // Log any parsing errors
+              meta: results.meta      // Log metadata (delimiter, etc.)
+            });
+
+            // Check for delimiter issues first
+            if (results.meta && results.meta.delimiter === '') {
+              console.error('CSV delimiter could not be detected');
+              reject(new Error('Could not detect CSV delimiter - please check your file format'));
+              return;
+            }
+
+            // Check for critical errors
+            const criticalErrors = results.errors.filter(err => err.type === 'Delimiter' || err.type === 'FieldMismatch');
+            if (criticalErrors.length > 0) {
+              console.error('Critical CSV parsing errors:', criticalErrors);
+              reject(new Error('Invalid CSV format. Please check your file format and try again.'));
+              return;
+            }
+
+            // Check for empty data (already present)
+            if (!Array.isArray(results.data) || results.data.length === 0) {
+              console.warn('Rejecting: No data array or empty data array returned by PapaParse.');
+              
+              // Try alternative parsing approach with explicit comma delimiter
+              console.log('Attempting alternative parsing with explicit comma delimiter...');
+              Papa.parse<CSVRow>(file, {
+                header: true,
+                skipEmptyLines: true,
+                delimiter: ',', // Force comma delimiter
+                transformHeader: (header: string) => {
+                  return header.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+                },
+                complete: (retryResults: Papa.ParseResult<CSVRow>) => {
+                  if (Array.isArray(retryResults.data) && retryResults.data.length > 0) {
+                    console.log('Alternative parsing succeeded with:', {
+                      rowCount: retryResults.data.length
+                    });
+                    processParsedData(retryResults);
+                  } else {
+                    reject(new Error('No data found in CSV file despite multiple parsing attempts.'));
+                  }
+                },
+                error: (error: Error) => {
+                  console.error('Alternative CSV parsing error:', error);
+                  reject(new Error('Failed to parse CSV file: ' + error.message));
+                }
+              });
+              return;
+            }
+
+            processParsedData(results);
+          },
+          error: (error: Error) => {
+            console.error('CSV parsing error:', error);
+            reject(new Error('Failed to parse CSV file: ' + error.message));
+          },
+          step: (results, parser) => {
+            if (isCancelled) {
+              parser.abort();
+              console.log("CSV parsing aborted due to cancellation.");
+              reject(new Error("Upload cancelled during parsing."));
+            }
+          }
+        });
+      };
+      
+      reader.onerror = (error) => {
+        console.error('Error reading file:', error);
+        reject(new Error('Could not read the file. Please try again.'));
+      };
+      
+      // Start reading the file as text
+      reader.readAsText(file);
     });
   };
 
@@ -554,14 +654,10 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
               <h3 className="text-xl font-semibold text-white">Upload Results</h3>
             </div>
             
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-2 gap-4 mb-6">
               <div className="bg-gray-900/70 p-4 rounded-lg text-center">
                 <p className="text-2xl font-bold text-white">{results.inserted}</p>
                 <p className="text-xs text-gray-400">Leads Added</p>
-              </div>
-              <div className="bg-gray-900/70 p-4 rounded-lg text-center">
-                <p className="text-2xl font-bold text-amber-400">{results.duplicates}</p>
-                <p className="text-xs text-gray-400">Duplicates Skipped</p>
               </div>
               <div className="bg-gray-900/70 p-4 rounded-lg text-center">
                 <p className="text-2xl font-bold text-blue-400">{results.total}</p>
@@ -575,15 +671,6 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
                   <p className="flex items-center">
                     <CheckCircle className="w-4 h-4 mr-2" />
                     Upload complete! Your leads have been added to the database.
-                  </p>
-                </div>
-              )}
-              
-              {results.duplicates > 0 && (
-                <div className="bg-amber-900/20 text-amber-400 border border-amber-900/30 rounded-md p-3 text-sm">
-                  <p className="flex items-center">
-                    <Info className="w-4 h-4 mr-2" />
-                    {results.duplicates} {results.duplicates === 1 ? 'lead' : 'leads'} {results.duplicates === 1 ? 'was' : 'were'} skipped because {results.duplicates === 1 ? 'it has' : 'they have'} duplicate email addresses.
                   </p>
                 </div>
               )}
@@ -625,26 +712,39 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
               {isProcessing ? (
                 <div className="text-center">
                   <div className="inline-block h-10 w-10 animate-spin rounded-full border-4 border-solid border-blue-400 border-r-transparent mb-4" />
-                  {progress && progress.currentBatch && (
+                  {progress && (
                     <div className="mb-4">
-                      <p className="mb-1 text-sm text-blue-400 font-medium">
-                        Processing batch {progress.currentBatch}/{progress.totalBatches || '?'}
-                      </p>
-                      <div className="w-full bg-gray-700 rounded-full h-2 mb-1">
+                      <div className="flex justify-between mb-1">
+                        <p className="text-sm text-blue-400 font-medium">
+                          Processing leads ({progress.processed}/{progress.total})
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {progress.currentBatch && progress.totalBatches && 
+                            `Batch ${progress.currentBatch}/${progress.totalBatches}`}
+                        </p>
+                      </div>
+                      
+                      {/* Main progress bar */}
+                      <div className="w-full bg-gray-700 rounded-full h-3 mb-2">
                         <div 
-                          className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                          style={{ 
-                            width: `${progress.totalBatches 
-                              ? Math.round((progress.currentBatch / progress.totalBatches) * 100) 
-                              : 0}%` 
-                          }}
+                          className="bg-blue-500 h-3 rounded-full transition-all duration-300"
+                          style={{ width: `${progress.total ? Math.round((progress.processed / progress.total) * 100) : 0}%` }}
                         />
                       </div>
-                      <p className="text-xs text-gray-400">
-                        {Math.round(progress.totalBatches 
-                          ? (progress.currentBatch / progress.totalBatches) * 100 
-                          : 0)}% complete
-                      </p>
+                      
+                      {/* Show inserted and duplicates if available */}
+                      {progress.inserted !== undefined && (
+                        <div className="flex justify-between text-xs mt-2">
+                          <span className="text-green-400">
+                            {progress.inserted} inserted
+                          </span>
+                          {progress.duplicates !== undefined && progress.duplicates > 0 && (
+                            <span className="text-yellow-400">
+                              {progress.duplicates} duplicates skipped
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                   <p className="text-sm text-gray-300 mb-2">
@@ -656,18 +756,14 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
                       'Processing...'
                     )}
                   </p>
-                  {progress?.inserted !== undefined && (
-                    <div className="flex justify-center gap-3 text-xs mt-1">
-                      <span className="text-green-400">
-                        {progress.inserted} added
-                      </span>
-                      {progress.duplicates ? (
-                        <span className="text-amber-400">
-                          {progress.duplicates} duplicates skipped
-                        </span>
-                      ) : null}
-                    </div>
-                  )}
+                  {/* --- Cancel Button --- */}
+                  <button 
+                    onClick={handleCancelUpload} 
+                    className="mt-2 px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded-md transition-colors flex items-center gap-1 mx-auto"
+                  >
+                     <X size={14}/> Cancel
+                  </button>
+                  {/* --- End Cancel Button --- */}
                 </div>
               ) : (
                 <>

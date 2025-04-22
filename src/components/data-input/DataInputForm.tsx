@@ -17,6 +17,12 @@ interface CSVRow {
   'Company'?: string;
   'Position'?: string;
   'Connected On'?: string;
+  // Add potential location headers
+  'Location'?: string;
+  'City'?: string;
+  'Region'?: string;
+  'Country'?: string;
+  'Address'?: string;
   [key: string]: string | undefined; // Allow for any other headers
 }
 
@@ -96,12 +102,12 @@ export const DataInputForm = () => {
           header: true,
           skipEmptyLines: true,
           transformHeader: (header: string) => {
-            // Keep original header names to match LinkedIn export format
+            // Keep original header names
             return header.trim();
           },
           complete: (results) => {
             console.log('CSV Headers:', results.meta.fields);
-            console.log('First row sample:', results.data[0]);
+            // console.log('First row sample:', results.data[0]);
             resolve(results.data as CSVRow[]);
           },
           error: (error) => reject(error),
@@ -112,60 +118,111 @@ export const DataInputForm = () => {
         throw new Error('The CSV file is empty');
       }
 
-      console.log(`Processing ${results.length} leads...`);
+      toast.loading(`Processing ${results.length} leads... Location lookups may take time.`, { id: toastId });
 
-      const leads: Lead[] = results.map((row, index) => {
-        // Get name from various possible header combinations
-        const firstName = findHeaderVariation(row, ['First Name', 'FirstName', 'First']) || '';
-        const lastName = findHeaderVariation(row, ['Last Name', 'LastName', 'Last']) || '';
-        const fullName = firstName && lastName ? `${firstName} ${lastName}` : 
-                        findHeaderVariation(row, ['Full Name', 'Name']) || 
-                        `${firstName}${lastName}`;
+      // --- Process leads asynchronously to allow for location lookup ---
+      const leadProcessingPromises = results.map(async (row, index): Promise<Lead | null> => {
+        try {
+          // Get name from various possible header combinations
+          const firstName = findHeaderVariation(row, ['First Name', 'FirstName', 'First']) || '';
+          const lastName = findHeaderVariation(row, ['Last Name', 'LastName', 'Last']) || '';
+          const fullName = firstName && lastName ? `${firstName} ${lastName}` :
+                          findHeaderVariation(row, ['Full Name', 'Name']) ||
+                          `${firstName}${lastName}`;
 
-        const lead: Lead = {
-          id: crypto.randomUUID(),
-          name: fullName.trim() || 'Unknown',
-          email: findHeaderVariation(row, ['Email Address', 'Email', 'E-mail']) || '',
-          company: findHeaderVariation(row, ['Company', 'Organization']) || '',
-          title: findHeaderVariation(row, ['Position', 'Title', 'Job Title']) || '',
-          source: 'LinkedIn',
-          status: 'New',
-          score: calculateLeadScore(row),
-          value: calculateLeadValue(row),
-          created_at: new Date().toISOString(),
-          last_contacted_at: findHeaderVariation(row, ['Connected On', 'Connection Date']) || undefined,
-        };
+          const company = findHeaderVariation(row, ['Company', 'Organization']) || '';
+          // Attempt to find location header first
+          let location = findHeaderVariation(row, ['Location', 'City', 'Region', 'Country', 'Address']) || '';
 
-        if (index === 0) {
-          console.log('Sample processed lead:', lead);
+          const leadPartial: Omit<Lead, 'location'> & { location?: string } = { // Use partial type initially
+            id: crypto.randomUUID(),
+            name: fullName.trim() || 'Unknown',
+            email: findHeaderVariation(row, ['Email Address', 'Email', 'E-mail']) || '',
+            company: company,
+            title: findHeaderVariation(row, ['Position', 'Title', 'Job Title']) || '',
+            source: 'LinkedIn', // Assuming LinkedIn source for this form
+            status: 'New',
+            score: calculateLeadScore(row),
+            value: calculateLeadValue(row),
+            created_at: new Date().toISOString(),
+            last_contacted_at: findHeaderVariation(row, ['Connected On', 'Connection Date']) || undefined,
+            // Location is handled below
+          };
+
+          // --- Location Lookup Logic via API Route ---
+          if (!location && company) {
+            console.log(`Location missing for ${leadPartial.name} at ${company}. Calling API route...`);
+            try {
+              const response = await fetch('/api/enrich-lead-location', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ companyName: company }),
+              });
+
+              if (!response.ok) {
+                console.error(`API Error for ${company}: ${response.status} ${response.statusText}`);
+                // Log response body if possible
+                try { console.error(await response.text()); } catch (_) {}
+              } else {
+                const data = await response.json();
+                if (data.location) {
+                  console.log(`API returned location for ${company}: ${data.location}`);
+                  location = data.location; // Update location if found
+                }
+              }
+            } catch (fetchError) {
+              console.error(`Error calling enrichment API for company ${company}:`, fetchError);
+              // Continue without deduced location on fetch error
+            }
+          }
+
+          const finalLead: Lead = {
+            ...leadPartial,
+            location: location || undefined, // Assign final location (or undefined if still empty)
+          };
+
+          // Basic validation check after enrichment attempt
+          if (!finalLead.email || !finalLead.name) {
+             console.warn('Skipping invalid lead (missing name or email):', finalLead);
+             return null; // Return null for invalid leads to filter later
+          }
+
+          // Don't log every lead, just the first
+          // if (index === 0) {
+          //   console.log('Sample processed lead (after potential lookup):', finalLead);
+          // }
+
+          return finalLead;
+
+        } catch (mapError) {
+           console.error(`Error processing row ${index}:`, mapError);
+           return null; // Return null if there's an error processing the row
         }
-
-        return lead;
       });
 
-      // Validate leads before upload
-      const validLeads = leads.filter(lead => {
-        const isValid = lead.email.trim() !== '' && lead.name.trim() !== '';
-        if (!isValid) {
-          console.warn('Skipping invalid lead:', lead);
-        }
-        return isValid;
-      });
+      // Wait for all lead processing (including lookups) to complete
+      const processedLeadsRaw = await Promise.all(leadProcessingPromises);
+      // Filter out any nulls from processing errors or invalid leads
+      const leads: Lead[] = processedLeadsRaw.filter((lead): lead is Lead => lead !== null);
 
-      if (validLeads.length === 0) {
-        throw new Error('No valid leads found in the CSV file');
+      // --- Original Validation and Upload Logic ---
+      if (leads.length === 0) {
+         throw new Error('No valid leads found in the CSV file after processing');
       }
 
-      console.log(`Uploading ${validLeads.length} valid leads to Supabase...`);
-      await uploadLeads(validLeads);
-      
-      toast.success(`Successfully processed ${validLeads.length} leads!`, { id: toastId });
+      console.log(`Uploading ${leads.length} valid leads to Supabase...`);
+      toast.loading(`Uploading ${leads.length} leads...`, { id: toastId });
+      await uploadLeads(leads);
+
+      toast.success(`Successfully processed and uploaded ${leads.length} leads!`, { id: toastId });
       router.push('/dashboard');
     } catch (error) {
       console.error('Error processing CSV:', error);
       toast.error(
-        error instanceof Error 
-          ? `Error: ${error.message}` 
+        error instanceof Error
+          ? `Error: ${error.message}`
           : 'Error processing CSV file',
         { id: toastId }
       );

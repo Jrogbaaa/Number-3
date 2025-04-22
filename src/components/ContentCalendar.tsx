@@ -9,6 +9,74 @@ import { Calendar, Clock, TrendingUp, Info } from 'lucide-react';
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
+// --- Time Zone Helper Functions ---
+
+// Tries to guess an IANA time zone name from a free-form location string
+const guessTimeZone = (location: string | undefined): string | null => {
+  if (!location) return null;
+  const locLower = location.toLowerCase();
+
+  // Simple keyword matching (add more as needed)
+  // UK / Europe
+  if (locLower.includes('london') || locLower.includes('uk') || locLower.includes('united kingdom') || locLower.includes('gmt') || locLower.includes('bst')) return 'Europe/London';
+  if (locLower.includes('paris') || locLower.includes('berlin') || locLower.includes('rome') || locLower.includes('madrid') || locLower.includes('cet') || locLower.includes('cest')) return 'Europe/Paris';
+  // US East Coast
+  if (locLower.includes('new york') || locLower.includes('ny') || locLower.includes('boston') || locLower.includes('philadelphia') || locLower.includes('atlanta') || locLower.includes('est') || locLower.includes('edt')) return 'America/New_York';
+  // US Central
+  if (locLower.includes('chicago') || locLower.includes('dallas') || locLower.includes('houston') || locLower.includes('cst') || locLower.includes('cdt')) return 'America/Chicago';
+  // US Mountain
+  if (locLower.includes('denver') || locLower.includes('phoenix') || locLower.includes('mst') || locLower.includes('mdt')) return 'America/Denver';
+  // US Pacific
+  if (locLower.includes('los angeles') || locLower.includes('san francisco') || locLower.includes('seattle') || locLower.includes('california') || locLower.includes('ca') || locLower.includes('pst') || locLower.includes('pdt')) return 'America/Los_Angeles';
+  // Add more specific locations or broader regions if needed
+
+  return null; // Could not reliably guess
+};
+
+// Gets a time zone abbreviation (e.g., PST, EST, GMT)
+const getTimeZoneAbbreviation = (timeZone: string): string => {
+  try {
+    // Use Intl API to get the abbreviation based on the current date
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timeZone,
+      timeZoneName: 'short',
+    });
+    // Extract the abbreviation part from the formatted string
+    const parts = formatter.formatToParts(new Date());
+    const tzNamePart = parts.find(part => part.type === 'timeZoneName');
+    return tzNamePart ? tzNamePart.value : '';
+  } catch (e) {
+    console.warn(`Could not get abbreviation for timezone: ${timeZone}`, e);
+    return ''; // Return empty string on error
+  }
+};
+
+// --- End Helper Functions ---
+
+// --- New Helper Function to Parse Start Time ---
+// Parses time string like "10:00 AM - 12:00 PM" or "2:00 PM - 3:00 PM" into a sortable 24-hour number
+const parseStartTimeToHour = (timeString: string | undefined): number => {
+  if (!timeString) return 24; // Default to end of day if no time string
+
+  const match = timeString.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!match) return 24; // Default if format doesn't match
+
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const ampm = match[3].toUpperCase();
+
+  if (ampm === 'PM' && hours !== 12) {
+    hours += 12;
+  } else if (ampm === 'AM' && hours === 12) { // Handle 12:XX AM
+    hours = 0;
+  }
+
+  // Return hours (or hours + minutes/60 for more precision if needed)
+  return hours;
+};
+
+// --- End New Helper Function ---
+
 // Create real calendar events from leads data
 function generateCalendarEvents(leads: Lead[]): Record<string, CalendarEvent[]> {
   // Create empty calendar with each weekday
@@ -23,30 +91,74 @@ function generateCalendarEvents(leads: Lead[]): Record<string, CalendarEvent[]> 
   // Only use high-value leads (sorted by Chrome score)
   const highValueLeads = [...leads]
     .sort((a, b) => (b.chromeScore || 0) - (a.chromeScore || 0))
-    .slice(0, 15);
+    .slice(0, 15); // Limit to top 15 for the weekly view
   
+  let timeSlotCounter = 0; // To alternate between morning/afternoon slots
+
   // Distribute leads across weekdays with the highest-scored leads earlier in the week
   highValueLeads.forEach((lead, index) => {
     // Determine which day to place the lead (prioritize Mon-Wed for higher scores)
     const dayIndex = Math.min(Math.floor(index / 3), 4); // 0-4 for Monday-Friday
     const day = WEEKDAYS[dayIndex];
     
-    // Generate a time slot based on lead score
-    const scoreBasedHour = 9 + (Math.floor((100 - (lead.chromeScore || 0)) / 25) * 2);
-    const startHour = Math.min(Math.max(scoreBasedHour, 9), 15); // Keep between 9am and 3pm
-    
+    // *** Use Optimal Outreach Time if available, otherwise generate a slot ***
+    let startTime: string;
+    let endTime: string;
+    let displayTime: string;
+    let sourceTime: string | undefined = lead.optimalOutreachTime; // Use the enriched time if present
+
+    if (lead.optimalOutreachTime) {
+      const times = lead.optimalOutreachTime.split(' - ');
+      startTime = times[0] || '10:00 AM'; // Fallback if parsing fails
+      endTime = times[1] || '12:00 PM'; // Fallback if parsing fails
+      displayTime = lead.optimalOutreachTime;
+    } else {
+      // Generate fallback time slot
+      let startHour;
+      if (timeSlotCounter % 2 === 0) startHour = 10; 
+      else startHour = 15; 
+      timeSlotCounter++;
+      const endHour = startHour + 2; 
+      startTime = `${startHour % 12 === 0 ? 12 : startHour % 12}:00 ${startHour < 12 || startHour === 24 ? 'AM' : 'PM'}`;
+      endTime = `${endHour % 12 === 0 ? 12 : endHour % 12}:00 ${endHour < 12 || endHour === 24 ? 'AM' : 'PM'}`;
+      displayTime = `${startTime} - ${endTime}`;
+      sourceTime = displayTime; // Use the generated time for sorting if optimal isn't available
+    }
+
+    // Add timezone abbreviation if possible (keep existing logic)
+    const guessedTimeZone = guessTimeZone(lead.location || lead.timezone); // Also check lead.timezone
+    if (guessedTimeZone) {
+      const abbreviation = getTimeZoneAbbreviation(guessedTimeZone);
+      if (abbreviation) {
+        displayTime = `${startTime} - ${endTime} ${abbreviation}`;
+      }
+    }
+
     // Create the calendar event
     const event: CalendarEvent = {
       id: lead.id,
       leadName: lead.name,
-      startTime: `${startHour}:00 ${startHour < 12 ? 'AM' : 'PM'}`,
-      endTime: `${startHour + 2}:00 ${(startHour + 2) < 12 ? 'AM' : 'PM'}`,
+      startTime: startTime, // Keep original for potential internal use
+      endTime: endTime,   // Keep original for potential internal use
+      displayTime: displayTime, // Use the new formatted string for display
       successRate: lead.chromeScore || lead.score || 70,
+      // Store the source time string for reliable sorting
+      _sortTime: sourceTime 
     };
     
     // Add to the appropriate day
     calendar[day].push(event);
   });
+
+  // --- Sort events within each day by start time ---
+  for (const day of WEEKDAYS) {
+    calendar[day].sort((a, b) => {
+      const hourA = parseStartTimeToHour(a._sortTime || a.displayTime);
+      const hourB = parseStartTimeToHour(b._sortTime || b.displayTime);
+      return hourA - hourB;
+    });
+  }
+  // --- End Sorting ---
   
   return calendar;
 }
@@ -131,17 +243,10 @@ export default function ContentCalendar() {
 
   return (
     <div className="bg-gray-900/50 rounded-xl p-4 md:p-6 border border-gray-800/40 shadow-lg">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-blue-400" />
-          <h2 className="text-xl font-medium">PROPS Outreach</h2>
-        </div>
-        <div className="text-sm text-gray-400 px-2 py-1 rounded-md bg-gray-800/50 border border-gray-700/50">
-          Weekly Schedule
-        </div>
-      </div>
-      
-      <h3 className="text-base font-medium mb-4 text-gray-300">Recommended Contact Schedule</h3>
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <Calendar className="w-5 h-5 text-blue-400" />
+        Outreach Calendar
+      </h2>
       
       {loading ? (
         <div className="flex justify-center my-8 bg-gray-800/30 rounded-lg p-8">
@@ -196,7 +301,7 @@ export default function ContentCalendar() {
                       </div>
                       <div className="flex items-center text-sm text-gray-400 gap-1.5">
                         <Clock className="w-3.5 h-3.5" />
-                        <span>{event.startTime} - {event.endTime}</span>
+                        <span>{event.displayTime || `${event.startTime} - ${event.endTime}`}</span>
                       </div>
                       <div className="flex items-center justify-end gap-1.5 text-green-400">
                         <TrendingUp className="w-3.5 h-3.5" />
@@ -253,7 +358,7 @@ export default function ContentCalendar() {
                       </div>
                       <div className="flex items-center text-sm text-gray-400 gap-1.5">
                         <Clock className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span>{event.startTime} - {event.endTime}</span>
+                        <span>{event.displayTime || `${event.startTime} - ${event.endTime}`}</span>
                       </div>
                       <div className="flex items-center justify-end gap-1.5 text-green-400">
                         <TrendingUp className="w-3.5 h-3.5 flex-shrink-0" />

@@ -1,3 +1,5 @@
+import { StaticImageData } from "next/image";
+
 export type LeadStatus = 
   | 'New'
   | 'Contacted'
@@ -45,7 +47,17 @@ export interface Lead {
   linkedinUrl?: string;
   phone?: string;
   location?: string;
+  timezone?: string;
+  optimalOutreachTime?: string;
+  outreachReason?: string;
   tags?: string[];
+
+  marketingScore?: number;
+  budgetPotential?: number;
+  budgetConfidence?: 'Low' | 'Medium' | 'High';
+  businessOrientation?: 'B2B' | 'B2C' | 'Mixed' | 'Unknown';
+  orientationConfidence?: 'Low' | 'Medium' | 'High';
+  optimalOutreachTimeEastern?: string;
 }
 
 export interface CalendarEvent {
@@ -54,4 +66,30 @@ export interface CalendarEvent {
   startTime: string;
   endTime: string;
   successRate: number;
+  displayTime?: string;
+  _sortTime?: string;
+}
+
+export interface Tag {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface Contact {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  title?: string;
+  isPrimary?: boolean;
+}
+
+export interface InteractionLog {
+  id: string;
+  timestamp: string;
+  type: "Email" | "Call" | "Meeting" | "Note";
+  notes: string;
+  outcome?: string;
+  followUpDate?: string;
 } 

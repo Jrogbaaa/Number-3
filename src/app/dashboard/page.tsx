@@ -40,7 +40,7 @@ export default function DashboardPage() {
     <DashboardLayout>
       <div className="space-y-6 p-6 md:p-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Lead Dashboard</h1>
+          <h1 className="text-2xl font-semibold">Your Leads</h1>
           <div className="text-gray-400">{leads.length} leads analyzed</div>
         </div>
 
@@ -58,14 +58,13 @@ export default function DashboardPage() {
             
             <div className="card">
               <h2 className="text-xl font-medium mb-4">PROPS Lead Scoring</h2>
-              <div className="p-4 mb-4 bg-blue-50 text-blue-600 rounded border border-blue-200">
-                <h3 className="font-medium">PROPS Relevance</h3>
-                <p className="text-sm">Leads are scored based on relevance to PROPS lifestyle brand:</p>
-                <ul className="text-sm list-disc list-inside ml-2 mt-1">
-                  <li>Fashion/apparel/outdoor industry connections</li>
-                  <li>Marketing and design roles</li>
-                  <li>Decision-making authority</li>
-                  <li>Current stage in sales pipeline</li>
+              <div className="p-4 mb-6 bg-gray-800/40 text-gray-300 rounded-lg border border-gray-700/50">
+                <h3 className="font-medium text-white">PROPS Lead Ranking Factors</h3>
+                <p className="text-sm mt-1">Leads are automatically ranked based on the following key factors:</p>
+                <ul className="text-sm list-disc list-inside ml-2 mt-1.5 space-y-0.5">
+                  <li>High Marketing Score</li>
+                  <li>High Budget Potential</li>
+                  <li>Company Focus (B2B prioritized over B2C/Mixed)</li>
                 </ul>
               </div>
               <div className="space-y-6">
