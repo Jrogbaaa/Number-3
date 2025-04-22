@@ -10,6 +10,7 @@
     "migrate": "ts-node-esm src/migrations/apply_migrations.ts"
   },
   "dependencies": {
+    "@prisma/client": "^6.6.0",
     "@radix-ui/react-select": "^2.1.6",
     "@radix-ui/react-slot": "^1.1.2",
     "@supabase/auth-helpers-nextjs": "^0.8.7",
@@ -43,6 +44,7 @@
     "eslint": "^8.56.0",
     "eslint-config-next": "14.1.0",
     "postcss": "^8.4.33",
+    "prisma": "^6.6.0",
     "tailwindcss": "^3.4.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
