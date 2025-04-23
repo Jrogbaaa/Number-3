@@ -1,0 +1,38 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Lead {
+  id               String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name             String
+  email            String    @unique
+  company          String?
+  title            String?
+  source           String
+  status           String
+  score            Int
+  value            Int
+  created_at       DateTime  @default(now()) @db.Timestamptz
+  last_contacted_at DateTime? @db.Timestamptz
+  insights         Json?     @default("{}")
+  metadata         Json?     @default("{}")
+  location         String?
+  timezone         String?
+  optimalOutreachTime String?
+  outreachReason   String?
+
+  @@index([email], name: "leads_email_idx")
+  @@index([score], name: "leads_score_idx")
+  @@index([value], name: "leads_value_idx")
+  @@index([status], name: "leads_status_idx")
+  @@index([source], name: "leads_source_idx")
+  @@map("leads")
+} 
