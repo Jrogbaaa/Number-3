@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Lead } from '@/types/lead';
-import prisma from '@/lib/prisma';
+// import prisma from '@/lib/prisma'; // Temporarily comment out Prisma import
 
 export async function GET(
   request: NextRequest,
@@ -16,11 +16,26 @@ export async function GET(
       );
     }
     
-    // Fetch lead from database
-    const lead = await prisma.lead.findUnique({
-      where: { id },
-    });
+    // Fetch lead from database - Temporarily comment out DB call
+    // const lead = await prisma.lead.findUnique({
+    //   where: { id },
+    // });
     
+    // Return mock data instead
+    const lead: Lead | null = { 
+      id: id, 
+      name: "Mock Lead", 
+      email: "mock@example.com", 
+      company: "Mock Inc.", 
+      title: "Mock Title", 
+      source: "Website", 
+      status: "New", 
+      score: 50, 
+      value: 1000, 
+      created_at: new Date().toISOString(), 
+      // Add other necessary fields from your Lead type with default values
+    }; 
+
     if (!lead) {
       return NextResponse.json(
         { error: "Lead not found" },
