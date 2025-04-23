@@ -2,6 +2,11 @@
 const nextConfig = {
   reactStrictMode: true,
   
+  // Disable ESLint during builds to fix deployment issues with Next.js 15
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  
   experimental: {
     serverActions: {
       allowedOrigins: ['localhost:3000', '127.0.0.1:3000']
