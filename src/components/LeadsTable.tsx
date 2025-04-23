@@ -297,7 +297,8 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
             </span>
           </div>
         </div>
-        {lead.location && (
+        {/* REMOVED LOCATION/TIME FROM MOBILE VIEW START */}
+        {/* {lead.location && (
           <div className="space-y-1.5">
             <div className="text-xs text-gray-400 font-medium">Location</div>
             <div className="text-sm text-gray-300 truncate" title={lead.location}>
@@ -312,7 +313,8 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
               )}
             </div>
           </div>
-        )}
+        )} */}
+        {/* REMOVED LOCATION/TIME FROM MOBILE VIEW END */}
       </div>
     </div>
   );
@@ -477,9 +479,11 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
               <th className="py-3 px-4 w-[15%] cursor-pointer group hover:bg-gray-700/50 transition-colors duration-150" onClick={() => requestSort('businessOrientation')} onKeyDown={(e: React.KeyboardEvent<HTMLTableCellElement>) => (e.key === 'Enter' || e.key === ' ') && requestSort('businessOrientation')} tabIndex={0} aria-sort={sortConfig?.key === 'businessOrientation' ? (sortConfig.direction === 'ascending' ? 'ascending' : 'descending') : 'none'} aria-label="Sort by Company Focus">
                 <div className="flex items-center">Company Focus {renderSortIcon('businessOrientation')}</div>
               </th>
-              <th className="py-3 px-4 w-[15%] cursor-pointer group hover:bg-gray-700/50 transition-colors duration-150" onClick={() => requestSort('location')} onKeyDown={(e: React.KeyboardEvent<HTMLTableCellElement>) => (e.key === 'Enter' || e.key === ' ') && requestSort('location')} tabIndex={0} aria-sort={sortConfig?.key === 'location' ? (sortConfig.direction === 'ascending' ? 'ascending' : 'descending') : 'none'} aria-label="Sort by Location">
+              {/* REMOVED LOCATION/TIME HEADER START */}
+              {/* <th className="py-3 px-4 w-[15%] cursor-pointer group hover:bg-gray-700/50 transition-colors duration-150" onClick={() => requestSort('location')} onKeyDown={(e: React.KeyboardEvent<HTMLTableCellElement>) => (e.key === 'Enter' || e.key === ' ') && requestSort('location')} tabIndex={0} aria-sort={sortConfig?.key === 'location' ? (sortConfig.direction === 'ascending' ? 'ascending' : 'descending') : 'none'} aria-label="Sort by Location">
                 <div className="flex items-center">Location/Time {renderSortIcon('location')}</div>
-              </th>
+              </th> */}
+              {/* REMOVED LOCATION/TIME HEADER END */}
                <th className="py-3 px-4 w-[10%] cursor-pointer group hover:bg-gray-700/50 transition-colors duration-150" onClick={() => requestSort('status')} onKeyDown={(e: React.KeyboardEvent<HTMLTableCellElement>) => (e.key === 'Enter' || e.key === ' ') && requestSort('status')} tabIndex={0} aria-sort={sortConfig?.key === 'status' ? (sortConfig.direction === 'ascending' ? 'ascending' : 'descending') : 'none'} aria-label="Sort by Status">
                  <div className="flex items-center">Status {renderSortIcon('status')}</div>
               </th>
@@ -535,7 +539,8 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                       </span>
                     </div>
                   </td>
-                  <td className="py-3 px-4 whitespace-nowrap">
+                  {/* REMOVED LOCATION/TIME DATA CELL START */}
+                  {/* <td className="py-3 px-4 whitespace-nowrap">
                     {lead.location ? (
                       <div>
                         <div className="text-gray-300 truncate" title={lead.location}>{lead.location}</div>
@@ -551,7 +556,8 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                     ) : (
                       <span className="text-gray-500">Unknown location</span>
                     )}
-                  </td>
+                  </td> */}
+                  {/* REMOVED LOCATION/TIME DATA CELL END */}
                   <td className="py-3 px-4 whitespace-nowrap">
                      <span
                         className={`px-2.5 py-1 rounded-full text-[11px] font-medium inline-block ${ 
@@ -577,7 +583,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
               ))
             ) : (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-gray-500">
+                <td colSpan={6} className="py-8 text-center text-gray-500">
                   {searchTerm || statusFilter !== 'all' || marketingScoreFilter !== 'all' || budgetConfidenceFilter !== 'all' || orientationFilter !== 'all' 
                    ? 'No contacts match your search or filter criteria.' 
                    : 'No contacts found.'}

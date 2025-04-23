@@ -192,6 +192,13 @@ function AudioRecorder({ leadName }: { leadName: string }) {
         </p>
       </div>
       
+      <div className="mb-4 bg-gray-800/50 rounded-lg p-4 border border-gray-700/30">
+        <div className="text-gray-400 mb-2 text-sm font-medium">Suggested script:</div>
+        <p className="text-gray-300 text-sm">
+          Hi {leadName}, this is [Your Name] from PROPS. I noticed your impressive work at your company and wanted to personally reach out. I'd love to discuss how our solutions might align with your needs. Feel free to call me back at [phone number] or respond to my email. Looking forward to connecting!
+        </p>
+      </div>
+
       <div className="bg-[#0D1117] rounded-lg p-6">
         <div className="flex flex-col items-center gap-6">
           <div className="flex items-center justify-center gap-6">
@@ -217,7 +224,7 @@ function AudioRecorder({ leadName }: { leadName: string }) {
                 onClick={playPauseAudio}
                 className="flex items-center justify-center w-12 h-12 bg-blue-500 hover:bg-blue-600 rounded-full text-white transition-colors"
               >
-                {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+                {isPlaying ? <Pause size={20} /> : <Play size={20} />} 
               </button>
             )}
             
@@ -238,21 +245,13 @@ function AudioRecorder({ leadName }: { leadName: string }) {
                 Recording: {formatTime(recordingTime)}
               </div>
             ) : (
+              // Display length only after recording exists
               hasRecording && <div className="text-gray-400">Recording length: {formatTime(recordingTime)}</div>
             )}
           </div>
         </div>
         
         <audio ref={audioRef} className="hidden" />
-        
-        {hasRecording && (
-          <div className="mt-6 pt-4 border-t border-gray-700">
-            <div className="text-gray-400 mb-2 text-sm">Suggested script for audio message:</div>
-            <p className="text-gray-300 text-sm">
-              Hi {leadName}, this is [Your Name] from PROPS. I noticed your impressive work at your company and wanted to personally reach out. I'd love to discuss how our solutions might align with your needs. Feel free to call me back at [phone number] or respond to my email. Looking forward to connecting!
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );

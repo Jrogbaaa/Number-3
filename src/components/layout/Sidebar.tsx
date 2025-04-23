@@ -89,7 +89,7 @@ export default function Sidebar({
       {/* Overlay for mobile - only shown when sidebar is open */}
       {isOpen && (
         <div 
-          className="md:hidden fixed inset-0 bg-black/50 z-40 touch-auto"
+          className="md:hidden fixed inset-0 bg-black/60 z-40 touch-auto"
           onClick={onClose}
           role="button"
           tabIndex={-1}
@@ -100,53 +100,54 @@ export default function Sidebar({
       {/* Sidebar */}
       <div 
         id="sidebar"
-        className={`fixed md:sticky top-0 z-50 h-screen bg-gray-900/95 p-5 shadow-xl border-r border-gray-800/50
+        className={`fixed md:sticky top-0 z-50 h-screen bg-gray-900 p-4 shadow-lg border-r border-gray-700/50 
           ${isOpen ? 'left-0' : '-left-64'} w-64 md:w-60 md:left-0
           transition-all duration-300 ease-in-out flex flex-col`}
       >
-        <div className="mb-8 px-2 flex justify-between items-center">
-          <Link href="/dashboard" aria-label="Go to dashboard">
+        <div className="mb-8 px-4 flex justify-between items-center h-10">
+          <Link href="/dashboard" aria-label="Go to dashboard" className="flex items-center h-full">
              <Image 
                 src="/props-logo.png"
                 alt="PROPS Logo"
                 width={100}
-                height={32}
-                className="h-8 w-auto"
+                height={40}
+                className="h-10 w-auto invert"
                 priority
              />
           </Link>
           {/* Close button - only visible on mobile */}
           <button 
             onClick={onClose}
-            className="md:hidden p-2 rounded-md hover:bg-gray-800/80 text-gray-400 hover:text-white"
+            className="md:hidden p-2 rounded-md hover:bg-gray-700/80 text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-500"
             aria-label="Close sidebar"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
         
         <nav className="flex-1">
-          <ul className="space-y-1.5">
+          <ul className="space-y-2">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <li key={item.name}>
                   <Link 
                     href={item.href}
-                    className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200
+                    className={`group flex items-center gap-3 px-4 py-2.5 rounded-md transition-all duration-150 ease-in-out 
                       ${isActive 
-                        ? 'bg-blue-600/15 text-blue-400 border-l-2 border-blue-500 pl-[14px]' 
-                        : 'text-gray-400 hover:bg-gray-800/90 hover:text-white border-l-2 border-transparent'
+                        ? 'bg-gray-800 text-white font-medium border-l-2 border-blue-500 pl-[14px]'
+                        : 'text-gray-400 hover:bg-gray-800/60 hover:text-white border-l-2 border-transparent focus:outline-none focus:bg-gray-800/60 focus:text-white'
                       }`}
+                    aria-current={isActive ? 'page' : undefined}
                     aria-label={`Navigate to ${item.name}`}
                     tabIndex={0}
                   >
-                    <span className="flex items-center justify-center w-6">
+                    <span className={`flex items-center justify-center w-6 ${isActive ? 'text-blue-400' : 'text-gray-500 group-hover:text-gray-300 transition-colors'}`}>
                       {item.icon}
                     </span>
-                    <span className="font-medium">{item.name}</span>
+                    <span className="font-medium text-sm">{item.name}</span>
                   </Link>
                 </li>
               );
@@ -154,14 +155,8 @@ export default function Sidebar({
           </ul>
         </nav>
 
-        <div className="mt-auto pt-4 border-t border-gray-800/50 flex items-center justify-between text-xs text-gray-500">
+        <div className="mt-auto pt-4 px-4 border-t border-gray-700/50 flex items-center justify-between text-xs text-gray-500">
           <span>v1.0.0</span>
-          <button 
-            className="p-1.5 rounded-md hover:bg-gray-800 transition-colors"
-            aria-label="Toggle dark mode"
-          >
-            🌙
-          </button>
         </div>
       </div>
     </>

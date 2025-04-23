@@ -6,29 +6,35 @@ A modern contact analysis and scoring platform built with Next.js 15, React, Typ
 
 - 📊 Contact Scoring Dashboard
 - 📈 Multi-dimensional Contact Scoring (Marketing Activity, Budget Potential, B2B/C2C Classification)
+- **⏱️ Optimal Outreach Time Enrichment**: Automatically determines the best time to contact leads.
+- **🎤 Audio Message Recording**: Record, play, and download personalized audio messages.
+- **🤖 Heygen AI Video Integration**: Generate AI-powered podcast scripts and access Heygen tools directly.
 - 📥 Flexible CSV Data Import & Processing
-- 🔄 Real-time Updates (on data load/refresh)
-- 🌙 Dark Mode UI with Modern Design
-- 🎨 Intuitive Data Table Interface with Sorting & Searching
+- 🔄 Real-time Updates
+- 🎨 Modern Dark UI (Refined)
+- 📊 Intuitive Data Table Interface with Sorting & Searching
 - 📤 CSV Export of Scored Contacts
-- 📱 Responsive Design for Mobile, Tablet and Desktop
+- 📱 Responsive Design
 - 📋 Clean Data Presentation
-- ♻️ Data Management Tools (Upload, Clear, Refresh)
+- ♻️ Data Management Tools
 
 ## Key Features
 
 - 📊 Contact Scoring Dashboard
-- 📈 Multi-dimensional Contact Scoring (Marketing Activity, Budget Potential, B2B/C2C Classification)
-- **⏱️ Optimal Outreach Time Enrichment**: Automatically determines the best time to contact leads based on their company's location using web search and timezone analysis during data processing.
-- **🎤 Audio Message Recording**: Record, play, and download personalized audio outreach messages directly from the lead detail page.
-- 📥 Flexible CSV Data Import & Processing (with improved error handling and robustness)
-- 🔄 Real-time Updates (on data load/refresh)
-- 🌙 Dark Mode UI with Modern Design
-- 🎨 Intuitive Data Table Interface with Sorting & Searching
+- 📈 Multi-dimensional Contact Scoring
+- **⏱️ Optimal Outreach Time Enrichment**
+- **🎤 Audio Message Recording**
+- **🤖 Heygen AI Video Integration**:
+    - Direct links to Heygen AI Podcast Creation and Studio tools.
+    - Podcast Script Generator: Select format, number of hosts, duration, voice style, and focus area (e.g., marketing/finance) to generate tailored podcast scripts.
+- 📥 Flexible CSV Data Import & Processing
+- 🔄 Real-time Updates
+- 🎨 Modern Dark UI (Refined): Enhanced visual consistency, clarity, and professionalism across components (Sidebar, Cards, Forms).
+- 📊 Intuitive Data Table Interface
 - 📤 CSV Export of Scored Contacts
-- 📱 Responsive Design for Mobile, Tablet and Desktop
+- 📱 Responsive Design
 - 📋 Clean Data Presentation
-- ♻️ Data Management Tools (Upload, Clear, Refresh)
+- ♻️ Data Management Tools
 
 ## Overview
 
@@ -131,14 +137,15 @@ The dashboard table displays these scores and classifications, allowing for sort
 
 ## User Interface Highlights
 
-The platform features a carefully designed UI that prioritizes both aesthetics and usability:
+The platform features a carefully designed UI, recently refined for enhanced clarity, consistency, and professionalism:
 
-### Dashboard Layout
-- Clean, modern interface focused on the data table and outreach tools.
-- Card-based design for mobile responsiveness.
-- Gradient backgrounds and subtle shadows for depth.
-- Clear visual hierarchy for easier information scanning.
-- **Improved Outreach Page**: Enhanced layout with better spacing, padding, and typography for personalized messages.
+### Dashboard & Components
+- **Refined Dark Theme**: Consistent dark backgrounds (`bg-gray-900`, `bg-gray-800`), borders (`border-gray-700`), and subtle shadows across the application.
+- **Improved Sidebar**: Cleaner active/hover states, better alignment, slightly larger logo.
+- **Enhanced Cards**: Replaced gradients with solid backgrounds and borders for clearer information hierarchy (e.g., Heygen Tools).
+- **Professional Forms**: Consistent styling for select inputs and buttons, including focus states for accessibility (e.g., Podcast Generator).
+- **Clearer Hierarchy**: Improved use of spacing, font weights, and component separation to guide user attention.
+- **Subtle Interactivity**: Added smooth transitions and refined hover/focus states for buttons, links, and interactive elements.
 
 ### Data Presentation
 - Enhanced data table with sorting, searching, and export capabilities.
@@ -165,13 +172,22 @@ The platform features a carefully designed UI that prioritizes both aesthetics a
 ## Recent Updates
 
 ### [Unreleased] - YYYY-MM-DD
-- **Features**: 
+- **Features**:
+    - Added Heygen AI Video Integration (Tools links, Podcast Script Generator).
     - Added Lead Enrichment (location, timezone, optimal outreach time).
     - Implemented Audio Message Recording feature for personalized outreach.
-- **Fixes**: 
-    - Resolved multiple CSV upload issues (column mismatches, parsing errors, cancellation logic).
+- **UI Overhaul**:
+    - Refined overall dark theme consistency (backgrounds, borders, shadows).
+    - Improved Sidebar styling (active/hover states, logo).
+    - Redesigned card components (Heygen Tools).
+    - Enhanced form elements (Podcast Generator inputs/buttons).
+    - Removed non-functional theme toggle, standardizing on dark mode.
+- **Fixes**:
+    - Fixed Heygen tool links not being clickable.
+    - Implemented podcast script generation logic.
+    - Resolved multiple CSV upload issues.
     - Improved UI layout on the Lead Outreach page.
-- **Changes**: 
+- **Changes**:
     - Updated Lead Scoring integration.
     - Refactored enrichment logic.
 

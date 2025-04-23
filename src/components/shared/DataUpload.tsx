@@ -189,7 +189,7 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
     try {
       const processedLeads = await processCSV(file);
       toast.dismiss(loadingToast);
-
+      
       // Check for cancellation *after* parsing and *before* starting upload
       if (isCancelled) {
         toast.info("Upload cancelled after processing, before database upload.");
@@ -227,8 +227,8 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
             currentBatch,
             totalBatches
           });
-        }
-        
+          }
+          
         // Match batch results
         const batchResultsMatch = message.match(batchResultsRegex);
         if (batchResultsMatch) {
@@ -236,15 +236,15 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
           const duplicates = parseInt(batchResultsMatch[2], 10);
           
           // Update inserted/duplicates count with proper typing
-          setProgress(prev => {
+              setProgress(prev => {
             if (!prev) return null;
-            return {
+                return {
               ...prev,
               inserted: (prev.inserted || 0) + inserted,
               duplicates: (prev.duplicates || 0) + duplicates
-            };
-          });
-        }
+                };
+              });
+            }
       };
       // --- End Console Listener Setup ---
 
@@ -264,13 +264,13 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
         // --- End Restore ---
         toast.dismiss(uploadingToast); // Ensure loading toast is dismissed
       }
-
+        
       // --- Process Results ---
       if (uploadResult) {
         if (uploadResult.mockMode) {
           toast.info(
-            'Demo Mode Active',
-            {
+            'Demo Mode Active', 
+            { 
               description: uploadResult.message || 'Using sample data instead of actual database',
               duration: 5000
             }
@@ -282,9 +282,9 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
             This could be because:
             1. The 'leads' table doesn't exist in your Supabase database
             2. There's an issue with your Supabase connection or permissions
-
+            
             Your data is being displayed as sample data for demonstration purposes.
-
+            
             To fix this:
             - Visit the /debug page to set up your database
             - Download and run the SQL script in your Supabase project
@@ -337,7 +337,7 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
           toast.error(`Upload failed: ${errorMsg}`);
           setError(errorMsg);
         }
-
+        
         // --- Final Steps on Success/Completion (even mock mode) ---
         if (fileInputRef.current) {
            fileInputRef.current.value = ''; // Clear file input
@@ -396,14 +396,14 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
       
       reader.onload = (event) => {
         const text = event.target?.result as string;
-        
+
         // Check if the file has any content
         if (!text || text.trim() === '') {
           console.error('CSV file is empty');
           reject(new Error('The CSV file is empty - please check your file'));
-          return;
-        }
-        
+            return;
+          }
+
         // Log first 500 chars to verify file content
         console.log('CSV file content preview:', text.substring(0, 500));
         
@@ -615,10 +615,10 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
             }
 
             processParsedData(results);
-          },
-          error: (error: Error) => {
-            console.error('CSV parsing error:', error);
-            reject(new Error('Failed to parse CSV file: ' + error.message));
+        },
+        error: (error: Error) => {
+          console.error('CSV parsing error:', error);
+          reject(new Error('Failed to parse CSV file: ' + error.message));
           },
           step: (results, parser) => {
             if (isCancelled) {
@@ -626,8 +626,8 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
               console.log("CSV parsing aborted due to cancellation.");
               reject(new Error("Upload cancelled during parsing."));
             }
-          }
-        });
+        }
+      });
       };
       
       reader.onerror = (error) => {
@@ -721,7 +721,7 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
                         <p className="text-xs text-gray-400">
                           {progress.currentBatch && progress.totalBatches && 
                             `Batch ${progress.currentBatch}/${progress.totalBatches}`}
-                        </p>
+                      </p>
                       </div>
                       
                       {/* Main progress bar */}
