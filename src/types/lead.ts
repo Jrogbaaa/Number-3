@@ -63,6 +63,7 @@ export interface Lead {
 export interface CalendarEvent {
   id: string;
   leadName: string;
+  companyName?: string;
   startTime: string;
   endTime: string;
   successRate: number;

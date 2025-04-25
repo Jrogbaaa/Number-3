@@ -138,6 +138,7 @@ function generateCalendarEvents(leads: Lead[]): Record<string, CalendarEvent[]> 
     const event: CalendarEvent = {
       id: lead.id,
       leadName: lead.name,
+      companyName: lead.company,
       startTime: startTime, // Keep original for potential internal use
       endTime: endTime,   // Keep original for potential internal use
       displayTime: displayTime, // Use the new formatted string for display
@@ -299,6 +300,11 @@ export default function ContentCalendar() {
                       <div className="font-medium text-blue-400 group-hover:text-blue-300 transition-colors">
                         {event.leadName}
                       </div>
+                      {event.companyName && (
+                        <div className="text-sm text-gray-500 group-hover:text-gray-400 truncate transition-colors">
+                          {event.companyName}
+                        </div>
+                      )}
                       <div className="flex items-center text-sm text-gray-400 gap-1.5">
                         <Clock className="w-3.5 h-3.5" />
                         <span>{event.displayTime || `${event.startTime} - ${event.endTime}`}</span>
@@ -356,6 +362,11 @@ export default function ContentCalendar() {
                       <div className="font-medium text-blue-400 text-base">
                         {event.leadName}
                       </div>
+                      {event.companyName && (
+                        <div className="text-sm text-gray-500 truncate">
+                          {event.companyName}
+                        </div>
+                      )}
                       <div className="flex items-center text-sm text-gray-400 gap-1.5">
                         <Clock className="w-3.5 h-3.5 flex-shrink-0" />
                         <span>{event.displayTime || `${event.startTime} - ${event.endTime}`}</span>

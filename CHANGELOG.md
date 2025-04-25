@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Audio Message Recording**: Added a feature in the Lead Outreach page (`src/app/outreach/lead/[id]/page.tsx`) allowing users to record, play, and download personalized audio messages for leads.
 
 ### Changed
+- **Content Calendar**: Updated `src/components/ContentCalendar.tsx` and `src/types/lead.ts` to add and display the `companyName` in the calendar view.
 - **Lead Scoring**: Updated `getLeads` in `src/lib/supabase.ts` to integrate newly calculated scores (`marketingScore`, `budgetPotential`, `budgetConfidence`, `businessOrientation`, `orientationConfidence`) into the returned `Lead` objects.
 - **UI Layout**: Improved padding, spacing, and typography on the Lead Outreach page (`src/app/outreach/lead/[id]/page.tsx`) for better readability and presentation.
 
