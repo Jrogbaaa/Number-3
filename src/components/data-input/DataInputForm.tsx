@@ -125,12 +125,13 @@ export const DataInputForm = () => {
         try {
           // Get name from various possible header combinations
           const firstName = findHeaderVariation(row, ['First Name', 'FirstName', 'First']) || '';
-          const lastName = findHeaderVariation(row, ['Last Name', 'LastName', 'Last']) || '';
+          const lastName = findHeaderVariation(row, ['Last Name', 'LastName', 'Last', 'last_name']) || '';
           const fullName = firstName && lastName ? `${firstName} ${lastName}` :
                           findHeaderVariation(row, ['Full Name', 'Name']) ||
                           `${firstName}${lastName}`;
 
-          const company = findHeaderVariation(row, ['Company', 'Organization']) || '';
+          const company = findHeaderVariation(row, ['Company', 'Organization', 'company_name']) || '';
+          
           // Attempt to find location header first
           let location = findHeaderVariation(row, ['Location', 'City', 'Region', 'Country', 'Address']) || '';
 
@@ -188,11 +189,6 @@ export const DataInputForm = () => {
              console.warn('Skipping invalid lead (missing name or email):', finalLead);
              return null; // Return null for invalid leads to filter later
           }
-
-          // Don't log every lead, just the first
-          // if (index === 0) {
-          //   console.log('Sample processed lead (after potential lookup):', finalLead);
-          // }
 
           return finalLead;
 

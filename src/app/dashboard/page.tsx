@@ -19,9 +19,22 @@ export default function DashboardPage() {
         setLoading(true);
         const fetchedLeads = await getLeads();
         
-        // Sort leads by Chrome Industries score (highest first)
+        // Sort leads by multiple factors (prioritizing intent, spend authority, etc.)
         const sortedLeads = [...fetchedLeads].sort((a, b) => {
-          return (b.chromeScore || 0) - (a.chromeScore || 0);
+          // 1. Intent Score (Highest priority)
+          const intentComparison = (b.intentScore ?? 0) - (a.intentScore ?? 0);
+          if (intentComparison !== 0) return intentComparison;
+          
+          // 2. Spend Authority Score
+          const spendAuthorityComparison = (b.spendAuthorityScore ?? 0) - (a.spendAuthorityScore ?? 0);
+          if (spendAuthorityComparison !== 0) return spendAuthorityComparison;
+          
+          // 3. Marketing Score
+          const marketingComparison = (b.marketingScore ?? 0) - (a.marketingScore ?? 0);
+          if (marketingComparison !== 0) return marketingComparison;
+          
+          // 4. Chrome/Props Score (backward compatibility)
+          return (b.chromeScore ?? 0) - (a.chromeScore ?? 0);
         });
         
         setLeads(sortedLeads);
@@ -62,9 +75,11 @@ export default function DashboardPage() {
                 <h3 className="font-medium text-white">PROPS Lead Ranking Factors</h3>
                 <p className="text-sm mt-1">Leads are automatically ranked based on the following key factors:</p>
                 <ul className="text-sm list-disc list-inside ml-2 mt-1.5 space-y-0.5">
-                  <li>High Marketing Score</li>
-                  <li>High Budget Potential</li>
-                  <li>Company Focus (B2B prioritized over B2C/Mixed)</li>
+                  <li><span className="font-medium text-blue-400">Intent Score</span> - Engagement with PROPS content, relevant posting activity, industry group participation</li>
+                  <li><span className="font-medium text-green-400">Spend Authority</span> - Budget decision power based on role seniority and company size</li>  
+                  <li><span className="font-medium text-yellow-400">Marketing Score</span> - Marketing activity indicators and relevance</li>
+                  <li><span className="font-medium text-orange-400">Budget Potential</span> - Estimated financial capacity</li>
+                  <li><span className="font-medium text-purple-400">Company Focus</span> - B2B business orientation prioritized</li>
                 </ul>
               </div>
               <div className="space-y-6">

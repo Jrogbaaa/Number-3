@@ -25,7 +25,7 @@ export default function DataInputPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Database className="h-6 w-6 text-blue-400" />
-            <h1 className="text-2xl font-semibold">Data Input</h1>
+            <h1 className="text-2xl font-semibold">Upload Leads</h1>
           </div>
           <div className="text-gray-400 px-3 py-1.5 bg-gray-800/70 rounded-md border border-gray-700/50 text-sm flex items-center gap-1.5">
             <Upload className="h-4 w-4" />

@@ -50,100 +50,149 @@ export async function uploadLeads(leads: Lead[]) {
       
       try {
         // Prepare leads data with required fields and proper types
-        const preparedLeads = batch.map(lead => ({
-          ...lead,
-          id: uuidv4(), // Explicitly generate a UUID instead of relying on Supabase
-          name: lead.name || 'Unknown Contact',
-          email: lead.email || `lead_${Date.now()}_${Math.random().toString(36).slice(2)}@placeholder.com`,
-          source: lead.source || 'Other',
-          status: lead.status || 'New',
-          created_at: lead.created_at || new Date().toISOString(),
-          score: typeof lead.score === 'number' ? lead.score : 0,
-          value: typeof lead.value === 'number' ? lead.value : 0,
-          insights: lead.insights ? JSON.stringify(lead.insights) : null
+        const preparedLeads = await Promise.all(batch.map(async (lead) => {
+          // --- Enrich Lead Data ---
+          let enrichedData: EnrichmentData | null = null;
+          try {
+              console.log(`Attempting enrichment for: ${lead.company} (${lead.title})`);
+              enrichedData = await enrichLead(lead.company, lead.title);
+              console.log(`Enrichment result for ${lead.company}:`, enrichedData);
+          } catch (enrichError) {
+              console.error(`Enrichment failed for company ${lead.company}:`, enrichError);
+              // Continue upload without enrichment data if enrichment fails
+          }
+          // --- End Enrichment ---
+
+          // Combine base lead data with enriched data
+          const leadToUpsert: Record<string, any> = {
+            ...lead,
+            id: lead.id || uuidv4(), // Use existing ID or generate new
+            // --- TRIM STRING FIELDS --- 
+            name: (lead.name || 'Unknown Contact').trim(),
+            email: (lead.email || `lead_${Date.now()}_${Math.random().toString(36).slice(2)}@placeholder.com`).trim().toLowerCase(), // Also ensure email is lowercase
+            company: (lead.company || '').trim(),
+            title: (lead.title || '').trim(),
+            source: (lead.source || 'Other').trim() as LeadSource,
+            status: (lead.status || 'New').trim() as LeadStatus,
+            // --- END TRIM --- 
+            created_at: lead.created_at || new Date().toISOString(),
+            score: typeof lead.score === 'number' ? lead.score : 0,
+            value: typeof lead.value === 'number' ? lead.value : 0,
+            insights: lead.insights ? (typeof lead.insights === 'string' ? lead.insights : JSON.stringify(lead.insights)) : null,
+            // Merge enriched data using snake_case keys
+            ...(enrichedData && {
+              // --- TRIM ENRICHED STRINGS --- 
+              location: (enrichedData.location ?? lead.location)?.trim(),
+              timezone: enrichedData.timezone?.trim(),
+              optimal_outreach_time: enrichedData.optimal_outreach_time?.trim(),
+              optimal_outreach_time_eastern: enrichedData.optimal_outreach_time_eastern?.trim(),
+              outreach_reason: enrichedData.outreach_reason?.trim(),
+              // --- END TRIM --- 
+            })
+          };
+
+          // --- TRIM linkedinUrl separately if it exists ---
+          if (lead.linkedinUrl) {
+            leadToUpsert.linkedinUrl = lead.linkedinUrl.trim();
+          }
+          // --- END TRIM ---
+
+          // Ensure required fields have defaults if somehow missing (safer)
+          // (Defaults are already applied above with trimming)
+          leadToUpsert.id = leadToUpsert.id || uuidv4(); // Ensure ID exists
+
+          // Remove potential undefined properties before upsert
+          Object.keys(leadToUpsert).forEach(key => {
+              if (leadToUpsert[key] === undefined) {
+                  delete leadToUpsert[key];
+              }
+          });
+
+          return leadToUpsert;
         }));
 
-        // Process each lead individually to properly handle duplicates
-        for (const lead of preparedLeads) {
-          try {
-            // --- Enrich Lead Data ---
-            let enrichedData: EnrichmentData | null = null;
-            try {
-                console.log(`Attempting enrichment for: ${lead.company} (${lead.title})`);
-                enrichedData = await enrichLead(lead.company, lead.title);
-                console.log(`Enrichment result for ${lead.company}:`, enrichedData);
-            } catch (enrichError) {
-                console.error(`Enrichment failed for company ${lead.company}:`, enrichError);
-                // Continue upload without enrichment data if enrichment fails
-            }
-            // --- End Enrichment ---
-
-            // Combine base lead data with enriched data
-            const leadToInsert: Record<string, any> = { ...lead }; // Start with base lead
-
-            // Merge enriched data using snake_case keys
-            if (enrichedData) {
-              leadToInsert.location = enrichedData.location ?? lead.location; // Keep location fallback
-              leadToInsert.timezone = enrichedData.timezone;
-              leadToInsert.optimal_outreach_time = enrichedData.optimal_outreach_time;
-              leadToInsert.optimal_outreach_time_eastern = enrichedData.optimal_outreach_time_eastern;
-              leadToInsert.outreach_reason = enrichedData.outreach_reason;
-            }
-
-            // Ensure required fields have defaults if somehow missing (optional but safer)
-            leadToInsert.name = leadToInsert.name || 'Unknown Contact';
-            leadToInsert.email = leadToInsert.email || `placeholder_${Date.now()}@example.com`;
-            leadToInsert.id = leadToInsert.id || uuidv4();
-            leadToInsert.created_at = leadToInsert.created_at || new Date().toISOString();
-            leadToInsert.status = leadToInsert.status || 'New';
-            leadToInsert.source = leadToInsert.source || 'Other';
-
-            // Remove potential undefined properties before insert
-            Object.keys(leadToInsert).forEach(key => {
-                if (leadToInsert[key] === undefined) {
-                    delete leadToInsert[key];
-                }
-            });
-
-            // Try to insert the combined lead data
-            const { error } = await supabase
-              .from('leads')
-              .insert([leadToInsert]) // Insert the combined object
-              .select('*'); // Explicitly select all columns after insert
-              
-            if (error) {
-              // Check if it's a duplicate error
-              if (error.message && error.message.includes('duplicate key value violates unique constraint')) {
-                console.log(`Skipping duplicate email: ${lead.email}`);
-                duplicateCount++;
-              } else {
-                // If we get a "relation does not exist" error, the table doesn't exist
-                if (error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
-                  console.error('Leads table does not exist:', error.message);
-                  // Fallback to mock mode
-                  return { 
-                    success: true, 
-                    count: leads.length,
-                    message: 'Simulated upload (table does not exist)',
-                    mockMode: true
-                  };
-                }
-                
-                console.error('Error uploading lead:', error.message || JSON.stringify(error));
-                errors.push(error);
-              }
-            } else {
-              // Successfully inserted
-              successCount++;
-            }
-          } catch (leadError) {
-            console.error('Error processing lead:', leadError);
-            errors.push(leadError);
+        // --- De-duplicate within the batch based on email (keep last occurrence) ---
+        const uniqueLeadsMap = new Map<string, Record<string, any>>();
+        preparedLeads.forEach(lead => {
+          const emailKey = lead.email?.toLowerCase(); // Use lowercase email as the key
+          if (emailKey) { // Only process leads with an email for deduplication
+              uniqueLeadsMap.set(emailKey, lead); 
+          } else {
+            // Handle leads without email? For now, let them pass through. 
+            // If they have unique IDs, they might be fine. If not, could cause other issues.
+            // Let's use a unique key for them based on ID or generate one.
+            const uniqueKey = lead.id || `no-email-${uuidv4()}`;
+            uniqueLeadsMap.set(uniqueKey, lead);
           }
+        });
+        const uniquePreparedLeads = Array.from(uniqueLeadsMap.values());
+        const duplicatesRemovedInBatch = preparedLeads.length - uniquePreparedLeads.length;
+        if (duplicatesRemovedInBatch > 0) {
+           console.log(`Batch ${Math.floor(i/batchSize) + 1} pre-upsert: Removed ${duplicatesRemovedInBatch} duplicate emails within the batch.`);
         }
-        
-        console.log(`Batch results: ${successCount} inserted, ${duplicateCount} duplicates skipped`);
-      } catch (batchError) {
+        // --- End De-duplication ---
+
+        // --- Log the exact data being sent for this batch --- 
+        console.log(`Batch ${Math.floor(i/batchSize) + 1} - Data prepared for upsert (${uniquePreparedLeads.length} unique leads):`);
+        try {
+          // Attempt to stringify, log specific objects if it fails on the whole array
+          console.log(JSON.stringify(uniquePreparedLeads, null, 2)); 
+        } catch (stringifyError) {
+          console.error("Failed to stringify the entire batch. Logging individual leads:");
+          uniquePreparedLeads.forEach((lead, index) => {
+            try {
+              console.log(`Lead ${index}:`, JSON.stringify(lead, null, 2));
+            } catch (leadStringifyError) {
+              console.error(`Lead ${index} could not be stringified:`, leadStringifyError, lead); 
+            }
+          });
+        }
+        // --- End Data Logging ---
+
+        // --- Upsert the de-duplicated batch --- 
+        const { data: upsertData, error: upsertError, count: upsertCount } = await supabase
+          .from('leads')
+          .upsert(uniquePreparedLeads, { // Use the de-duplicated array
+            onConflict: 'email', // Specify email as the conflict column
+            ignoreDuplicates: false, // Explicitly update conflicting rows (default)
+            count: 'exact' // Get the count of affected rows
+          })
+          .select('id, email'); // Select minimal columns to confirm
+
+        if (upsertError) {
+          // Handle specific errors like table not existing
+          if (upsertError.message && upsertError.message.includes('relation') && upsertError.message.includes('does not exist')) {
+            console.error('Leads table does not exist:', upsertError.message);
+            // Fallback to mock mode for this batch
+            return { 
+              success: true, 
+              count: leads.length,
+              message: 'Simulated upload (table does not exist)',
+              mockMode: true
+            };
+          }
+          // Log other upsert errors
+          console.error(`Error upserting batch ${Math.floor(i/batchSize) + 1}:`, upsertError.message || JSON.stringify(upsertError));
+          errors.push(upsertError);
+          // Assume all in batch failed if upsert fails critically
+          // Note: This might overestimate failures if some rows could have been processed.
+          // Supabase doesn't easily report partial success on batch upsert errors.
+          // We can't reliably calculate duplicateCount on critical batch failure.
+        } else {
+          // Calculate success/duplicates based on the upsert result AND pre-filtering
+          const upsertedCount = upsertData?.length || 0; // Rows actually inserted/updated by DB
+          // Duplicates relative to the DATABASE (rows in uniquePreparedLeads that already existed and were updated/ignored)
+          const dbConflictCount = uniquePreparedLeads.length - upsertedCount; 
+          
+          successCount += upsertedCount; // Increment by rows actually affected in DB
+          // Total duplicates are those removed within the batch + those conflicting with DB
+          duplicateCount += duplicatesRemovedInBatch + dbConflictCount; 
+          
+          console.log(`Batch ${Math.floor(i/batchSize) + 1} results: ${upsertedCount} rows upserted in DB. ${duplicatesRemovedInBatch} intra-batch duplicates ignored. ${dbConflictCount} conflicts with existing DB rows handled (updated/ignored).`);
+        }
+        // --- End Upsert Logic ---
+
+      } catch (batchError: any) {
         console.error('Batch processing error:', batchError);
         errors.push(batchError);
       }
@@ -477,6 +526,217 @@ const classifyBusinessOrientation = (lead: Lead): { orientation: 'B2B' | 'B2C' |
   return { orientation, confidence };
 };
 
+/**
+ * Calculates intent score based on engagement with props content, posting activity,
+ * and participation in industry groups
+ * @param lead The lead object
+ * @returns A score from 0-100 indicating intent to buy.
+ */
+const calculateIntentScore = (lead: Lead): number => {
+  let score = 0;
+  const insights = lead.insights;
+  const tags = (lead.tags || []).map(tag => tag.toLowerCase());
+  const status = lead.status;
+  const lastContactedDate = lead.last_contacted_at ? new Date(lead.last_contacted_at) : null;
+
+  // 1. Props Content Engagement (High impact) - Max 40 points
+  if (insights?.propsContentEngagement) {
+    // Direct measurement - use the value directly (0-40)
+    score += Math.min(40, insights.propsContentEngagement * 0.4);
+  } else {
+    // Indirect measurement from other signals
+    // Check for props-related tags
+    const propsEngagementTags = ['engaged', 'active', 'props-content', 'newsletter', 'webinar-attendee'];
+    if (tags.some(tag => propsEngagementTags.includes(tag))) {
+      score += 25; // Strong indicator
+    }
+    
+    // Recent contact indicates some engagement
+    if (lastContactedDate) {
+      const now = new Date();
+      const daysSinceContact = Math.floor((now.getTime() - lastContactedDate.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysSinceContact < 7) score += 15;
+      else if (daysSinceContact < 30) score += 10;
+      else if (daysSinceContact < 90) score += 5;
+    }
+  }
+
+  // 2. Relevant Postings (Medium impact) - Max 30 points
+  if (insights?.relevantPostings && insights.relevantPostings.length > 0) {
+    // Direct data available
+    const postCount = insights.relevantPostings.length;
+    score += Math.min(30, postCount * 6); // 5 posts would max this out
+  } else {
+    // Indirect signals - check for content creation tags
+    const contentCreationTags = ['content-creator', 'blogger', 'thought-leader', 'speaker', 'author'];
+    if (tags.some(tag => contentCreationTags.includes(tag))) {
+      score += 15; // Medium indicator
+    }
+    
+    // Check topics/interests for content creation indicators
+    const contentKeywords = ['writing', 'publishing', 'speaking', 'presenting', 'author', 'blogger'];
+    if (insights?.interests?.some(interest => contentKeywords.some(kw => interest.toLowerCase().includes(kw)))) {
+      score += 10;
+    }
+  }
+
+  // 3. Industry Group Participation (Medium impact) - Max 30 points
+  if (insights?.industryGroupParticipation && insights.industryGroupParticipation.length > 0) {
+    // Direct data available
+    const groupCount = insights.industryGroupParticipation.length;
+    score += Math.min(30, groupCount * 10); // 3 groups would max this out
+  } else {
+    // Indirect signals - check for community/group participation tags
+    const groupTags = ['community-member', 'association-member', 'conference-attendee', 'forum-participant'];
+    if (tags.some(tag => groupTags.includes(tag))) {
+      score += 15; // Medium indicator
+    }
+    
+    // Check if source indicates event/conference participation
+    if (lead.source === 'Event' || lead.source === 'Conference') {
+      score += 10;
+    }
+    
+    // Check for networking/community in interests
+    const communityKeywords = ['networking', 'community', 'association', 'group', 'forum', 'meetup'];
+    if (insights?.interests?.some(interest => communityKeywords.some(kw => interest.toLowerCase().includes(kw)))) {
+      score += 10;
+    }
+  }
+
+  // Bonus for active leads (responded, qualified) - Direct intent signals - Max 10 points
+  if (status === 'Responded' || status === 'Qualified') {
+    score += 10;
+  } else if (status === 'Proposal' || status === 'Negotiation') {
+    score += 8; // Strong intent but already in sales process
+  }
+
+  return Math.min(100, Math.max(0, Math.round(score)));
+};
+
+/**
+ * Calculates a spend authority score based on job title, company size, 
+ * industry, and other factors.
+ * @param lead The lead object
+ * @returns A score from 0-100 indicating spend authority level.
+ */
+const calculateSpendAuthorityScore = (lead: Lead): number => {
+  let score = 0;
+  const title = lead.title?.toLowerCase() || '';
+  const company = lead.company?.toLowerCase() || '';
+  const insights = lead.insights;
+  const tags = (lead.tags || []).map(tag => tag.toLowerCase());
+
+  // 1. Job Title Seniority (Highest impact) - Max 45 points
+  const cLevelTitles = ['ceo', 'cfo', 'coo', 'cto', 'cmo', 'chief'];
+  const vpTitles = ['vp', 'vice president', 'svp', 'evp', 'avp'];
+  const directorTitles = ['director', 'head of', 'head,'];
+  const managerTitles = ['manager', 'management', 'supervisor', 'lead'];
+  
+  if (cLevelTitles.some(t => title.includes(t))) {
+    score += 45; // Highest authority
+  } else if (vpTitles.some(t => title.includes(t))) {
+    score += 35;
+  } else if (directorTitles.some(t => title.includes(t))) {
+    score += 25;
+  } else if (managerTitles.some(t => title.includes(t))) {
+    score += 15;
+  } else if (title.includes('specialist') || title.includes('analyst') || title.includes('associate')) {
+    score += 5; // Limited authority
+  }
+  
+  // Additional points for finance/budget titles
+  if (title.includes('finance') || title.includes('budget') || title.includes('procurement')) {
+    score += 10; // These roles have budget influence regardless of level
+  }
+
+  // 2. Company Size (High impact) - Max 25 points
+  if (insights?.companySize) {
+    // Direct employee count data
+    if (insights.companySize > 5000) score += 25; // Enterprise
+    else if (insights.companySize > 1000) score += 20; // Large
+    else if (insights.companySize > 100) score += 15; // Medium
+    else if (insights.companySize > 20) score += 10; // Small
+    else score += 5; // Micro
+  } else if (insights?.companySizeRange) {
+    // Size classification data
+    if (insights.companySizeRange === 'Enterprise') score += 25;
+    else if (insights.companySizeRange === 'Large') score += 20;
+    else if (insights.companySizeRange === 'Medium') score += 15;
+    else if (insights.companySizeRange === 'Small') score += 10;
+  } else {
+    // Infer from company name and industry terms
+    const enterpriseIndicators = ['global', 'international', 'worldwide', 'inc', 'corp', 'group', 'holdings'];
+    const midSizeIndicators = ['limited', 'ltd', 'llc', 'services', 'solutions'];
+    const smallIndicators = ['consulting', 'freelance', 'startup', 'studios', 'agency'];
+    
+    if (enterpriseIndicators.some(ind => company.includes(ind))) {
+      score += 20;
+    } else if (midSizeIndicators.some(ind => company.includes(ind))) {
+      score += 12;
+    } else if (smallIndicators.some(ind => company.includes(ind))) {
+      score += 8;
+    } else {
+      score += 5; // Default for unknown
+    }
+  }
+
+  // 3. Annual Revenue (Medium impact) - Max 15 points
+  if (insights?.annualRevenue) {
+    // This would need parsing logic for different formats ($10M, 10 million, etc.)
+    const revenue = insights.annualRevenue.toLowerCase();
+    if (revenue.includes('billion') || revenue.includes('b') || revenue.includes('$1b')) {
+      score += 15;
+    } else if (revenue.includes('million') || revenue.includes('m') || /\$\d+m/.test(revenue)) {
+      // Extract the number before 'm' or 'million'
+      const match = revenue.match(/\$?(\d+)(?:m|million)/i);
+      if (match && match[1]) {
+        const millions = parseInt(match[1], 10);
+        if (millions > 500) score += 15;
+        else if (millions > 100) score += 12;
+        else if (millions > 10) score += 10;
+        else score += 8;
+      } else {
+        score += 10; // Can't parse but contains 'million'
+      }
+    } else {
+      score += 5; // Some revenue data but can't classify
+    }
+  }
+
+  // 4. Industry (Low impact) - Max 10 points
+  const highBudgetIndustries = [
+    'finance', 'banking', 'investment', 'insurance', 
+    'healthcare', 'pharma', 'biotech', 'medical',
+    'manufacturing', 'industrial', 'automotive',
+    'technology', 'software', 'saas', 'cloud', 
+    'telecom', 'energy', 'utilities'
+  ];
+  const moderateBudgetIndustries = [
+    'real estate', 'construction', 'retail', 'education',
+    'hospitality', 'travel', 'transportation', 'logistics',
+    'advertising', 'marketing', 'media', 'entertainment'
+  ];
+  
+  if (highBudgetIndustries.some(ind => company.includes(ind))) {
+    score += 10;
+  } else if (moderateBudgetIndustries.some(ind => company.includes(ind))) {
+    score += 7;
+  } else {
+    score += 3; // Other industries
+  }
+
+  // 5. Tags and other signals (Low impact) - Max 5 points
+  const budgetTags = ['budget holder', 'decision maker', 'economic buyer', 'high value'];
+  if (tags.some(tag => budgetTags.includes(tag))) {
+    score += 5;
+  } else if (lead.value > 10000) { // High deal value implies spend authority
+    score += 5; 
+  }
+
+  return Math.min(100, Math.max(0, Math.round(score)));
+};
+
 // Update getLeads to use the new scoring functions
 export async function getLeads() {
   try {
@@ -504,6 +764,8 @@ export async function getLeads() {
       const marketingScore = calculateMarketingScore(lead);
       const { potential: budgetPotential, confidence: budgetConfidence } = estimateBudgetPotential(lead);
       const { orientation: businessOrientation, confidence: orientationConfidence } = classifyBusinessOrientation(lead);
+      const intentScore = calculateIntentScore(lead);
+      const spendAuthorityScore = calculateSpendAuthorityScore(lead);
       
       return {
         ...lead,
@@ -520,6 +782,8 @@ export async function getLeads() {
         budgetConfidence,
         businessOrientation,
         orientationConfidence,
+        intentScore,
+        spendAuthorityScore,
         // Keep old scores for now, maybe remove later
         score: lead.score,
         propsScore: lead.propsScore,

@@ -26,7 +26,7 @@ const defaultNavItems = [
     icon: <BarChart2 className="w-5 h-5" />,
   },
   {
-    name: 'Data Input',
+    name: 'Upload Leads',
     href: '/data-input',
     icon: <Database className="w-5 h-5" />,
   },

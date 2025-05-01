@@ -311,7 +311,7 @@ export default function DebugPage() {
                     
                     if (result.success) {
                       toast.success('All leads cleared successfully');
-                      // Go to data input page
+                      // Go to upload leads page
                       router.push('/data-input');
                     } else {
                       setErrorMessage(result.message || 'Failed to clear leads. Please try again.');
@@ -345,7 +345,7 @@ export default function DebugPage() {
                     if (result.success) {
                       toast.success('Emergency reset successful');
                       alert('Database table has been reset. You will now be redirected to the data upload page.');
-                      // Go to data input page
+                      // Go to upload leads page
                       router.push('/data-input');
                     } else {
                       setErrorMessage(result.message || 'Failed to reset table. Please try again.');

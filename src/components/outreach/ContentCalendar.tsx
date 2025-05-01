@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Lead } from '@/types/lead';
 import { getLeads } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { CalendarDays, Clock, TrendingUp, Info } from 'lucide-react';
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
@@ -11,6 +12,7 @@ interface CalendarSlot {
   id: string;
   day: string;
   lead: string;
+  company: string;
   time: string;
   probability: number;
 }
@@ -83,6 +85,7 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
         id: lead.id,
         day,
         lead: lead.name,
+        company: lead.company,
         time: `${startHourFormatted}:00 ${startHour < 12 ? 'AM' : 'PM'} - ${endHourFormatted}:00 ${(startHour + 2) < 12 ? 'AM' : 'PM'}`,
         probability: lead.chromeScore || lead.score || 70,
       };
@@ -103,11 +106,11 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
     return count > 0 ? count : 0;
   };
 
-  const getProbabilityColor = (probability: number) => {
+  const getProbabilityClasses = (probability: number): string => {
     if (probability >= 85) return 'text-green-400';
-    if (probability >= 80) return 'text-green-500';
-    if (probability >= 75) return 'text-yellow-400';
-    return 'text-yellow-500';
+    if (probability >= 70) return 'text-emerald-400';
+    if (probability >= 50) return 'text-yellow-400';
+    return 'text-orange-400';
   };
 
   const handleSlotClick = (slotId: string) => {
@@ -138,49 +141,50 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
 
   // Mobile tab selection component
   const MobileDayTabs = () => (
-    <div className="flex overflow-x-auto pb-2 md:hidden space-x-2 no-scrollbar touch-auto">
+    <div className="flex overflow-x-auto pb-3 md:hidden space-x-2 no-scrollbar touch-auto mb-4">
       {WEEKDAYS.map((day) => (
         <button
-          key={day}
-          className={`px-4 py-3 whitespace-nowrap rounded-lg text-sm font-medium min-w-[90px] ${
-            activeDayMobile === day 
-              ? 'bg-blue-900/30 text-blue-400 border border-blue-800/50' 
-              : 'bg-gray-800/80 text-gray-400 border border-gray-700/30'
+          key={`mobile-tab-${day}`}
+          className={`px-4 py-2 whitespace-nowrap rounded-md text-sm font-medium min-w-[95px] border transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-blue-500 ${activeDayMobile === day 
+              ? 'bg-gray-700 text-white border-gray-600 shadow-sm'
+              : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700/80 hover:text-gray-200'
           }`}
           onClick={() => handleDaySelect(day)}
           aria-label={`View ${day} schedule${day === currentDay ? ' (Today)' : ''}`}
           aria-selected={activeDayMobile === day}
           role="tab"
         >
-          {day.substring(0, 3)}
-          {day === currentDay && ' •'}
+          {day} {day === currentDay && '•'}
         </button>
       ))}
     </div>
   );
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-medium mb-4">Weekly Contact Calendar</h2>
+    <div className="bg-gray-800/50 border border-gray-700/80 rounded-lg p-4 md:p-6 shadow-sm">
+      <div className="flex items-center gap-3 mb-5">
+        <CalendarDays className="w-5 h-5 text-gray-400" />
+        <h2 className="text-xl font-semibold text-gray-100">Outreach Calendar</h2>
+      </div>
       
       {loading ? (
-        <div className="flex justify-center my-8">
-          <div className="animate-pulse text-gray-400">Loading contact schedule...</div>
+        <div className="flex items-center justify-center py-16 text-gray-500">
+           <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+           </svg>
+          Loading schedule...
         </div>
       ) : (
         <>
-          {/* Mobile day selector tabs */}
           <MobileDayTabs />
 
-          {/* Desktop view - grid of all days */}
-          <div className="hidden md:grid md:grid-cols-5 gap-4">
+          <div className="hidden md:grid md:grid-cols-5 gap-5">
             {WEEKDAYS.map((day) => (
-              <div key={`desktop-${day}`} className="space-y-4">
+              <div key={`desktop-${day}`} className="space-y-3 bg-gray-900/40 p-3 rounded-md border border-gray-700/60">
                 <h3 
-                  className={`text-center font-medium py-2 border-b border-gray-700 ${
-                    selectedDay === day ? 'bg-green-900/20 text-green-400 rounded-t-lg' : 
-                    day === currentDay ? 'bg-blue-900/20 text-blue-400 rounded-t-lg' : ''
-                  } cursor-pointer hover:bg-gray-800/50`}
+                  className={`text-center font-semibold text-sm py-2 border-b border-gray-700 mb-3 ${day === currentDay ? 'text-blue-400' : 'text-gray-300'}
+                    hover:bg-gray-800/50 rounded-t-md transition-colors cursor-pointer`}
                   onClick={() => handleViewAll(day)}
                   tabIndex={0}
                   onKeyDown={(e) => e.key === 'Enter' && handleViewAll(day)}
@@ -188,97 +192,89 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
                 >
                   {day} {day === currentDay && '(Today)'}
                 </h3>
-                <div className="space-y-2">
+                <div className="space-y-3 min-h-[100px]">
                   {getSlotsByDay(day).slice(0, 3).map((slot) => (
                     <div 
                       key={`desktop-slot-${slot.id}`} 
-                      className="p-3 bg-navy border border-gray-800 rounded-lg hover:border-blue-500 transition-colors cursor-pointer"
+                      className="group p-3 bg-gray-800 border border-gray-700 rounded-md hover:border-blue-600/70 hover:bg-gray-700/60 transition-all duration-150 ease-in-out cursor-pointer shadow-sm"
                       onClick={() => handleSlotClick(slot.id)}
                       tabIndex={0}
                       onKeyDown={(e) => e.key === 'Enter' && handleSlotClick(slot.id)}
                       aria-label={`View outreach details for ${slot.lead}`}
                     >
-                      <div className="font-medium text-blue-400 hover:underline">{slot.lead}</div>
-                      <div className="text-sm text-gray-400">{slot.time}</div>
-                      <div className={`text-right ${getProbabilityColor(slot.probability)}`}>
-                        {slot.probability}%
+                      <div className="font-medium text-gray-100 group-hover:text-white text-sm truncate">{slot.lead}</div>
+                      <div className="text-xs text-gray-400 truncate mt-0.5">{slot.company}</div>
+                      <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-1.5">
+                         <Clock className="w-3 h-3 flex-shrink-0" /> 
+                         <span>{slot.time}</span>
+                      </div>
+                      <div className={`flex items-center gap-1 text-xs font-medium mt-2 ${getProbabilityClasses(slot.probability)}`}>
+                         <TrendingUp className="w-3 h-3 flex-shrink-0" /> 
+                         <span>{slot.probability}% relevance</span>
                       </div>
                     </div>
                   ))}
+                  
                   {getSlotsByDay(day).length === 0 && (
-                    <div className="text-center text-sm text-gray-500 py-6">
-                      No contacts scheduled
+                    <div className="text-center text-sm text-gray-500 pt-6 pb-4">
+                      No contacts scheduled.
                     </div>
                   )}
+                  
                   {getMoreCount(day) > 0 && (
-                    <div
-                      className="text-center text-sm text-blue-400 hover:underline cursor-pointer"
+                    <button
+                      className="w-full text-center text-xs text-blue-400 hover:text-blue-300 hover:underline pt-2 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded"
                       onClick={() => handleViewAll(day)}
-                      tabIndex={0}
-                      onKeyDown={(e) => e.key === 'Enter' && handleViewAll(day)}
                       aria-label={`View all ${getMoreCount(day)} more leads for ${day}`}
                     >
                       +{getMoreCount(day)} more
-                    </div>
+                    </button>
                   )}
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Mobile view - only showing active day */}
-          <div className="md:hidden">
-            {activeDayMobile && (
-              <div className="space-y-3">
-                <h3 className="font-medium text-center py-2 border-b border-gray-700 rounded-t-lg bg-blue-900/10">
-                  {activeDayMobile} Schedule
-                  {activeDayMobile === currentDay && ' (Today)'}
-                </h3>
-                <div className="space-y-3">
-                  {getSlotsByDay(activeDayMobile).map((slot) => (
-                    <div 
-                      key={`mobile-slot-${slot.id}`} 
-                      className="p-4 bg-navy border border-gray-800 rounded-lg hover:border-blue-500 transition-colors cursor-pointer active:bg-gray-800"
-                      onClick={() => handleSlotClick(slot.id)}
-                      tabIndex={0}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSlotClick(slot.id)}
-                      aria-label={`View outreach details for ${slot.lead}`}
-                      role="button"
-                    >
-                      <div className="font-medium text-blue-400 text-base">{slot.lead}</div>
-                      <div className="text-sm text-gray-400 mt-1">{slot.time}</div>
-                      <div className={`text-right mt-1 ${getProbabilityColor(slot.probability)}`}>
-                        {slot.probability}%
-                      </div>
+          <div className="md:hidden space-y-3">
+            {activeDayMobile && getSlotsByDay(activeDayMobile).length > 0 && (
+                getSlotsByDay(activeDayMobile).map((slot) => (
+                  <div 
+                    key={`mobile-slot-${slot.id}`} 
+                    className="group p-4 bg-gray-800 border border-gray-700 rounded-lg hover:border-blue-600/70 hover:bg-gray-700/60 transition-all duration-150 ease-in-out cursor-pointer active:bg-gray-700 shadow-sm"
+                    onClick={() => handleSlotClick(slot.id)}
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSlotClick(slot.id)}
+                    aria-label={`View outreach details for ${slot.lead}`}
+                    role="button"
+                  >
+                    <div className="font-medium text-gray-100 group-hover:text-white text-base truncate">{slot.lead}</div>
+                    <div className="text-sm text-gray-400 truncate mt-0.5">{slot.company}</div>
+                    <div className="flex items-center gap-1.5 text-sm text-gray-400 mt-1.5">
+                       <Clock className="w-3.5 h-3.5 flex-shrink-0" /> 
+                       <span>{slot.time}</span>
                     </div>
-                  ))}
-                  {getSlotsByDay(activeDayMobile).length === 0 && (
-                    <div className="text-center text-sm text-gray-500 py-10 bg-gray-900/30 rounded-lg">
-                      No contacts scheduled for {activeDayMobile}
+                    <div className={`flex items-center gap-1 text-sm font-medium mt-2 ${getProbabilityClasses(slot.probability)}`}>
+                       <TrendingUp className="w-3.5 h-3.5 flex-shrink-0" /> 
+                       <span>{slot.probability}% relevance</span>
                     </div>
-                  )}
-                </div>
-              </div>
+                  </div>
+                ))
             )}
+            {activeDayMobile && getSlotsByDay(activeDayMobile).length === 0 && (
+                 <div className="text-center text-sm text-gray-500 py-10">
+                   No contacts scheduled for {activeDayMobile}.
+                 </div>
+            )}
+          </div>
+
+          <div className="mt-6 text-center md:text-left">
+             <p className="text-xs text-gray-500 flex items-center justify-center md:justify-start gap-1.5">
+               <Info className="w-3 h-3 flex-shrink-0" /> 
+               Contacts are prioritized based on PROPS relevance score.
+             </p>
           </div>
         </>
       )}
-      
-      <div className="flex items-center gap-2 text-sm text-gray-400 p-3 bg-gray-900/30 rounded-lg border border-gray-800/30">
-        <svg 
-          xmlns="http://www.w3.org/2000/svg" 
-          viewBox="0 0 20 20" 
-          fill="currentColor" 
-          className="w-4 h-4 text-blue-400 flex-shrink-0"
-        >
-          <path 
-            fillRule="evenodd" 
-            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" 
-            clipRule="evenodd" 
-          />
-        </svg>
-        <span>Contact schedule is based on PROPS relevance score and best contact times.</span>
-      </div>
     </div>
   );
 };

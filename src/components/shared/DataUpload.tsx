@@ -54,6 +54,13 @@ interface LeadInsights {
   interests?: string[];
   background?: string[];
   potentialValue?: number;
+  propsContentEngagement?: number;
+  relevantPostings?: string[];
+  industryGroupParticipation?: string[];
+  companySize?: number;
+  companySizeRange?: 'Small' | 'Medium' | 'Large' | 'Enterprise';
+  annualRevenue?: string;
+  notes?: string;
 }
 
 type ProcessedLead = Omit<Lead, 'last_contacted_at'> & {
@@ -64,13 +71,21 @@ type ProcessedLead = Omit<Lead, 'last_contacted_at'> & {
 const COMMON_FIELD_MAPPINGS = {
   name: ['name', 'full name', 'contact', 'person', 'first name', 'last name'],
   email: ['email', 'e-mail', 'mail', 'email address', 'contact email'],
-  company: ['company', 'organization', 'employer', 'business'],
+  company: ['company', 'company_name', 'organization', 'employer', 'business', 'company name'],
   title: ['title', 'position', 'role', 'job title'],
   phone: ['phone', 'mobile', 'cell', 'contact number'],
   linkedin: ['linkedin', 'linkedin url', 'linkedin profile', 'profile url', 'social media', 'linkedin link'],
   industry: ['industry', 'sector', 'market'],
   interests: ['interests', 'focus', 'specialties', 'expertise'],
   background: ['background', 'experience', 'about'],
+  firstName: ['firstname', 'first name', 'first'],
+  lastName: ['lastname', 'last name', 'last', 'last_name'],
+  companySize: ['company size', 'employees', 'headcount', 'company_size', 'employee count', 'size'],
+  annualRevenue: ['revenue', 'annual revenue', 'yearly revenue', 'company revenue', 'turnover'],
+  propsEngagement: ['props engagement', 'engagement score', 'content engagement', 'engagement'],
+  relevantPosts: ['posts', 'content', 'articles', 'publications', 'blog', 'thought leadership'],
+  industryGroups: ['groups', 'communities', 'associations', 'memberships', 'forums', 'networks'],
+  notes: ['notes', 'comments', 'additional info', 'other information', 'details']
 };
 
 const extractFieldValue = (row: CSVRow, fieldMappings: string[]): string => {
@@ -88,6 +103,8 @@ const analyzeLeadData = (row: CSVRow): LeadInsights => {
     interests: [],
     background: [],
     potentialValue: 50, // Default value
+    relevantPostings: [],
+    industryGroupParticipation: [],
   };
 
   // Extract interests and expertise
@@ -116,6 +133,71 @@ const analyzeLeadData = (row: CSVRow): LeadInsights => {
   const industry = extractFieldValue(row, COMMON_FIELD_MAPPINGS.industry);
   if (industry) {
     insights.topics = [`Industry trends in ${industry}`, `Challenges in ${industry}`];
+  }
+
+  // Extract props content engagement score
+  const engagementText = extractFieldValue(row, COMMON_FIELD_MAPPINGS.propsEngagement);
+  if (engagementText) {
+    const engagementScore = parseInt(engagementText, 10);
+    if (!isNaN(engagementScore)) {
+      insights.propsContentEngagement = Math.min(100, Math.max(0, engagementScore));
+    }
+  }
+
+  // Extract relevant postings
+  const postsText = extractFieldValue(row, COMMON_FIELD_MAPPINGS.relevantPosts);
+  if (postsText) {
+    insights.relevantPostings = postsText.split(/[,;]/).map(post => post.trim()).filter(Boolean);
+  }
+
+  // Extract industry group participation
+  const groupsText = extractFieldValue(row, COMMON_FIELD_MAPPINGS.industryGroups);
+  if (groupsText) {
+    insights.industryGroupParticipation = groupsText.split(/[,;]/).map(group => group.trim()).filter(Boolean);
+  }
+
+  // Extract company size information
+  const companySizeText = extractFieldValue(row, COMMON_FIELD_MAPPINGS.companySize);
+  if (companySizeText) {
+    // Try to extract numeric value
+    const numericSize = parseInt(companySizeText.replace(/[^0-9]/g, ''), 10);
+    
+    if (!isNaN(numericSize)) {
+      insights.companySize = numericSize;
+      
+      // Set company size range based on number
+      if (numericSize > 5000) {
+        insights.companySizeRange = 'Enterprise';
+      } else if (numericSize > 1000) {
+        insights.companySizeRange = 'Large';
+      } else if (numericSize > 100) {
+        insights.companySizeRange = 'Medium';
+      } else {
+        insights.companySizeRange = 'Small';
+      }
+    } else {
+      // If no numeric value, try to extract categorical size
+      const lowerCaseSize = companySizeText.toLowerCase();
+      if (lowerCaseSize.includes('enterprise') || lowerCaseSize.includes('large')) {
+        insights.companySizeRange = 'Enterprise';
+      } else if (lowerCaseSize.includes('mid') || lowerCaseSize.includes('medium')) {
+        insights.companySizeRange = 'Medium';
+      } else if (lowerCaseSize.includes('small')) {
+        insights.companySizeRange = 'Small';
+      }
+    }
+  }
+  
+  // Extract annual revenue information
+  const revenueText = extractFieldValue(row, COMMON_FIELD_MAPPINGS.annualRevenue);
+  if (revenueText) {
+    insights.annualRevenue = revenueText;
+  }
+  
+  // Extract notes
+  const notesText = extractFieldValue(row, COMMON_FIELD_MAPPINGS.notes);
+  if (notesText) {
+    insights.notes = notesText;
   }
 
   return insights;
@@ -351,6 +433,7 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
 
     } catch (error: any) {
       // Catch errors from processCSV or other setup steps
+      console.error('>>> [DataUpload.tsx CATCH BLOCK] Error during processCSV or initial setup:', error);
       console.error('Processing error:', error);
       toast.dismiss(loadingToast); // Dismiss initial loading toast if it was still active
       toast.error(`Processing failed: ${error.message || 'Could not process CSV file'}`);
@@ -390,11 +473,17 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
   // --- End Cancellation Handling ---
 
   const processCSV = async (file: File): Promise<ProcessedLead[]> => {
+    // --- Log Entry to processCSV ---
+    console.log('[DataUpload.tsx] Entered processCSV function.');
+    // --- End Log ---
     return new Promise((resolve, reject) => {
       // First read the file as text to verify it has content
       const reader = new FileReader();
       
       reader.onload = (event) => {
+        // --- Log Inside reader.onload ---
+        console.log('[DataUpload.tsx] reader.onload triggered. Preparing to parse...');
+        // --- End Log ---
         const text = event.target?.result as string;
 
         // Check if the file has any content
@@ -419,6 +508,9 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
         
         // Helper function to process the parsed data
         const processParsedData = (results: Papa.ParseResult<CSVRow>): void => {
+          // --- Log Entry to processParsedData ---
+          console.log('[DataUpload.tsx] Entered processParsedData. Processing rows...');
+          // --- End Log ---
           try {
             const processedData = results.data
               .filter(row => {
@@ -427,12 +519,25 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
                 return values.length > 0;
               })
               .map((row, index): ProcessedLead => {
-                // Extract all possible fields
-                const name = extractFieldValue(row, COMMON_FIELD_MAPPINGS.name);
+                // Extract standard fields using the helper or direct access after transformHeader
                 const email = extractFieldValue(row, COMMON_FIELD_MAPPINGS.email);
-                const company = extractFieldValue(row, COMMON_FIELD_MAPPINGS.company);
                 const title = extractFieldValue(row, COMMON_FIELD_MAPPINGS.title);
                 const linkedinUrl = extractFieldValue(row, COMMON_FIELD_MAPPINGS.linkedin);
+
+                // --- Direct access after transformHeader for name ---
+                const firstName = row['firstname'] || row['first name'] || row['first'] || ''; // Check transformed keys
+                const lastName = row['lastname'] || row['last name'] || row['last'] || ''; // Check transformed keys
+                let name = row['name'] || row['fullname'] || ''; // Check transformed keys
+
+                if (!name && firstName && lastName) {
+                  name = `${firstName} ${lastName}`.trim();
+                } else if (!name && (firstName || lastName)) {
+                  name = (firstName || lastName || '').trim();
+                }
+                // --- End name combination ---
+
+                // --- Direct access for company after transformHeader ---
+                const company = row['companyname'] || row['company'] || row['organization'] || ''; // Check transformed keys
                 
                 // Try to find LinkedIn URL in any field if not explicitly labeled
                 let enhancedLinkedinUrl = linkedinUrl;
@@ -497,7 +602,7 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
                 const insights = analyzeLeadData(row);
 
                 // Generate better placeholder values for missing required fields
-                let generatedName = name;
+                let generatedName = name; // Start with combined/extracted name
                 if (!generatedName) {
                   // Try to extract name from email if available
                   if (email && email.includes('@')) {
@@ -521,11 +626,15 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
                 // Generate a unique ID for the email if missing
                 const generatedEmail = email || `lead_${Date.now()}_${index}_${Math.random().toString(36).slice(2)}@placeholder.com`;
 
+                // --- Add Final Pre-Return Log ---
+                console.log(`[DataUpload.tsx] Final assignment for Row ${index}: Name='${generatedName || `Unnamed Lead ${index + 1}`}', Company='${company || ''}'`);
+                // --- End Log ---
+
                 return {
                   id: '', // Will be generated by Supabase
-                  name: generatedName,
+                  name: generatedName || `Unnamed Lead ${index + 1}`, // Use generatedName (which includes combined name)
                   email: generatedEmail,
-                  company: company || '',
+                  company: company || '', // Use the directly accessed company
                   title: title || '',
                   score: insights.potentialValue || 0,
                   source: mapSourceToLeadSource(extractFieldValue(row, ['source', 'channel']) || 'other'),
@@ -560,6 +669,10 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
             return header.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
           },
           complete: (results: Papa.ParseResult<CSVRow>) => {
+            // --- Simplified Log in complete Callback ---
+            console.log(`[DataUpload.tsx] PapaParse complete callback reached. Found ${results.data?.length || 0} data rows. Errors: ${results.errors?.length || 0}.`);
+            // --- End Log ---
+            
             // Enhanced logging:
             console.log('Papa Parse Detailed Results:', {
               dataPreview: results.data.slice(0, 5), // Log first 5 rows
@@ -567,6 +680,15 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
               errors: results.errors, // Log any parsing errors
               meta: results.meta      // Log metadata (delimiter, etc.)
             });
+            
+            // --- Log Headers and First Row Directly After Parse ---
+            if (results.meta && results.data && results.data.length > 0) {
+              console.log('[DataUpload.tsx] PapaParse Headers Detected:', results.meta.fields);
+              console.log('[DataUpload.tsx] PapaParse First Data Row:', results.data[0]);
+            } else {
+              console.warn('[DataUpload.tsx] PapaParse completed but no data rows found or meta fields missing.');
+            }
+            // --- End Log ---
 
             // Check for delimiter issues first
             if (results.meta && results.meta.delimiter === '') {
@@ -617,6 +739,9 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
             processParsedData(results);
         },
         error: (error: Error) => {
+          // --- Log PapaParse Error ---
+          console.error('[DataUpload.tsx] PapaParse encountered an error:', error);
+          // --- End Log ---
           console.error('CSV parsing error:', error);
           reject(new Error('Failed to parse CSV file: ' + error.message));
           },
@@ -636,6 +761,9 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
       };
       
       // Start reading the file as text
+      // --- Log Before Reading File ---
+      console.log('[DataUpload.tsx] Calling reader.readAsText...');
+      // --- End Log ---
       reader.readAsText(file);
     });
   };

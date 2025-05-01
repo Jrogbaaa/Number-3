@@ -27,6 +27,12 @@ export interface LeadInsights {
   potentialValue?: number;
   lastInteraction?: string;
   notes?: string;
+  propsContentEngagement?: number;
+  relevantPostings?: string[];
+  industryGroupParticipation?: string[];
+  companySize?: number;
+  companySizeRange?: 'Small' | 'Medium' | 'Large' | 'Enterprise';
+  annualRevenue?: string;
 }
 
 export interface Lead {
@@ -58,6 +64,8 @@ export interface Lead {
   businessOrientation?: 'B2B' | 'B2C' | 'Mixed' | 'Unknown';
   orientationConfidence?: 'Low' | 'Medium' | 'High';
   optimalOutreachTimeEastern?: string;
+  intentScore?: number;
+  spendAuthorityScore?: number;
 }
 
 export interface CalendarEvent {

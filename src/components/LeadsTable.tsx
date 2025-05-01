@@ -148,21 +148,29 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
         return sortConfig.direction === 'ascending' ? comparison : comparison * -1;
       } else {
         // Default Multi-Factor Sorting (Highest importance first)
-        // 1. Marketing Score (Descending)
+        // 1. Intent Score (Descending) - New top priority
+        const intentComparison = (b.intentScore ?? 0) - (a.intentScore ?? 0);
+        if (intentComparison !== 0) return intentComparison;
+
+        // 2. Spend Authority Score (Descending) - New second priority
+        const spendAuthorityComparison = (b.spendAuthorityScore ?? 0) - (a.spendAuthorityScore ?? 0);
+        if (spendAuthorityComparison !== 0) return spendAuthorityComparison;
+
+        // 3. Marketing Score (Descending) - Now third priority
         const scoreComparison = (b.marketingScore ?? 0) - (a.marketingScore ?? 0);
         if (scoreComparison !== 0) return scoreComparison;
 
-        // 2. Budget Potential (Descending)
+        // 4. Budget Potential (Descending) - Now fourth priority
         const budgetComparison = (b.budgetPotential ?? 0) - (a.budgetPotential ?? 0);
         if (budgetComparison !== 0) return budgetComparison;
 
-        // 3. Company Focus (B2B first)
+        // 5. Company Focus (B2B first) - Now fifth priority
         const orientationA = orientationOrder[a.businessOrientation || 'Unknown'] ?? 5; // Assign higher number if undefined/null
         const orientationB = orientationOrder[b.businessOrientation || 'Unknown'] ?? 5; // Assign higher number if undefined/null
         const orientationComparison = orientationA - orientationB; // Ascending order based on defined numbers (1=B2B is best)
         if (orientationComparison !== 0) return orientationComparison;
 
-        // 4. Tie-breaker: Created At (Descending - newest first)
+        // 6. Tie-breaker: Created At (Descending - newest first)
         const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
         const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
         return dateB - dateA; 
@@ -276,6 +284,14 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
           </div>
         </div>
         <div className="space-y-1.5">
+          <div className="text-xs text-gray-400 font-medium">Intent</div>
+          <div className="flex items-center gap-1.5">
+            <span className={`px-2 py-0.5 rounded-md text-sm font-semibold ${getScoreColor(lead.intentScore)}`} title={`Intent Score: ${lead.intentScore ?? '-'}`}>
+              {lead.intentScore !== undefined ? lead.intentScore : '-'}
+            </span>
+          </div>
+        </div>
+        <div className="space-y-1.5">
           <div className="text-xs text-gray-400 font-medium">Budget Potential</div>
           <div className="flex items-center gap-1.5">
             <span className={`px-2 py-0.5 rounded-md text-sm font-semibold ${getScoreColor(lead.budgetPotential)}`} title={`Budget Potential: ${lead.budgetPotential ?? '-'}`}>
@@ -283,6 +299,14 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
             </span>
             <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getConfidenceBadgeClass(lead.budgetConfidence)}`} title={`Budget Confidence: ${lead.budgetConfidence || 'N/A'}`}>
               {lead.budgetConfidence || 'N/A'}
+            </span>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <div className="text-xs text-gray-400 font-medium">Spend Authority</div>
+          <div className="flex items-center gap-1.5">
+            <span className={`px-2 py-0.5 rounded-md text-sm font-semibold ${getScoreColor(lead.spendAuthorityScore)}`} title={`Spend Authority: ${lead.spendAuthorityScore ?? '-'}`}>
+              {lead.spendAuthorityScore !== undefined ? lead.spendAuthorityScore : '-'}
             </span>
           </div>
         </div>
@@ -479,12 +503,13 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
               <th className="py-3 px-4 w-[15%] cursor-pointer group hover:bg-gray-700/50 transition-colors duration-150" onClick={() => requestSort('businessOrientation')} onKeyDown={(e: React.KeyboardEvent<HTMLTableCellElement>) => (e.key === 'Enter' || e.key === ' ') && requestSort('businessOrientation')} tabIndex={0} aria-sort={sortConfig?.key === 'businessOrientation' ? (sortConfig.direction === 'ascending' ? 'ascending' : 'descending') : 'none'} aria-label="Sort by Company Focus">
                 <div className="flex items-center">Company Focus {renderSortIcon('businessOrientation')}</div>
               </th>
-              {/* REMOVED LOCATION/TIME HEADER START */}
-              {/* <th className="py-3 px-4 w-[15%] cursor-pointer group hover:bg-gray-700/50 transition-colors duration-150" onClick={() => requestSort('location')} onKeyDown={(e: React.KeyboardEvent<HTMLTableCellElement>) => (e.key === 'Enter' || e.key === ' ') && requestSort('location')} tabIndex={0} aria-sort={sortConfig?.key === 'location' ? (sortConfig.direction === 'ascending' ? 'ascending' : 'descending') : 'none'} aria-label="Sort by Location">
-                <div className="flex items-center">Location/Time {renderSortIcon('location')}</div>
-              </th> */}
-              {/* REMOVED LOCATION/TIME HEADER END */}
-               <th className="py-3 px-4 w-[10%] cursor-pointer group hover:bg-gray-700/50 transition-colors duration-150" onClick={() => requestSort('status')} onKeyDown={(e: React.KeyboardEvent<HTMLTableCellElement>) => (e.key === 'Enter' || e.key === ' ') && requestSort('status')} tabIndex={0} aria-sort={sortConfig?.key === 'status' ? (sortConfig.direction === 'ascending' ? 'ascending' : 'descending') : 'none'} aria-label="Sort by Status">
+              <th className="py-3 px-4 w-[15%] cursor-pointer group hover:bg-gray-700/50 transition-colors duration-150" onClick={() => requestSort('intentScore')} onKeyDown={(e: React.KeyboardEvent<HTMLTableCellElement>) => (e.key === 'Enter' || e.key === ' ') && requestSort('intentScore')} tabIndex={0} aria-sort={sortConfig?.key === 'intentScore' ? (sortConfig.direction === 'ascending' ? 'ascending' : 'descending') : 'none'} aria-label="Sort by Intent Score">
+                <div className="flex items-center">Intent {renderSortIcon('intentScore')}</div>
+              </th>
+              <th className="py-3 px-4 w-[15%] cursor-pointer group hover:bg-gray-700/50 transition-colors duration-150" onClick={() => requestSort('spendAuthorityScore')} onKeyDown={(e: React.KeyboardEvent<HTMLTableCellElement>) => (e.key === 'Enter' || e.key === ' ') && requestSort('spendAuthorityScore')} tabIndex={0} aria-sort={sortConfig?.key === 'spendAuthorityScore' ? (sortConfig.direction === 'ascending' ? 'ascending' : 'descending') : 'none'} aria-label="Sort by Spend Authority">
+                <div className="flex items-center">Spend Auth. {renderSortIcon('spendAuthorityScore')}</div>
+              </th>
+              <th className="py-3 px-4 w-[10%] cursor-pointer group hover:bg-gray-700/50 transition-colors duration-150" onClick={() => requestSort('status')} onKeyDown={(e: React.KeyboardEvent<HTMLTableCellElement>) => (e.key === 'Enter' || e.key === ' ') && requestSort('status')} tabIndex={0} aria-sort={sortConfig?.key === 'status' ? (sortConfig.direction === 'ascending' ? 'ascending' : 'descending') : 'none'} aria-label="Sort by Status">
                  <div className="flex items-center">Status {renderSortIcon('status')}</div>
               </th>
                <th className="py-3 px-4 w-[10%] cursor-pointer group hover:bg-gray-700/50 transition-colors duration-150" onClick={() => requestSort('created_at')} onKeyDown={(e: React.KeyboardEvent<HTMLTableCellElement>) => (e.key === 'Enter' || e.key === ' ') && requestSort('created_at')} tabIndex={0} aria-sort={sortConfig?.key === 'created_at' ? (sortConfig.direction === 'ascending' ? 'ascending' : 'descending') : 'none'} aria-label="Sort by Date Added">
@@ -539,25 +564,16 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                       </span>
                     </div>
                   </td>
-                  {/* REMOVED LOCATION/TIME DATA CELL START */}
-                  {/* <td className="py-3 px-4 whitespace-nowrap">
-                    {lead.location ? (
-                      <div>
-                        <div className="text-gray-300 truncate" title={lead.location}>{lead.location}</div>
-                        {lead.optimalOutreachTime && (
-                          <div className="text-gray-400 text-xs mt-1 truncate" title={`Best time: ${lead.optimalOutreachTime}`}>
-                            <span className="inline-flex items-center">
-                              <span className="h-2 w-2 bg-green-500 rounded-full mr-1"></span>
-                              {lead.optimalOutreachTime}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-gray-500">Unknown location</span>
-                    )}
-                  </td> */}
-                  {/* REMOVED LOCATION/TIME DATA CELL END */}
+                  <td className="py-3 px-4 whitespace-nowrap">
+                    <span className={`px-2 py-0.5 rounded-md text-xs font-semibold ${getScoreColor(lead.intentScore)}`} title={`Intent Score: ${lead.intentScore ?? '-'}`}>
+                      {lead.intentScore !== undefined ? lead.intentScore : '-'}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 whitespace-nowrap">
+                    <span className={`px-2 py-0.5 rounded-md text-xs font-semibold ${getScoreColor(lead.spendAuthorityScore)}`} title={`Spend Authority: ${lead.spendAuthorityScore ?? '-'}`}>
+                      {lead.spendAuthorityScore !== undefined ? lead.spendAuthorityScore : '-'}
+                    </span>
+                  </td>
                   <td className="py-3 px-4 whitespace-nowrap">
                      <span
                         className={`px-2.5 py-1 rounded-full text-[11px] font-medium inline-block ${ 
