@@ -9,6 +9,7 @@ A modern contact analysis and scoring platform built with Next.js 15, React, Typ
 - **⏱️ Optimal Outreach Time Enrichment**: Automatically determines the best time to contact leads.
 - **🎤 Audio Message Recording**: Record, play, and download personalized audio messages.
 - **🤖 Heygen AI Video Integration**: Generate AI-powered podcast scripts and access Heygen tools directly.
+- **🔮 Welcome Onboarding Modal**: First-time visitors receive guidance to the upload page.
 - 📥 Flexible CSV Data Import & Processing
 - 🔄 Real-time Updates
 - 🎨 Modern Dark UI (Refined)
@@ -27,6 +28,7 @@ A modern contact analysis and scoring platform built with Next.js 15, React, Typ
 - **🤖 Heygen AI Video Integration**:
     - Direct links to Heygen AI Podcast Creation and Studio tools.
     - Podcast Script Generator: Select format, number of hosts, duration, voice style, and focus area (e.g., marketing/finance) to generate tailored podcast scripts.
+- **🔮 Welcome Modal**: Guides new users to start by uploading leads for analysis.
 - 📥 Flexible CSV Data Import & Processing
 - 🔄 Real-time Updates
 - 🎨 Modern Dark UI (Refined): Enhanced visual consistency, clarity, and professionalism across components (Sidebar, Cards, Forms).
@@ -78,6 +80,18 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```bash
 npm run dev
 ```
+
+## Welcome Modal and First-Time Experience
+
+The platform features an onboarding welcome modal for first-time visitors:
+
+- **First Visit Detection**: The application tracks whether a user has visited before using localStorage.
+- **Intuitive Guidance**: New users are presented with a modal that explains the platform's purpose and guides them to start by uploading leads.
+- **Quick Start Guide**: The modal includes a step-by-step process to help users get value from the platform quickly.
+- **Multiple Options**: Users can choose to either go directly to the upload page or explore the dashboard first.
+- **Developer Tools**: For testing purposes, developers can use `window.resetFirstVisitFlag()` in the browser console to reset the first-visit state.
+
+This feature ensures new users understand the intended workflow and helps them achieve success with the platform faster.
 
 ## CSV Upload Guidelines
 
@@ -146,6 +160,7 @@ The platform features a carefully designed UI, recently refined for enhanced cla
 - **Professional Forms**: Consistent styling for select inputs and buttons, including focus states for accessibility (e.g., Podcast Generator).
 - **Clearer Hierarchy**: Improved use of spacing, font weights, and component separation to guide user attention.
 - **Subtle Interactivity**: Added smooth transitions and refined hover/focus states for buttons, links, and interactive elements.
+- **Welcome Modal**: User-friendly onboarding experience with clear guidance for first-time visitors.
 
 ### Data Presentation
 - Enhanced data table with sorting, searching, and export capabilities.
@@ -173,6 +188,7 @@ The platform features a carefully designed UI, recently refined for enhanced cla
 
 ### [Unreleased] - YYYY-MM-DD
 - **Features**:
+    - Added Welcome Modal for first-time visitors with onboarding guidance to the upload page.
     - Added Heygen AI Video Integration (Tools links, Podcast Script Generator).
     - Added Lead Enrichment (location, timezone, optimal outreach time).
     - Implemented Audio Message Recording feature for personalized outreach.
@@ -190,6 +206,7 @@ The platform features a carefully designed UI, recently refined for enhanced cla
 - **Changes**:
     - Updated Lead Scoring integration.
     - Refactored enrichment logic.
+    - Added mechanism to track first-time visitors using localStorage.
 
 ### Version 15.11.0
 - **Major Scoring Overhaul**: Replaced previous scoring with a new multi-dimensional system (Marketing Activity, Budget Potential, Business Orientation).

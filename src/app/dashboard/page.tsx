@@ -6,12 +6,21 @@ import ContentCalendar from '@/components/ContentCalendar';
 import LeadsTable from '@/components/LeadsTable';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import LeadScoreDistribution from '@/components/dashboard/LeadScoreDistribution';
+import WelcomeModal from '@/components/ui/WelcomeModal';
 import { getLeads } from '@/lib/supabase';
+
+// Extend the Window interface to include our custom property
+declare global {
+  interface Window {
+    resetFirstVisitFlag?: () => void;
+  }
+}
 
 export default function DashboardPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(false);
 
   useEffect(() => {
     async function fetchLeads() {
@@ -49,8 +58,38 @@ export default function DashboardPage() {
     fetchLeads();
   }, []);
 
+  // Check for first visit when component mounts
+  useEffect(() => {
+    // Check if the user has visited the dashboard before
+    const hasVisitedBefore = localStorage.getItem('hasVisitedDashboard');
+    
+    // If this is the first visit, show the welcome modal and set the localStorage flag
+    if (!hasVisitedBefore) {
+      setShowWelcomeModal(true);
+      localStorage.setItem('hasVisitedDashboard', 'true');
+    }
+    
+    // Add developer utility to reset first visit flag (available in browser console)
+    // Usage: window.resetFirstVisitFlag()
+    window.resetFirstVisitFlag = () => {
+      localStorage.removeItem('hasVisitedDashboard');
+      console.log('First visit flag reset. Refresh the page to see the welcome modal again.');
+    };
+    
+    // Cleanup
+    return () => {
+      delete window.resetFirstVisitFlag;
+    };
+  }, []);
+
+  const handleCloseWelcomeModal = () => {
+    setShowWelcomeModal(false);
+  };
+
   return (
     <DashboardLayout>
+      {showWelcomeModal && <WelcomeModal onClose={handleCloseWelcomeModal} />}
+      
       <div className="space-y-6 p-6 md:p-8">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Your Leads</h1>
