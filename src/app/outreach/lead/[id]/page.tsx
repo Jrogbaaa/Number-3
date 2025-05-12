@@ -5,7 +5,10 @@ import { useParams } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { getLeads } from '@/lib/supabase';
 import { Lead } from '@/types/lead';
-import { ExternalLink, Briefcase, Award, Calendar, Mail, Phone, MessageSquare, Linkedin, Mic, StopCircle, Play, Pause, Save, Clock, MapPin } from 'lucide-react';
+import { ExternalLink, Briefcase, Award, Calendar, Mail, Phone, MessageSquare, Linkedin, Mic, StopCircle, Play, Pause, Save, Clock, MapPin, Wand, Sparkles, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
+import { MessageGenerator } from '@/components/shared/MessageGenerator';
 
 interface OutreachTemplate {
   id: string;
@@ -59,6 +62,17 @@ Let me know if you'd be open to a brief conversation at your convenience.
 Best regards,
 [Your Name]`
   }
+];
+
+// Example prompts to inspire users
+const EXAMPLE_PROMPTS = [
+  "Make it more conversational",
+  "Shorten the message to a brief note",
+  "Make it more professional",
+  "Add specific industry expertise relevant to their role",
+  "Emphasize benefits of our solution for their company",
+  "Make it sound more personal and warm",
+  "Add urgency to the message"
 ];
 
 // Audio recorder component
@@ -280,8 +294,6 @@ function LeadDetailContent() {
         
         if (foundLead) {
           setLead(foundLead);
-          // Initialize with the first template
-          setPersonalizedMessage(personalizeTemplate(foundLead, OUTREACH_TEMPLATES[0].content));
         }
       } catch (error) {
         console.error('Error fetching lead:', error);
@@ -295,28 +307,20 @@ function LeadDetailContent() {
     }
   }, [leadId]);
   
-  // Select a template and personalize it
-  const handleTemplateSelect = (templateId: string) => {
-    setSelectedTemplate(templateId);
-    if (lead) {
-      const template = OUTREACH_TEMPLATES.find(t => t.id === templateId);
-      if (template) {
-        setPersonalizedMessage(personalizeTemplate(lead, template.content));
-      }
-    }
-  };
-  
-  // Replace placeholders with actual lead data
-  const personalizeTemplate = (lead: Lead, template: string): string => {
-    return template
-      .replace(/{name}/g, lead.name)
-      .replace(/{company}/g, lead.company)
-      .replace(/{title}/g, lead.title);
-  };
-  
+  // Copy the message to clipboard
   const handleCopy = () => {
-    navigator.clipboard.writeText(personalizedMessage);
-    setIsCopied(true);
+    if (personalizedMessage) {
+      navigator.clipboard.writeText(personalizedMessage)
+        .then(() => {
+          setIsCopied(true);
+          setTimeout(() => setIsCopied(false), 2000);
+          toast.success("Message copied to clipboard!");
+        })
+        .catch(error => {
+          console.error('Failed to copy message:', error);
+          toast.error("Failed to copy message");
+        });
+    }
   };
   
   if (loading) {
@@ -412,21 +416,10 @@ function LeadDetailContent() {
             </div>
           </div>
           
-          {/* Display Enrichment Data Directly */}
-          {/* Always show the container title, conditionally show content */}
+          {/* Display Enrichment Data */}
           <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 p-5 space-y-3 text-sm">
             <h3 className="text-base font-semibold mb-2">Optimal Outreach Time</h3>
-            {/* --- Start: Removed Location Display --- */}
-            {/* 
-            {lead.location && lead.location !== 'Unknown Location' && (
-               <div className="flex items-center">
-                  <MapPin className="h-4 w-4 mr-2 text-gray-400 flex-shrink-0" />
-                  <span>Location: {lead.location}</span>
-               </div>
-            )}
-            */}
-            {/* --- End: Removed Location Display --- */}
-             {lead.timezone && lead.timezone !== 'UTC' && (
+            {lead.timezone && lead.timezone !== 'UTC' && (
                <div className="flex items-center">
                   <Clock className="h-4 w-4 mr-2 text-gray-400 flex-shrink-0" />
                   <span>Time Zone: {lead.timezone}</span>
@@ -451,6 +444,7 @@ function LeadDetailContent() {
              )}
           </div>
           
+          {/* Outreach History */}
           <div className="mt-6">
             <h3 className="text-lg font-semibold mb-3">Outreach History</h3>
             
@@ -511,43 +505,28 @@ function LeadDetailContent() {
           {/* Text Templates Tab */}
           {activeTab === 'templates' && (
             <>
-              <div className="flex flex-wrap gap-3 mb-6">
-                {OUTREACH_TEMPLATES.map((template) => (
-                  <button
-                    key={template.id}
-                    onClick={() => handleTemplateSelect(template.id)}
-                    className={`px-4 py-2 rounded-lg transition-colors ${
-                      selectedTemplate === template.id
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                    }`}
-                  >
-                    {template.name}
-                  </button>
-                ))}
-              </div>
+              {/* Replaced custom implementation with MessageGenerator component */}
+              <MessageGenerator
+                leads={[lead]}
+                selectedLeadId={lead.id}
+                onMessageGenerated={(message, leadId) => {
+                  setPersonalizedMessage(message);
+                  toast.success("Message updated!");
+                }}
+              />
               
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-medium">Personalized Message</h3>
-                  <button
-                    onClick={handleCopy}
-                    className={`px-4 py-2 ${
-                      isCopied
-                        ? 'bg-green-500/20 text-green-400'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white'
-                    } rounded-lg transition-colors`}
-                  >
-                    {isCopied ? 'Copied' : 'Copy'}
-                  </button>
-                </div>
-                
-                {/* Improved container with better padding */}
-                <div className="bg-[#0D1117] rounded-lg p-6 mb-4 border border-gray-700/30">
-                  <pre className="whitespace-pre-wrap font-sans text-sm text-gray-300 leading-relaxed">
-                    {personalizedMessage}
-                  </pre>
-                </div>
+              {/* Copy Button */}
+              <div className="flex justify-end mt-4">
+                <button
+                  onClick={handleCopy}
+                  className={`px-4 py-2 ${
+                    isCopied
+                      ? 'bg-green-500/20 text-green-400'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  } rounded-lg transition-colors`}
+                >
+                  {isCopied ? 'Copied' : 'Copy to Clipboard'}
+                </button>
               </div>
             </>
           )}
