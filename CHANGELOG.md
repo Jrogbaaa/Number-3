@@ -8,15 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - YYYY-MM-DD
 
 ### Added
+- **AI Message Customization**: Implemented a complete AI-powered message customization system:
+  - Created `MessageGenerator` component in `src/components/shared/MessageGenerator.tsx` with interactive prompt interface
+  - Added `/api/generate-message` endpoint with intelligent message transformation capabilities
+  - Implemented prompt-based message customization with support for different styles (conversational, professional, funny, etc.)
+  - Added auto-apply functionality for example prompts
+  - Enhanced user experience with keyboard support and improved accessibility
 - **Lead Enrichment**: Implemented automatic enrichment of leads with `location`, `timezone`, `optimal_outreach_time`, `optimal_outreach_time_eastern`, and `outreach_reason` using `src/lib/leadEnrichment.ts` and external APIs.
 - **Audio Message Recording**: Added a feature in the Lead Outreach page (`src/app/outreach/lead/[id]/page.tsx`) allowing users to record, play, and download personalized audio messages for leads.
 
 ### Changed
+- **Message Signature Handling**: Improved message signature placement to ensure professional formatting
 - **Content Calendar**: Updated `src/components/ContentCalendar.tsx` and `src/types/lead.ts` to add and display the `companyName` in the calendar view.
 - **Lead Scoring**: Updated `getLeads` in `src/lib/supabase.ts` to integrate newly calculated scores (`marketingScore`, `budgetPotential`, `budgetConfidence`, `businessOrientation`, `orientationConfidence`) into the returned `Lead` objects.
 - **UI Layout**: Improved padding, spacing, and typography on the Lead Outreach page (`src/app/outreach/lead/[id]/page.tsx`) for better readability and presentation.
 
 ### Fixed
+- **Message Formatting**: Fixed message transformation to maintain proper structure with signatures at the end
+- **AI Prompt Handling**: Improved handling of complex prompts like "make it longer and funnier" with smarter prompt recognition
 - **CSV Upload**: 
     - Resolved database column mismatch error (`optimalOutreachTime`) by adding `.select('*')` to the Supabase insert query in `src/lib/supabase.ts`.
     - Fixed "No data found in CSV file" errors by improving parsing logic in `src/components/shared/DataUpload.tsx`, adding pre-checks, fallback delimiter handling, and better logging.

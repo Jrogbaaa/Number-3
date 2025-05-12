@@ -9,6 +9,7 @@ A modern contact analysis and scoring platform built with Next.js 15, React, Typ
 - **⏱️ Optimal Outreach Time Enrichment**: Automatically determines the best time to contact leads.
 - **🎤 Audio Message Recording**: Record, play, and download personalized audio messages.
 - **🤖 Heygen AI Video Integration**: Generate AI-powered podcast scripts and access Heygen tools directly.
+- **✨ AI Message Customization**: Personalize outreach messages with AI-powered prompts.
 - **🔮 Welcome Onboarding Modal**: First-time visitors receive guidance to the upload page.
 - 📥 Flexible CSV Data Import & Processing
 - 🔄 Real-time Updates
@@ -28,6 +29,11 @@ A modern contact analysis and scoring platform built with Next.js 15, React, Typ
 - **🤖 Heygen AI Video Integration**:
     - Direct links to Heygen AI Podcast Creation and Studio tools.
     - Podcast Script Generator: Select format, number of hosts, duration, voice style, and focus area (e.g., marketing/finance) to generate tailored podcast scripts.
+- **✨ AI Message Customization**:
+    - Craft personalized outreach messages with AI assistance
+    - Apply pre-defined or custom prompts to transform messages
+    - Support for different tones (conversational, professional, funny)
+    - One-click message enhancement with intelligent transformations
 - **🔮 Welcome Modal**: Guides new users to start by uploading leads for analysis.
 - 📥 Flexible CSV Data Import & Processing
 - 🔄 Real-time Updates
@@ -184,10 +190,48 @@ The platform features a carefully designed UI, recently refined for enhanced cla
 - Improved navigation with hamburger menu on mobile devices.
 - Mobile-optimized data presentation with prioritized information.
 
+## AI Message Customization
+
+The platform includes an advanced AI-powered message customization feature to help with lead outreach:
+
+### Key Capabilities
+
+- **Intelligent Message Transformation**: Modify outreach messages based on natural language prompts
+- **Multiple Customization Options**: Make messages more conversational, professional, personal, brief, industry-specific, or humorous
+- **Context-Aware Processing**: AI considers recipient's industry, role, and company when applying transformations
+- **Example Prompts**: Pre-defined prompt buttons for common customization needs
+- **Custom Instructions**: Free-form text field for specific customization requirements
+
+### User Experience
+
+- **Interactive Interface**: Select a lead, view the default template, and customize with one click
+- **One-Click Customization**: Apply example prompts directly by clicking the suggestion buttons
+- **Real-Time Updates**: See message transformations immediately after applying a prompt
+- **Message Management**: Copy to clipboard, reset to default template, or apply multiple transformations
+- **Keyboard Support**: Press Enter in the prompt field to apply customizations
+
+### Technical Features
+
+- **Context Preservation**: Properly formats messages and maintains signature placement
+- **Fallback Handling**: Multiple strategies to ensure prompts are properly applied
+- **Accessibility Support**: Full keyboard navigation and ARIA attributes
+- **Error Recovery**: Graceful handling of API failures with helpful error messages
+- **Caching**: Maintains state between navigation to preserve customized messages
+
+### Example Use Cases
+
+- Making formal messages more conversational for early-stage leads
+- Adding humor to break the ice with marketing professionals
+- Including industry-specific insights for enterprise prospects
+- Shortening messages for C-level executives
+- Adding urgency for time-sensitive opportunities
+- Combining transformations (e.g., "make it longer and funnier")
+
 ## Recent Updates
 
 ### [Unreleased] - YYYY-MM-DD
 - **Features**:
+    - Added AI Message Customization for personalized outreach with prompt-based message generation.
     - Added Welcome Modal for first-time visitors with onboarding guidance to the upload page.
     - Added Heygen AI Video Integration (Tools links, Podcast Script Generator).
     - Added Lead Enrichment (location, timezone, optimal outreach time).
