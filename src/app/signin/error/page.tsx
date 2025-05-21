@@ -2,8 +2,10 @@
 
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { Suspense } from 'react';
 
-export default function SignInErrorPage() {
+// The actual content component that uses the searchParams
+function ErrorContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
 
@@ -49,5 +51,30 @@ export default function SignInErrorPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Loading fallback component
+function ErrorLoadingFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-dark-navy p-4">
+      <div className="w-full max-w-md space-y-8 rounded-lg bg-navy p-8 shadow-lg text-center">
+        <div className="animate-pulse">
+          <div className="h-14 w-14 mx-auto rounded-full bg-gray-600 mb-4"></div>
+          <div className="h-6 w-48 mx-auto rounded bg-gray-600 mb-6"></div>
+          <div className="h-4 w-64 mx-auto rounded bg-gray-600 mb-6"></div>
+          <div className="h-10 w-full rounded bg-gray-600"></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main component with Suspense
+export default function SignInErrorPage() {
+  return (
+    <Suspense fallback={<ErrorLoadingFallback />}>
+      <ErrorContent />
+    </Suspense>
   );
 } 
