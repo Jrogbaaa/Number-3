@@ -1,0 +1,16 @@
+Name,Email,Company,Title,Source,Interests,Background
+John Smith,john@example.com,Acme Inc,CEO,LinkedIn,"AI, Automation, Cloud","20+ years in tech leadership, founded 2 startups"
+Sarah Johnson,sarah@example.com,Tech Solutions,CTO,Conference,"Data Science, Machine Learning","Senior engineering leader with focus on AI applications"
+Michael Brown,michael@example.com,Growth Co,Marketing Director,Website,"Content Marketing, SEO","10 years experience in digital marketing and growth"
+Emma Wilson,emma@example.com,InnovateTech,Product Manager,Referral,"Product Development, UX Design","Previously led product at DesignCo for 5 years"
+David Lee,david@example.com,Finance Pro,CFO,LinkedIn,"Fintech, Investments","Background in investment banking and venture capital"
+Jennifer Garcia,jennifer@example.com,DevShop,Engineering Lead,Website,"Web Development, DevOps","Full-stack developer specializing in React and Node.js"
+Robert Miller,robert@example.com,Sales Force,VP Sales,Conference,"B2B Sales, CRM Implementation","15 years building enterprise sales teams"
+Lisa Wang,lisa@example.com,Data Insights,Data Scientist,Referral,"Big Data, Analytics","PhD in Computer Science with focus on machine learning"
+James Taylor,james@example.com,Creative Agency,Creative Director,LinkedIn,"Brand Design, Digital Marketing","Award-winning creative with 12 years agency experience"
+Amanda Clark,amanda@example.com,HR Solutions,HR Director,Website,"Talent Acquisition, Employee Engagement","Passionate about building inclusive workplace cultures"
+Carlos Mendez,,Startup Inc,Founder,Referral,"Entrepreneurship, Product Development",
+,mark@example.com,Agency X,Designer,Instagram,"UI/UX, Illustration",
+Alex Johnson,,,Developer,LinkedIn,"JavaScript, React, Node",
+,,,Marketing Manager,Website,,
+Patricia Wong,patricia@example.com,,,,,"Former marketing executive, 8+ years experience" 
