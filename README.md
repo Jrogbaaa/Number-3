@@ -189,7 +189,11 @@ npm run dev
 
 ### Deployment to Vercel
 
-When deploying to Vercel, add the following environment variables in your Vercel project settings:
+The project is configured for easy deployment to Vercel. Follow these steps:
+
+1. Push your changes to your GitHub repository
+2. Connect your repository to Vercel
+3. Add the following environment variables in your Vercel project settings:
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
@@ -200,12 +204,19 @@ GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 NEXTAUTH_URL=https://your-vercel-url.vercel.app
 NEXTAUTH_SECRET=your_nextauth_secret
+DATABASE_URL=your_database_url
 ```
 
-Don't forget to add your production callback URL to the Google Cloud Console:
+4. Add your production callback URL to the Google Cloud Console OAuth configuration:
 ```
 https://your-vercel-url.vercel.app/api/auth/callback/google
 ```
+
+5. Important Vercel deployment notes:
+   - The Prisma schema is automatically generated during build
+   - Database connectivity is established via the DATABASE_URL environment variable
+   - Authentication is handled by NextAuth.js with Google OAuth
+   - Supabase is used for data storage and retrieval
 
 ## Welcome Modal and First-Time Experience
 
@@ -349,7 +360,27 @@ The platform includes an advanced AI-powered message customization feature to he
 
 ## Recent Updates
 
-### [Unreleased] - YYYY-MM-DD
+### Version 15.12.0 - 2025-05-21
+- **Features**:
+    - Added Google Sign-In integration on the homepage
+    - Improved authentication flow with proper session management
+    - Added Prisma ORM integration for better database management
+    - Added proper Vercel deployment support
+- **UI Improvements**:
+    - Updated homepage with Google authentication button
+    - Enhanced error page with proper loading states
+    - Improved middleware to handle authentication redirects correctly
+- **Fixes**:
+    - Fixed Suspense boundary for useSearchParams in signin error page
+    - Fixed Vercel build issues related to Prisma generation
+    - Resolved potential security issues with environment variables
+    - Fixed authentication-related redirects in middleware
+- **Development**:
+    - Implemented proper .gitignore rules for sensitive files
+    - Added Prisma schema for database models
+    - Made build scripts more robust for CI/CD
+
+### [Previous Release] - YYYY-MM-DD
 - **Features**:
     - Added AI Message Customization for personalized outreach with prompt-based message generation.
     - Integrated Replicate API for advanced AI-powered message generation.
