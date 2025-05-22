@@ -9,6 +9,9 @@ AI-powered insights and outreach automation for lead management.
 - Supabase database integration
 - NextJS 15 with App Router
 - Robust database connectivity with retry logic
+- Personalized lead scoring based on user preferences
+- Customizable table columns that adapt to business needs
+- "Best Overall" score that weights factors according to user priorities
 
 ## Getting Started
 
@@ -119,6 +122,7 @@ A modern contact analysis and scoring platform built with Next.js 15, React, Typ
     - Support for different tones (conversational, professional, funny)
     - One-click message enhancement with intelligent transformations
 - **🔮 Welcome Modal**: Guides new users to start by uploading leads for analysis.
+- **🧩 Personalized Onboarding**: Interactive setup to customize lead scoring based on company profile and target audience.
 - **🔐 Authentication**: Secure Google OAuth integration for user management
 - 📥 Flexible CSV Data Import & Processing
 - 🔄 Real-time Updates
@@ -229,6 +233,24 @@ The platform features an onboarding welcome modal for first-time visitors:
 - **Developer Tools**: For testing purposes, developers can use `window.resetFirstVisitFlag()` in the browser console to reset the first-visit state.
 
 This feature ensures new users understand the intended workflow and helps them achieve success with the platform faster.
+
+## Personalized Onboarding Flow
+
+The platform offers a comprehensive onboarding experience for new users:
+
+- **Interactive Setup Wizard**: Multi-step process to collect user preferences and company information
+- **Empty State Management**: New users start with a clean platform and guided experience
+- **Lead Scoring Customization**: The onboarding process collects key information that influences how leads are scored:
+  - **Company Profile**: Information about the user's business, products/services, and industry
+  - **Target Customer Definition**: Detailed information about ideal customer profiles including:
+    - Preferred roles (e.g., CMO, Marketing Director, Founder)
+    - Demographic preferences (e.g., gender, location)
+    - Company size priorities (e.g., enterprise, mid-market, startup)
+- **Preference Persistence**: All user preferences are stored in the database and applied to the lead scoring algorithm
+- **Adaptive Scoring**: The lead scoring system automatically adjusts based on user-defined priorities
+- **Preference Management**: Users can modify their preferences at any time through the platform settings
+
+This personalized approach ensures that the platform provides the most relevant lead scoring and insights for each user's specific business needs.
 
 ## CSV Upload Guidelines
 

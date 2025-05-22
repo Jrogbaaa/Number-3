@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Implemented retry logic in Supabase client with exponential backoff
   - Added fallback to mock data during database connection failures
   - Improved error logging for database operations
+- **Customizable Lead Table Columns**:
+  - Added dynamically generated columns based on user preferences
+  - Implemented "Best Overall" score that adapts to user's business priorities
+  - Created enhanced scoring algorithm that weights factors based on onboarding data
+  - Added visual explanation tooltips for all score metrics
+  - Added hidden debug mode for testing (triple-click search field to activate)
 
 ### Fixed
 - **Critical Connection Issue**: Fixed Supabase URL typo (changed "boq" to "bog") that was causing intermittent connection failures
@@ -37,12 +43,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enhanced user experience with keyboard support and improved accessibility
 - **Lead Enrichment**: Implemented automatic enrichment of leads with `location`, `timezone`, `optimal_outreach_time`, `optimal_outreach_time_eastern`, and `outreach_reason` using `src/lib/leadEnrichment.ts` and external APIs.
 - **Audio Message Recording**: Added a feature in the Lead Outreach page (`src/app/outreach/lead/[id]/page.tsx`) allowing users to record, play, and download personalized audio messages for leads.
+- **Personalized onboarding flow**: Added a multi-step process to customize lead scoring
+- **User preferences database schema**: Added schema for storing onboarding preferences
+- **Custom lead scoring algorithm**: Implemented algorithm that incorporates user preferences
+- **Interactive UI components**: Added components for gathering user information during onboarding
+- **Context provider**: Created provider for managing user preferences state
+- **API endpoints**: Added endpoints for fetching and updating user preferences
+- **Documentation updates**: Updated documentation with information about onboarding features
 
 ### Changed
 - **Message Signature Handling**: Improved message signature placement to ensure professional formatting
 - **Content Calendar**: Updated `src/components/ContentCalendar.tsx` and `src/types/lead.ts` to add and display the `companyName` in the calendar view.
 - **Lead Scoring**: Updated `getLeads` in `src/lib/supabase.ts` to integrate newly calculated scores (`marketingScore`, `budgetPotential`, `budgetConfidence`, `businessOrientation`, `orientationConfidence`) into the returned `Lead` objects.
 - **UI Layout**: Improved padding, spacing, and typography on the Lead Outreach page (`src/app/outreach/lead/[id]/page.tsx`) for better readability and presentation.
+- **Modified dashboard**: Added onboarding flow for new users
+- **Updated layout**: Included UserPreferencesProvider
+- **Refactored lead scoring algorithm**: Incorporated user preferences
 
 ### Fixed
 - **Message Formatting**: Fixed message transformation to maintain proper structure with signatures at the end

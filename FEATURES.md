@@ -23,6 +23,18 @@
 - Fallback to mock data during connection issues
 - Comprehensive error logging and tracking
 
+### Lead Scoring and Visualization
+- Multi-dimensional scoring system (Marketing, Budget, Intent, Spend Authority)
+- "Best Overall" adaptive scoring based on user's business priorities
+- Customizable table columns that reflect user preferences
+- Visual score explanations with interactive tooltips
+- Score calculation that considers:
+  - Role alignment with target profiles
+  - Industry matches with preferred sectors
+  - Company size and structure compatibility
+  - Decision-maker identification and authority level
+  - B2B vs B2C business orientation
+
 ## New Features
 
 ### AI-Powered Message Generation
@@ -40,6 +52,18 @@
 - Secure AI model access via server-side API
 - Environment variable configuration for API keys
 - Advanced text generation capabilities
+
+### User Onboarding Flow
+- Interactive onboarding wizard for new users
+- Company profile and target audience collection
+- Customized lead scoring based on user preferences:
+  - Industry focus (e.g., tech, healthcare, education)
+  - Target customer role prioritization (e.g., marketing executives, founders)
+  - Gender preferences and demographic targeting
+  - Company size and budget potential parameters
+- Empty dashboard state with guided setup process
+- Persistent user preferences that influence lead scoring algorithm
+- Ability to modify preferences after initial setup
 
 ## Upcoming Features
 
