@@ -415,7 +415,7 @@ export default function ContentCalendar() {
       
       <div className="mt-6 text-sm text-gray-400 flex items-center gap-2 bg-gray-800/30 p-3 rounded-md border border-gray-800/30">
         <Info className="w-4 h-4 text-blue-400 flex-shrink-0" />
-        <span>Contacts are prioritized based on PROPS relevance score.</span>
+        <span>Contacts are prioritized based on OptiLeads.ai relevance score.</span>
       </div>
     </div>
   );

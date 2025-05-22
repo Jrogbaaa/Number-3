@@ -115,7 +115,7 @@ export const LeadsAPI = {
   },
 };
 
-function calculateLeadScore(lead: any): number {
+function calculateLeadScore(lead: any, userPreferences?: any): number {
   // Simple scoring algorithm - Incorporating Marketing Relevance & Orientation
   let score = 0;
 
@@ -141,43 +141,120 @@ function calculateLeadScore(lead: any): number {
     else score += 5;
   }
 
-  // --- Factor 4: Marketing Relevance (Based on Title) (Max 25 points - NEW) ---
+  // --- Factor 4: Marketing Relevance (Based on Title) (Max 25 points) ---
   let marketingScore = 0;
   if (lead.title) {
-      const titleLower = lead.title.toLowerCase();
-      if (titleLower.includes('marketing')) marketingScore += 15; // e.g., Marketing Manager, Digital Marketing Specialist
-      if (titleLower.includes('cmo') || titleLower.includes('chief marketing officer')) marketingScore += 25; // Highest value
-      if (titleLower.includes('vp') && titleLower.includes('marketing')) marketingScore += 20; // VP Marketing
-      if (titleLower.includes('head of marketing')) marketingScore += 22; // Head of Marketing
-      // Consider adding points if company name includes marketing keywords?
-      // if (lead.company && lead.company.toLowerCase().includes('marketing')) marketingScore += 5; 
+    const titleLower = lead.title.toLowerCase();
+    if (titleLower.includes('marketing')) marketingScore += 15; // e.g., Marketing Manager, Digital Marketing Specialist
+    if (titleLower.includes('cmo') || titleLower.includes('chief marketing officer')) marketingScore += 25; // Highest value
+    if (titleLower.includes('vp') && titleLower.includes('marketing')) marketingScore += 20; // VP Marketing
+    if (titleLower.includes('head of marketing')) marketingScore += 22; // Head of Marketing
   }
-  score += Math.min(marketingScore, 25); // Cap marketing relevance points at 25
-
-  // --- Factor 5: Business Orientation Estimation (Max 10 points - NEW) ---
+  
+  // --- Factor 5: Business Orientation Estimation (Max 10 points) ---
   let orientationScore = 0;
   // Simple heuristic: Default to B2B focus unless strong B2C indicators are found (customize as needed)
   let isLikelyB2C = false; 
   if (lead.company) {
-      const companyLower = lead.company.toLowerCase();
-      // Add specific known B2C company names or patterns if relevant
-      // e.g., if (['amazon', 'walmart', 'target'].includes(companyLower)) isLikelyB2C = true;
+    const companyLower = lead.company.toLowerCase();
+    // Add specific known B2C company names or patterns if relevant
   }
   if (lead.title) {
-      const titleLower = lead.title.toLowerCase();
-      // Add titles strongly indicating B2C if relevant
-      // e.g., if (titleLower.includes('retail') || titleLower.includes('consumer goods')) isLikelyB2C = true;
+    const titleLower = lead.title.toLowerCase();
+    // Add titles strongly indicating B2C if relevant
   }
 
   if (!isLikelyB2C) {
-      // Assume B2B is generally more relevant for this scoring context
-      orientationScore += 10; 
+    // Assume B2B is generally more relevant for this scoring context
+    orientationScore += 10; 
   } else {
-      // Assign fewer points if likely B2C
-      orientationScore += 3; 
+    // Assign fewer points if likely B2C
+    orientationScore += 3; 
   }
+  
+  // --- Factor 6: User Preferences Adjustment (New) ---
+  if (userPreferences) {
+    // Apply target role preferences
+    if (userPreferences.targetRoles && userPreferences.targetRoles.length > 0 && lead.title) {
+      const titleLower = lead.title.toLowerCase();
+      const matchesPreferredRole = userPreferences.targetRoles.some((role: string) => 
+        titleLower.includes(role.toLowerCase())
+      );
+      
+      if (matchesPreferredRole) {
+        score += 20; // Strong bonus for matching preferred roles
+      }
+    }
+    
+    // Apply demographic preferences
+    if (userPreferences.targetDemographics && lead.insights) {
+      const demographics = userPreferences.targetDemographics;
+      
+      // Gender preference
+      if (demographics.gender && demographics.gender !== 'all' && lead.insights.gender) {
+        if (lead.insights.gender.toLowerCase() === demographics.gender.toLowerCase()) {
+          score += 10;
+        }
+      }
+      
+      // Location preferences
+      if (demographics.locations && demographics.locations.length > 0 && lead.location) {
+        const locationLower = lead.location.toLowerCase();
+        const matchesPreferredLocation = demographics.locations.some((location: string) => 
+          locationLower.includes(location.toLowerCase())
+        );
+        
+        if (matchesPreferredLocation) {
+          score += 10;
+        }
+      }
+    }
+    
+    // Apply company size preferences
+    if (userPreferences.targetCompanySizes && userPreferences.targetCompanySizes.length > 0 && lead.company_size) {
+      const matchesPreferredSize = userPreferences.targetCompanySizes.some((size: string) => 
+        lead.company_size === size
+      );
+      
+      if (matchesPreferredSize) {
+        score += 15;
+      }
+    }
+    
+    // Apply industry preferences
+    if (userPreferences.targetIndustries && userPreferences.targetIndustries.length > 0 && lead.industry) {
+      const industryLower = lead.industry.toLowerCase();
+      const matchesPreferredIndustry = userPreferences.targetIndustries.some((industry: string) => 
+        industryLower.includes(industry.toLowerCase())
+      );
+      
+      if (matchesPreferredIndustry) {
+        score += 15;
+      }
+    }
+    
+    // Apply custom scoring weights if specified
+    if (userPreferences.customScoringWeights) {
+      const weights = userPreferences.customScoringWeights;
+      
+      // Adjust marketing score weight
+      if (weights.marketingScore) {
+        const weightMultiplier = weights.marketingScore / 100;
+        marketingScore = Math.round(marketingScore * weightMultiplier);
+      }
+      
+      // Adjust orientation score weight
+      if (weights.businessOrientation) {
+        const weightMultiplier = weights.businessOrientation / 100;
+        orientationScore = Math.round(orientationScore * weightMultiplier);
+      }
+    }
+  }
+  
+  // Add the adjusted scores
+  score += Math.min(marketingScore, 25); // Cap marketing relevance points at 25
   score += Math.min(orientationScore, 10); // Cap orientation points at 10
 
-  // Final score capped at 100 (or slightly higher depending on exact point combination)
-  return Math.min(score, 100); // Keep cap at 100 for consistency
+  // Final score capped at 100
+  return Math.min(score, 100);
 } 

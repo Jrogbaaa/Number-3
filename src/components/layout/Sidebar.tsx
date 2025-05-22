@@ -110,16 +110,10 @@ export default function Sidebar({
           transition-all duration-300 ease-in-out flex flex-col`}
       >
         <div className="mb-8 px-4 flex justify-between items-center h-10">
-          <Link href="/dashboard" aria-label="Go to dashboard" className="flex items-center h-full">
-             <Image 
-                src="/props-logo.png"
-                alt="PROPS Logo"
-                width={100}
-                height={40}
-                className="h-10 w-auto invert"
-                style={{ height: 'auto' }}
-                priority
-             />
+          <Link href="/?landing=true" aria-label="Go to homepage" className="flex items-center h-full">
+            <span className="text-white font-bold text-xl hover:text-gray-200 transition-colors">
+              OptiLeads.ai
+            </span>
           </Link>
           {/* Close button - only visible on mobile */}
           <button 

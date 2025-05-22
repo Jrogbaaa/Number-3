@@ -123,9 +123,9 @@ const LeadScoreDistribution = () => {
   };
 
   return (
-    <div>
+    <div className="p-4 bg-gray-900/80 rounded-lg border border-gray-800/50 shadow-md">
       <div className="text-center">
-        <h3 className="text-lg font-medium mb-3">PROPS Score Distribution</h3>
+        <h3 className="text-xl font-semibold mb-5 text-gray-100">OptiLeads.ai Score Distribution</h3>
       </div>
       {loading ? (
         <div className="h-64 w-full flex items-center justify-center">
@@ -138,7 +138,7 @@ const LeadScoreDistribution = () => {
               <Pie data={data} options={options} />
             </div>
           </div>
-          <div className="flex flex-wrap justify-center gap-3 mt-4">
+          <div className="flex flex-wrap justify-center gap-3 mt-6 bg-gray-800/50 p-3 rounded-lg">
             {scoreLabels.map((label, index) => {
               const count = distribution[index];
               const percentage = totalLeads > 0 ? Math.round((count / totalLeads) * 100) : 0;
@@ -146,7 +146,7 @@ const LeadScoreDistribution = () => {
               return (
                 <div key={label} className="flex items-center gap-1.5">
                   <div
-                    className="w-3 h-3 rounded-full"
+                    className="w-4 h-4 rounded-full"
                     style={{ backgroundColor: scoreColors[index] }}
                   />
                   <span className="text-sm text-gray-300">

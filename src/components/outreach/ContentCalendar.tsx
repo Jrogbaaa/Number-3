@@ -270,7 +270,7 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
           <div className="mt-6 text-center md:text-left">
              <p className="text-xs text-gray-500 flex items-center justify-center md:justify-start gap-1.5">
                <Info className="w-3 h-3 flex-shrink-0" /> 
-               Contacts are prioritized based on PROPS relevance score.
+               Contacts are prioritized based on OptiLeads.ai relevance score.
              </p>
           </div>
         </>

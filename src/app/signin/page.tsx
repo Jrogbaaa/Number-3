@@ -1,18 +1,123 @@
 'use client';
 
-import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { useState, useEffect } from 'react';
+import { signIn, useSession } from 'next-auth/react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
+  const [envCheck, setEnvCheck] = useState<Record<string, boolean>>({});
+  const [isEnvironmentReady, setIsEnvironmentReady] = useState<boolean | null>(null);
+
+  // Check environment variables and auth status
+  useEffect(() => {
+    const authDebugInfo = `Auth Status: ${status}, Session: ${session ? 'exists' : 'null'}`;
+    console.log('[SignIn] Debug:', authDebugInfo);
+    setDebugInfo(authDebugInfo);
+    
+    // If somehow the user is already authenticated when landing on this page,
+    // redirect them to dashboard (this should be handled by middleware but adding as failsafe)
+    if (status === 'authenticated' && session?.user?.id) {
+      console.log('[SignIn] User already authenticated, redirecting to dashboard');
+      router.push('/dashboard');
+    }
+    
+    // Check if there was an error in the URL (from auth callback)
+    const urlParams = new URLSearchParams(window.location.search);
+    const error = urlParams.get('error');
+    if (error) {
+      // Changed from console.error to console.log to prevent NextAuth from re-throwing the error
+      console.log('[SignIn] Auth callback error:', error);
+      
+      // Map error codes to user-friendly messages
+      const errorMessages: Record<string, string> = {
+        'OAuthCallback': 'Failed to complete Google sign in. Please try again.',
+        'google': 'Authentication with Google failed. There might be an issue with your browser cookies or the OAuth configuration.',
+        'AccessDenied': 'You denied access to your Google account. Please try again.',
+        'Configuration': 'There is a configuration issue with the authentication service.',
+        'Default': 'An error occurred during sign in. Please try again.'
+      };
+      
+      setAuthError(errorMessages[error] || errorMessages['Default']);
+      
+      // If this is a Google error, manually clear any stale auth state that might be causing issues
+      if (error === 'google') {
+        // Clear any potential auth-related cookies or local storage items that might be interfering
+        try {
+          // Clear related cookies (session cookies are HTTPOnly but we can clear others)
+          document.cookie.split(';').forEach(cookie => {
+            const [name] = cookie.trim().split('=');
+            if (name.includes('next-auth')) {
+              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+            }
+          });
+          
+          // Clear any local storage items that might be related
+          localStorage.removeItem('next-auth.callback-url');
+          localStorage.removeItem('next-auth.message');
+          
+          console.log('[SignIn] Cleared potential stale auth state');
+        } catch (e) {
+          console.log('[SignIn] Error clearing auth state:', e);
+        }
+      }
+    }
+
+    // Check environment variables to see if OAuth is properly configured
+    fetch('/api/debug-env')
+      .then(res => res.json())
+      .then(data => {
+        setEnvCheck(data);
+        const isGoogleConfigured = data.GOOGLE_CLIENT_ID && data.GOOGLE_CLIENT_SECRET;
+        setIsEnvironmentReady(isGoogleConfigured);
+        
+        if (!isGoogleConfigured) {
+          console.log('[SignIn] Google OAuth credentials are not configured');
+          setAuthError('Google authentication is not configured. Please set up OAuth credentials.');
+        }
+      })
+      .catch(err => {
+        console.log('[SignIn] Failed to check environment:', err);
+        setAuthError('Failed to verify authentication configuration.');
+        setIsEnvironmentReady(false);
+      });
+  }, [status, session, router]);
 
   const handleGoogleSignIn = async () => {
-    setIsLoading(true);
     try {
-      await signIn('google', { callbackUrl: '/dashboard' });
+      if (!envCheck.GOOGLE_CLIENT_ID || !envCheck.GOOGLE_CLIENT_SECRET) {
+        setAuthError('Google OAuth credentials are not configured. Authentication cannot proceed.');
+        return;
+      }
+      
+      setIsLoading(true);
+      setAuthError(null);
+      console.log('[SignIn] Initiating Google sign-in...');
+      
+      // Use NextAuth's signIn function with redirect: false to handle errors properly
+      // instead of direct window.location redirect
+      const result = await signIn('google', {
+        callbackUrl: '/dashboard',
+        redirect: false
+      });
+      
+      if (result?.error) {
+        console.log('[SignIn] Sign-in error:', result.error);
+        setAuthError('Authentication failed. Please try again.');
+        setIsLoading(false);
+      } else if (result?.url) {
+        // If successful, redirect to the URL returned by NextAuth
+        router.push(result.url);
+      }
     } catch (error) {
-      console.error('Error signing in with Google:', error);
+      console.log('[SignIn] Exception during sign-in with Google:', error);
+      setAuthError('Failed to start sign-in process. Please try again.');
       setIsLoading(false);
     }
   };
@@ -23,12 +128,84 @@ export default function SignInPage() {
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-white mb-2">Welcome to PROPS</h2>
           <p className="text-gray-400">Sign in to access your leads dashboard</p>
+          
+          {/* Auth error message */}
+          {authError && (
+            <div className="mt-4 p-3 bg-red-900/30 border border-red-800/50 rounded text-red-300 text-sm">
+              {authError}
+              {(!envCheck.GOOGLE_CLIENT_ID || !envCheck.GOOGLE_CLIENT_SECRET) && (
+                <div className="mt-2 pt-2 border-t border-red-800/30 text-xs text-left">
+                  <p className="font-medium mb-1">Missing environment variables:</p>
+                  <ul className="list-disc list-inside">
+                    {!envCheck.GOOGLE_CLIENT_ID && <li>GOOGLE_CLIENT_ID</li>}
+                    {!envCheck.GOOGLE_CLIENT_SECRET && <li>GOOGLE_CLIENT_SECRET</li>}
+                  </ul>
+                  <p className="mt-1 mb-1">Set these in your .env.local file and restart the server.</p>
+                  <p className="text-xs">
+                    <Link href="/debug-auth" className="text-blue-400 hover:underline">
+                      Go to Debug Page →
+                    </Link>
+                  </p>
+                </div>
+              )}
+              
+              {/* Additional troubleshooting for Google errors */}
+              {authError.includes('Google') && (
+                <div className="mt-2 pt-2 border-t border-red-800/30 text-xs text-left">
+                  <p className="font-medium mb-1">Troubleshooting:</p>
+                  <ul className="list-disc list-inside">
+                    <li>Try clearing your browser cookies</li>
+                    <li>Ensure third-party cookies are enabled</li>
+                    <li>Try using a different browser</li>
+                    <li>Check that the Google OAuth credentials are configured correctly</li>
+                    <li>Verify redirect URLs in both Google Console and Supabase settings</li>
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Debug info - only visible in development */}
+          {process.env.NODE_ENV !== 'production' && (
+            <div className="mt-4 p-2 bg-gray-800 rounded text-xs text-left text-gray-400">
+              <p>Auth Debug: {debugInfo}</p>
+              <p>Has Session: {session ? 'Yes' : 'No'}</p>
+              {session?.user?.id && <p>User ID: {session.user.id}</p>}
+              <p>Environment Ready: {isEnvironmentReady === null ? 'Checking...' : isEnvironmentReady ? 'Yes' : 'No'}</p>
+              <div className="mt-2 pt-2 border-t border-gray-700">
+                <p className="font-medium">Google Auth Direct Link:</p>
+                <a 
+                  href="/api/auth/signin/google?callbackUrl=/dashboard" 
+                  className="text-blue-400 hover:underline"
+                >
+                  /api/auth/signin/google
+                </a>
+              </div>
+              <div className="mt-2 pt-2 border-t border-gray-700">
+                <p className="font-medium">Alternative Sign-in Methods:</p>
+                <button 
+                  onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
+                  className="text-blue-400 hover:underline block mb-1"
+                >
+                  Use signIn() with redirect
+                </button>
+                <button 
+                  onClick={() => signIn('google', { callbackUrl: '/dashboard', redirect: false })}
+                  className="text-blue-400 hover:underline block"
+                >
+                  Use signIn() without redirect
+                </button>
+              </div>
+            </div>
+          )}
         </div>
         
         <button
           onClick={handleGoogleSignIn}
-          disabled={isLoading}
-          className="flex w-full items-center justify-center gap-3 rounded-md bg-white px-4 py-3 text-gray-800 shadow-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"
+          disabled={isLoading || isEnvironmentReady === false}
+          className="flex w-full items-center justify-center gap-3 rounded-md bg-white px-4 py-3 text-gray-800 shadow-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="Sign in with Google"
+          tabIndex={0}
         >
           {isLoading ? (
             <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-gray-800"></div>
@@ -44,6 +221,17 @@ export default function SignInPage() {
             </>
           )}
         </button>
+        
+        {isEnvironmentReady === false && (
+          <div className="mt-4">
+            <Link
+              href="/debug-auth"
+              className="text-sm text-blue-400 hover:underline"
+            >
+              Go to Auth Debug Page
+            </Link>
+          </div>
+        )}
         
         <div className="mt-6 text-sm text-gray-500">
           By signing in, you agree to our Terms of Service and Privacy Policy.
