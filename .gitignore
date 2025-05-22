@@ -39,4 +39,4 @@ test-results/
 playwright-report/
 
 # IDE
-.vscode/ 
+.vscode/ .env
