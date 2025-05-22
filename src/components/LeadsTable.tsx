@@ -153,7 +153,7 @@ const ScoreCell = ({ score, label, explanation, icon, isBestOverall = false }: {
 export default function LeadsTable({ leads, showChromeScore = false }: LeadsTableProps) {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortConfig, setSortConfig] = useState<{ key: keyof Lead | null; direction: 'ascending' | 'descending' }>({ key: 'created_at', direction: 'descending' });
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Lead | null; direction: 'ascending' | 'descending' }>({ key: null, direction: 'descending' });
   const [filtersVisible, setFiltersVisible] = useState(false);
   const { preferences } = useUserPreferences();
   const [columns, setColumns] = useState<Array<{id: string, name: string, key?: keyof Lead, show: boolean}>>([]);
@@ -229,20 +229,6 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
       });
     }
     
-    // If user has marketing in their title or industry
-    const isMarketingFocused = 
-      preferences?.companyIndustry?.toLowerCase().includes('marketing') ||
-      preferences?.targetRoles?.some(role => role.toLowerCase().includes('marketing'));
-    
-    if (isMarketingFocused) {
-      additionalColumns.push({ 
-        id: 'marketing', 
-        name: 'Marketing Score', 
-        key: 'marketingScore' as keyof Lead, 
-        show: true 
-      });
-    }
-    
     // Always include engagement potential if we have enough data
     additionalColumns.push({ 
       id: 'engagement', 
@@ -260,8 +246,353 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
   const [orientationFilter, setOrientationFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
+  // Calculate Best Overall score based on user preferences
+  const calculateBestOverallScore = (lead: Lead) => {
+    // First, ensure intent and spend authority scores are available
+    if (lead.intentScore === undefined) {
+      lead.intentScore = calculateIntentScore(lead);
+    }
+    
+    if (lead.spendAuthorityScore === undefined) {
+      lead.spendAuthorityScore = calculateSpendAuthority(lead);
+    }
+    
+    // Debug mode (triple-click on search bar to activate)
+    const debugInfo = showDebugInfo ? {
+      leadName: lead.name,
+      baseScores: {} as Record<string, number>,
+      weights: {} as Record<string, number>,
+      finalScore: 0,
+      matchFactors: [] as string[]
+    } : null;
+    
+    // If no preferences, use fixed scores to ensure consistency
+    if (!preferences) {
+      // Use actual scores, defaulting to 65 for directors/VPs in entertainment/media 
+      const isDirectorOrVP = lead.title?.toLowerCase().includes('director') || 
+                            lead.title?.toLowerCase().includes('vp') ||
+                            lead.title?.toLowerCase().includes('chief');
+                            
+      const isEntertainmentMedia = lead.company?.toLowerCase().includes('entertainment') ||
+                                 lead.company?.toLowerCase().includes('warner') ||
+                                 lead.company?.toLowerCase().includes('sony') ||
+                                 lead.company?.toLowerCase().includes('universal') ||
+                                 lead.company?.toLowerCase().includes('disney') ||
+                                 lead.company?.toLowerCase().includes('netflix') ||
+                                 lead.company?.toLowerCase().includes('music');
+      
+      // Use role and industry to determine base score
+      let baseScore = 59; // Default
+      
+      if (isDirectorOrVP && isEntertainmentMedia) {
+        baseScore = 84; // Higher score for directors in entertainment
+      } else if (isDirectorOrVP) {
+        baseScore = 76; // High score for directors in any industry
+      } else if (isEntertainmentMedia) {
+        baseScore = 71; // Good score for any role in entertainment
+      }
+      
+      // Use existing scores if available, otherwise use calculated base
+      const score = lead.marketingScore || lead.intentScore || lead.spendAuthorityScore || baseScore;
+      
+      if (debugInfo) {
+        console.log(`Best Overall Score for ${lead.name}: ${score} (no preferences available)`);
+      }
+      
+      return score;
+    }
+    
+    // Start with actual scores from the lead, using fixed fallbacks
+    const baseScores = {
+      marketing: lead.marketingScore || 59,
+      intent: lead.intentScore || calculateIntentScore(lead),
+      budget: lead.budgetPotential || 59,
+      spendAuthority: lead.spendAuthorityScore || calculateSpendAuthority(lead)
+    };
+    
+    if (debugInfo) {
+      debugInfo.baseScores = {...baseScores};
+    }
+    
+    // Base weights are fixed to create consistent results
+    const weights = {
+      marketing: 1.0,
+      intent: 1.1,
+      budget: 0.9,
+      spendAuthority: 0.8
+    };
+    
+    // Track significant match factors for debugging
+    const matchFactors: string[] = [];
+    
+    // ROLE MATCHING - Adjust weights based on target roles
+    if (preferences?.targetRoles && preferences.targetRoles.length > 0) {
+      // If they care about specific roles, intent becomes more important
+      weights.intent = 1.5;
+      weights.spendAuthority = 1.2;
+      
+      // Check if lead's title matches any target role
+      const leadTitle = lead.title?.toLowerCase() || '';
+      const roleMatches = preferences.targetRoles.filter(
+        role => leadTitle.includes(role.toLowerCase())
+      );
+      
+      if (roleMatches.length > 0) {
+        // This is a high-value match - boost scores proportionally to match count
+        const matchBoost = Math.min(1.5, 1 + (roleMatches.length * 0.2));
+        weights.intent *= matchBoost;
+        weights.marketing *= 1.2;
+        
+        // Also boost the base scores for a better match (with fixed values)
+        baseScores.intent += 15;
+        baseScores.marketing += 10;
+        
+        matchFactors.push(`Role match: ${roleMatches.join(', ')}`);
+      }
+      
+      // Extra points for seniority if it matters to the user
+      const seniorityTerms = ['chief', 'ceo', 'cfo', 'cto', 'cmo', 'vp', 'vice president', 'director', 'head'];
+      if (lead.title && seniorityTerms.some(term => lead.title?.toLowerCase().includes(term))) {
+        weights.spendAuthority *= 1.3;
+        baseScores.spendAuthority += 20;
+        matchFactors.push('Senior role detected');
+      }
+    }
+    
+    // INDUSTRY MATCHING - Adjust based on industry preferences
+    if (preferences?.targetIndustries && preferences.targetIndustries.length > 0) {
+      // If they care about specific industries, marketing fit is more important
+      weights.marketing = 1.3;
+      
+      // Check if lead's company or industry field matches any target industry
+      const leadCompany = lead.company?.toLowerCase() || '';
+      // Safely access industry field which might not be in the Lead type
+      const leadIndustry = (lead as any).industry?.toLowerCase() || '';
+      
+      const industryMatches = preferences.targetIndustries.filter(
+        industry => leadCompany.includes(industry.toLowerCase()) || 
+                   leadIndustry.includes(industry.toLowerCase())
+      );
+      
+      if (industryMatches.length > 0) {
+        // This is a high-value match - boost marketing and budget scores
+        const matchBoost = Math.min(1.6, 1 + (industryMatches.length * 0.2));
+        weights.marketing *= matchBoost;
+        weights.budget *= 1.2;
+        
+        // Also boost the base scores for a better match
+        baseScores.marketing += 15;
+        baseScores.budget += 10;
+        
+        matchFactors.push(`Industry match: ${industryMatches.join(', ')}`);
+      }
+    }
+    
+    // BUDGET SENSITIVITY - Adjust if user mentioned budget concerns
+    if (preferences?.companyProduct?.toLowerCase().includes('budget') || 
+        preferences?.companyProduct?.toLowerCase().includes('pricing') ||
+        preferences?.companyProduct?.toLowerCase().includes('cost')) {
+      weights.budget = 1.4;
+      weights.spendAuthority = 1.3;
+      matchFactors.push('Budget sensitivity detected in preferences');
+    }
+    
+    // B2B ALIGNMENT - Adjust if both user and lead are B2B focused
+    const isB2BFocused = preferences?.targetIndustries?.some(industry => 
+      industry.toLowerCase().includes('technology') ||
+      industry.toLowerCase().includes('consulting') ||
+      industry.toLowerCase().includes('enterprise') ||
+      industry.toLowerCase().includes('b2b')
+    );
+    
+    if (isB2BFocused && lead.businessOrientation === 'B2B') {
+      weights.budget *= 1.25;
+      weights.spendAuthority *= 1.2;
+      
+      // Boost base scores for B2B alignment
+      baseScores.budget += 12;
+      baseScores.spendAuthority += 15;
+      
+      matchFactors.push('B2B alignment');
+    }
+    
+    // COMPANY SIZE MATCHING - Adjust if company size preference matches
+    if (preferences?.targetCompanySizes && preferences.targetCompanySizes.length > 0) {
+      // Safely access company_size which might not be in the Lead type
+      const leadCompanySize = (lead as any).company_size;
+      
+      if (leadCompanySize && preferences.targetCompanySizes.includes(leadCompanySize)) {
+        weights.budget *= 1.15;
+        baseScores.budget += 10;
+        matchFactors.push(`Company size match: ${leadCompanySize}`);
+      }
+    }
+    
+    if (debugInfo) {
+      debugInfo.weights = {...weights};
+    }
+    
+    // Calculate weighted scores
+    const scores = {
+      marketing: baseScores.marketing * weights.marketing,
+      intent: baseScores.intent * weights.intent,
+      budget: baseScores.budget * weights.budget,
+      spendAuthority: baseScores.spendAuthority * weights.spendAuthority
+    };
+    
+    // Sum of all weighted scores
+    const weightedSum = scores.marketing + scores.intent + scores.budget + scores.spendAuthority;
+    
+    // Sum of all weights
+    const weightSum = weights.marketing + weights.intent + weights.budget + weights.spendAuthority;
+    
+    // Calculate weighted average, no variation, and round to nearest integer
+    const weightedAverage = Math.round(weightedSum / weightSum);
+    
+    // Ensure the score is between 0 and 100 and return a value of at least 20
+    const finalScore = Math.min(100, Math.max(20, weightedAverage));
+    
+    if (showDebugInfo && debugInfo) {
+      debugInfo.finalScore = finalScore;
+      console.log('Best Overall Score for', lead.name, ':', finalScore);
+      console.log('- Base Scores:', baseScores);
+      console.log('- Weights:', weights);
+      console.log('- Match Factors:', matchFactors.length ? matchFactors.join(', ') : 'None');
+    }
+    
+    return finalScore;
+  };
+
+  // Calculate intent score based on lead attributes when not explicitly provided
+  const calculateIntentScore = (lead: Lead): number => {
+    // Use a deterministic approach based on the lead's properties
+    // Hash function to generate a stable number from the lead name/email
+    const getStableHashFromLead = (lead: Lead): number => {
+      const str = (lead.name || '') + (lead.email || '') + (lead.company || '');
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash = hash & hash; // Convert to 32bit integer
+      }
+      // Return a positive number between 0-25
+      return Math.abs(hash % 26);
+    };
+    
+    // Base score between 55-65
+    let baseScore = 55 + getStableHashFromLead(lead) % 11;
+    
+    // Adjust based on title/role relevance
+    if (lead.title) {
+      const titleLower = lead.title.toLowerCase();
+      
+      // Marketing roles generally have higher intent for marketing tools
+      if (titleLower.includes('marketing') || titleLower.includes('content') || titleLower.includes('brand')) {
+        baseScore += 10;
+      }
+      
+      // Director+ roles have decision-making authority
+      if (titleLower.includes('director') || titleLower.includes('chief') || 
+          titleLower.includes('vp') || titleLower.includes('head')) {
+        baseScore += 8;
+      }
+    }
+    
+    // Adjust based on company
+    if (lead.company) {
+      const companyLower = lead.company.toLowerCase();
+      
+      // Well-known companies might have more complex needs
+      if (['ticketmaster', 'sony', 'warner', 'disney', 'netflix', 'nike', 'adidas', 
+           'amazon', 'microsoft', 'google', 'apple'].some(name => companyLower.includes(name))) {
+        baseScore += 7;
+      }
+      
+      // B2B companies often need content marketing solutions
+      if (lead.businessOrientation === 'B2B') {
+        baseScore += 5;
+      }
+    }
+    
+    // Normalize the score to be between 40-80
+    return Math.min(80, Math.max(40, baseScore));
+  };
+  
+  // Calculate spend authority when not explicitly provided
+  const calculateSpendAuthority = (lead: Lead): number => {
+    // Use a deterministic approach based on the lead's properties
+    // Hash function to generate a stable number from the lead name/email
+    const getStableHashFromLead = (lead: Lead): number => {
+      const str = (lead.name || '') + (lead.email || '') + (lead.id || '');
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash = hash & hash; // Convert to 32bit integer
+      }
+      // Return a positive number between 0-20
+      return Math.abs(hash % 21);
+    };
+    
+    // Base score between 45-55
+    let baseScore = 45 + getStableHashFromLead(lead) % 11;
+    
+    // Adjust based on seniority
+    if (lead.title) {
+      const titleLower = lead.title.toLowerCase();
+      
+      // C-level has highest authority
+      if (titleLower.includes('ceo') || titleLower.includes('cfo') || 
+          titleLower.includes('cto') || titleLower.includes('cmo') || 
+          titleLower.includes('chief')) {
+        baseScore += 25;
+      }
+      // VP level has high authority
+      else if (titleLower.includes('vp') || titleLower.includes('vice president')) {
+        baseScore += 20;
+      }
+      // Director level has good authority
+      else if (titleLower.includes('director') || titleLower.includes('head of')) {
+        baseScore += 15;
+      }
+      // Manager level has some authority
+      else if (titleLower.includes('manager') || titleLower.includes('lead')) {
+        baseScore += 8;
+      }
+    }
+    
+    // Adjust based on company size/prestige
+    if (lead.company) {
+      const companyLower = lead.company.toLowerCase();
+      
+      // Enterprise companies have larger budgets
+      if (['ticketmaster', 'sony', 'warner', 'disney', 'netflix', 'nike', 'adidas', 
+           'amazon', 'microsoft', 'google', 'apple'].some(name => companyLower.includes(name))) {
+        baseScore += 10;
+      }
+    }
+    
+    // Normalize the score
+    return Math.min(85, Math.max(35, baseScore));
+  };
+
   const processedLeads = useMemo(() => {
-    let filteredLeads = leads;
+    // Pre-calculate all scores for all leads first to ensure consistency
+    const scoredLeads = leads.map(lead => {
+      // Calculate and assign scores if not already present
+      if (lead.intentScore === undefined) {
+        lead.intentScore = calculateIntentScore(lead);
+      }
+      
+      if (lead.spendAuthorityScore === undefined) {
+        lead.spendAuthorityScore = calculateSpendAuthority(lead);
+      }
+      
+      return {
+        ...lead,
+        calculatedOverallScore: calculateBestOverallScore(lead)
+      };
+    });
+    
+    let filteredLeads = scoredLeads;
 
     // 1. Filtering by Search Term
     if (searchTerm) {
@@ -301,14 +632,11 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
     }
 
     // 6. Sorting
-    const sortableLeads = [...filteredLeads]; // Create a mutable copy
-
-    // Define custom sort order for orientation
-    const orientationOrder: { [key: string]: number } = { 'B2B': 1, 'B2C': 2, 'Mixed': 3, 'Unknown': 4 };
-
-    sortableLeads.sort((a, b) => {
-      // If a specific column sort is requested (and not the default 'created_at')
-      if (sortConfig.key && sortConfig.key !== 'created_at') {
+    let sortedLeads;
+    
+    // If a specific column sorting is requested
+    if (sortConfig.key) {
+      sortedLeads = [...filteredLeads].sort((a, b) => {
         const aValue = a[sortConfig.key!];
         const bValue = b[sortConfig.key!];
 
@@ -323,44 +651,32 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
         } else if (typeof aValue === 'string' && typeof bValue === 'string') {
           comparison = aValue.localeCompare(bValue);
         } else {
-          // Fallback for mixed types or other types
-           comparison = String(aValue).localeCompare(String(bValue));
+          comparison = String(aValue).localeCompare(String(bValue));
         }
         return sortConfig.direction === 'ascending' ? comparison : comparison * -1;
-      } else {
-        // Default Multi-Factor Sorting (Highest importance first)
-        // 1. Intent Score (Descending) - New top priority
-        const intentComparison = (b.intentScore ?? 0) - (a.intentScore ?? 0);
-        if (intentComparison !== 0) return intentComparison;
-
-        // 2. Spend Authority Score (Descending) - New second priority
-        const spendAuthorityComparison = (b.spendAuthorityScore ?? 0) - (a.spendAuthorityScore ?? 0);
-        if (spendAuthorityComparison !== 0) return spendAuthorityComparison;
-
-        // 3. Marketing Score (Descending) - Now third priority
-        const scoreComparison = (b.marketingScore ?? 0) - (a.marketingScore ?? 0);
-        if (scoreComparison !== 0) return scoreComparison;
-
-        // 4. Budget Potential (Descending) - Now fourth priority
-        const budgetComparison = (b.budgetPotential ?? 0) - (a.budgetPotential ?? 0);
-        if (budgetComparison !== 0) return budgetComparison;
-
-        // 5. Company Focus (B2B first) - Now fifth priority
-        const orientationA = orientationOrder[a.businessOrientation || 'Unknown'] ?? 5; // Assign higher number if undefined/null
-        const orientationB = orientationOrder[b.businessOrientation || 'Unknown'] ?? 5; // Assign higher number if undefined/null
-        const orientationComparison = orientationA - orientationB; // Ascending order based on defined numbers (1=B2B is best)
-        if (orientationComparison !== 0) return orientationComparison;
-
-        // 6. Tie-breaker: Created At (Descending - newest first)
+      });
+    } else {
+      // Default sorting by Best Overall score (highest to lowest)
+      sortedLeads = [...filteredLeads].sort((a, b) => {
+        // Primary sort: Best Overall score (descending)
+        const scoreA = a.calculatedOverallScore;
+        const scoreB = b.calculatedOverallScore;
+        const scoreDiff = scoreB - scoreA;
+        if (scoreDiff !== 0) return scoreDiff;
+        
+        // Secondary sort: Created date (newest first)
         const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
         const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-        return dateB - dateA; 
-      }
-    });
-
-    filteredLeads = sortableLeads;
-
-    return filteredLeads;
+        return dateB - dateA;
+      });
+    }
+    
+    console.log('Leads sorted by Best Overall score:', sortedLeads.slice(0, 5).map(lead => ({ 
+      name: lead.name, 
+      score: lead.calculatedOverallScore 
+    })));
+    
+    return sortedLeads;
   }, [leads, searchTerm, sortConfig, statusFilter, marketingScoreFilter, budgetConfidenceFilter, orientationFilter]);
 
   const requestSort = (key: keyof Lead) => {
@@ -481,235 +797,71 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
     return explanation;
   };
 
-  // Calculate Best Overall score based on user preferences
-  const calculateBestOverallScore = (lead: Lead) => {
-    // Debug mode (triple-click on search bar to activate)
-    const debugInfo = showDebugInfo ? {
-      leadName: lead.name,
-      baseScores: {} as Record<string, number>,
-      weights: {} as Record<string, number>,
-      finalScore: 0,
-      matchFactors: [] as string[]
-    } : null;
-    
-    // If no preferences, use the actual scores where available or reasonable defaults
-    if (!preferences) {
-      // Use actual scores when available, with fallbacks to prevent zeros
-      const scores = [
-        lead.marketingScore || 0, 
-        lead.intentScore || 0,
-        lead.budgetPotential || 0,
-        lead.spendAuthorityScore || 0,
-        lead.chromeScore || 0
-      ].filter(score => score > 0);
-      
-      // If we have at least one actual score, use the highest
-      // Otherwise use a random value between 55-70 to introduce variance
-      const highestScore = scores.length > 0 
-        ? Math.max(...scores) 
-        : 55 + Math.floor(Math.random() * 15);
-      
-      if (debugInfo) {
-        console.log(`Best Overall Score for ${lead.name}: ${highestScore} (no preferences available)`);
-      }
-      
-      return highestScore;
-    }
-    
-    // Start with actual scores from the lead, using fallbacks only when necessary
-    // Use more variance in fallback values to prevent identical scores
-    const baseScores = {
-      marketing: lead.marketingScore || (lead.chromeScore ? lead.chromeScore - 5 + Math.floor(Math.random() * 10) : 50 + Math.floor(Math.random() * 20)),
-      intent: lead.intentScore || (45 + Math.floor(Math.random() * 25)),
-      budget: lead.budgetPotential || (40 + Math.floor(Math.random() * 30)),
-      spendAuthority: lead.spendAuthorityScore || (35 + Math.floor(Math.random() * 35))
-    };
-    
-    if (debugInfo) {
-      debugInfo.baseScores = {...baseScores};
-    }
-    
-    // Base weights start with different values to create more natural variation
-    const weights = {
-      marketing: 1.0,
-      intent: 1.1,
-      budget: 0.9,
-      spendAuthority: 0.8
-    };
-    
-    // Track significant match factors for debugging
-    const matchFactors: string[] = [];
-    
-    // ROLE MATCHING - Adjust weights based on target roles
-    if (preferences?.targetRoles && preferences.targetRoles.length > 0) {
-      // If they care about specific roles, intent becomes more important
-      weights.intent = 1.5;
-      weights.spendAuthority = 1.2;
-      
-      // Check if lead's title matches any target role
-      const leadTitle = lead.title?.toLowerCase() || '';
-      const roleMatches = preferences.targetRoles.filter(
-        role => leadTitle.includes(role.toLowerCase())
-      );
-      
-      if (roleMatches.length > 0) {
-        // This is a high-value match - boost scores proportionally to match count
-        const matchBoost = Math.min(1.5, 1 + (roleMatches.length * 0.2));
-        weights.intent *= matchBoost;
-        weights.marketing *= 1.2;
-        
-        // Also boost the base scores for a better match (with more variance)
-        baseScores.intent += 15 + Math.floor(Math.random() * 10);
-        baseScores.marketing += 10 + Math.floor(Math.random() * 8);
-        
-        matchFactors.push(`Role match: ${roleMatches.join(', ')}`);
-      }
-      
-      // Extra points for seniority if it matters to the user
-      const seniorityTerms = ['chief', 'ceo', 'cfo', 'cto', 'cmo', 'vp', 'vice president', 'director', 'head'];
-      if (lead.title && seniorityTerms.some(term => lead.title?.toLowerCase().includes(term))) {
-        weights.spendAuthority *= 1.3;
-        baseScores.spendAuthority += 20;
-        matchFactors.push('Senior role detected');
-      }
-    }
-    
-    // INDUSTRY MATCHING - Adjust based on industry preferences
-    if (preferences?.targetIndustries && preferences.targetIndustries.length > 0) {
-      // If they care about specific industries, marketing fit is more important
-      weights.marketing = 1.3;
-      
-      // Check if lead's company or industry field matches any target industry
-      const leadCompany = lead.company?.toLowerCase() || '';
-      // Safely access industry field which might not be in the Lead type
-      const leadIndustry = (lead as any).industry?.toLowerCase() || '';
-      
-      const industryMatches = preferences.targetIndustries.filter(
-        industry => leadCompany.includes(industry.toLowerCase()) || 
-                   leadIndustry.includes(industry.toLowerCase())
-      );
-      
-      if (industryMatches.length > 0) {
-        // This is a high-value match - boost marketing and budget scores
-        const matchBoost = Math.min(1.6, 1 + (industryMatches.length * 0.2));
-        weights.marketing *= matchBoost;
-        weights.budget *= 1.2;
-        
-        // Also boost the base scores for a better match
-        baseScores.marketing += 15 + Math.floor(Math.random() * 10);
-        baseScores.budget += 10 + Math.floor(Math.random() * 5);
-        
-        matchFactors.push(`Industry match: ${industryMatches.join(', ')}`);
-      }
-    }
-    
-    // BUDGET SENSITIVITY - Adjust if user mentioned budget concerns
-    if (preferences?.companyProduct?.toLowerCase().includes('budget') || 
-        preferences?.companyProduct?.toLowerCase().includes('pricing') ||
-        preferences?.companyProduct?.toLowerCase().includes('cost')) {
-      weights.budget = 1.4;
-      weights.spendAuthority = 1.3;
-      matchFactors.push('Budget sensitivity detected in preferences');
-    }
-    
-    // B2B ALIGNMENT - Adjust if both user and lead are B2B focused
-    const isB2BFocused = preferences?.targetIndustries?.some(industry => 
-      industry.toLowerCase().includes('technology') ||
-      industry.toLowerCase().includes('consulting') ||
-      industry.toLowerCase().includes('enterprise') ||
-      industry.toLowerCase().includes('b2b')
-    );
-    
-    if (isB2BFocused && lead.businessOrientation === 'B2B') {
-      weights.budget *= 1.25;
-      weights.spendAuthority *= 1.2;
-      
-      // Boost base scores for B2B alignment
-      baseScores.budget += 12;
-      baseScores.spendAuthority += 15;
-      
-      matchFactors.push('B2B alignment');
-    }
-    
-    // COMPANY SIZE MATCHING - Adjust if company size preference matches
-    if (preferences?.targetCompanySizes && preferences.targetCompanySizes.length > 0) {
-      // Safely access company_size which might not be in the Lead type
-      const leadCompanySize = (lead as any).company_size;
-      
-      if (leadCompanySize && preferences.targetCompanySizes.includes(leadCompanySize)) {
-        weights.budget *= 1.15;
-        baseScores.budget += 10;
-        matchFactors.push(`Company size match: ${leadCompanySize}`);
-      }
-    }
-    
-    // Apply small random variation to prevent identical scores (1-5%)
-    const variationFactor = 0.95 + (Math.random() * 0.1);
-    
-    if (debugInfo) {
-      debugInfo.weights = {...weights};
-    }
-    
-    // Calculate weighted scores
-    const scores = {
-      marketing: baseScores.marketing * weights.marketing,
-      intent: baseScores.intent * weights.intent,
-      budget: baseScores.budget * weights.budget,
-      spendAuthority: baseScores.spendAuthority * weights.spendAuthority
-    };
-    
-    // Sum of all weighted scores
-    const weightedSum = scores.marketing + scores.intent + scores.budget + scores.spendAuthority;
-    
-    // Sum of all weights
-    const weightSum = weights.marketing + weights.intent + weights.budget + weights.spendAuthority;
-    
-    // Calculate weighted average, apply variation, and round to nearest integer
-    const weightedAverage = Math.round((weightedSum / weightSum) * variationFactor);
-    
-    // Ensure the score is between 0 and 100 and return a value of at least 20
-    const finalScore = Math.min(100, Math.max(20, weightedAverage));
-    
-    if (showDebugInfo && debugInfo) {
-      debugInfo.finalScore = finalScore;
-      console.log('Best Overall Score for', lead.name, ':', finalScore);
-      console.log('- Base Scores:', baseScores);
-      console.log('- Weights:', weights);
-      console.log('- Match Factors:', matchFactors.length ? matchFactors.join(', ') : 'None');
-      console.log('- Variation Factor:', variationFactor.toFixed(2));
-    }
-    
-    return finalScore;
-  };
-
   // Calculate engagement potential based on lead attributes
   const calculateEngagementPotential = (lead: Lead) => {
-    if (!preferences) return 50;
-    
-    let score = 50; // Base score
-    
-    // Role relevance affects engagement
-    if (preferences.targetRoles && lead.title) {
-      const roleMatches = preferences.targetRoles.some(
-        role => lead.title?.toLowerCase().includes(role.toLowerCase())
-      );
-      if (roleMatches) {
-        score += 25;
+    // Use a deterministic approach based on the lead's properties
+    // Hash function to generate a stable number from the lead name/email
+    const getStableHashFromLead = (lead: Lead): number => {
+      const str = (lead.name || '') + (lead.email || '') + (lead.company || '');
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash = hash & hash; // Convert to 32bit integer
       }
-    }
+      // Return a positive number between 0-15
+      return Math.abs(hash % 16);
+    };
     
-    // Decision-makers are more likely to engage
+    // Base factors for engagement (42-57 range)
+    let baseScore = 42 + getStableHashFromLead(lead);
+    
+    // Role-based adjustments
     if (lead.title) {
       const titleLower = lead.title.toLowerCase();
-      const decisionMakerTerms = ['ceo', 'cto', 'cfo', 'cmo', 'chief', 'vp', 'vice president', 'director', 'head of'];
       
-      if (decisionMakerTerms.some(term => titleLower.includes(term))) {
-        score += 15;
+      // Marketing roles more likely to engage with marketing tools
+      if (titleLower.includes('marketing')) {
+        baseScore += 12;
+      }
+      
+      // Content-focused roles have high engagement likelihood
+      if (titleLower.includes('content') || titleLower.includes('communication')) {
+        baseScore += 10;
+      }
+      
+      // Decision makers are more selective but valuable when they engage
+      if (titleLower.includes('director') || titleLower.includes('chief') || 
+          titleLower.includes('vp') || titleLower.includes('head')) {
+        baseScore += 8;
       }
     }
     
-    // Normalize score
-    return Math.min(100, Math.max(0, score));
+    // Company-based adjustments
+    if (lead.company) {
+      const companyLower = lead.company.toLowerCase();
+      
+      // Companies in entertainment/media industry often need content help
+      if (['entertainment', 'media', 'film', 'music', 'games', 'gaming', 'creative'].some(
+          term => companyLower.includes(term))) {
+        baseScore += 7;
+      }
+      
+      // Known brands may be harder to engage but worth pursuing
+      if (['ticketmaster', 'sony', 'warner', 'disney', 'netflix', 'nike'].some(
+          name => companyLower.includes(name))) {
+        baseScore += 5;
+      }
+    }
+    
+    // Use actual scores when available for more precision
+    const marketingFactor = lead.marketingScore ? lead.marketingScore * 0.6 : baseScore * 0.6;
+    const intentFactor = lead.intentScore ? lead.intentScore * 0.4 : (baseScore + 5) * 0.4;
+    
+    // Weighted calculation with stable deterministic adjustment
+    const finalScore = Math.round(marketingFactor + intentFactor);
+    
+    // Ensure the score is within range
+    return Math.min(85, Math.max(30, finalScore));
   };
 
   // Mobile card view for each lead
@@ -758,7 +910,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
           </div>
           <div className="flex items-center">
             <ScoreCell 
-              score={calculateBestOverallScore(lead)} 
+              score={(lead as any).calculatedOverallScore || calculateBestOverallScore(lead)}
               label="Best Overall"
               explanation="Weighted score based on your business priorities from onboarding. This indicates the lead's overall quality for your specific business needs."
               icon={<Trophy className="w-4 h-4" />}
@@ -775,7 +927,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
             </div>
             <div className="flex items-center gap-1.5">
               <ScoreCell 
-                score={lead.intentScore} 
+                score={lead.intentScore || calculateIntentScore(lead)} 
                 label="Intent Score"
                 explanation={getScoreExplanation(lead, 'intent')}
                 icon={<Target className="w-3.5 h-3.5 text-blue-500" />}
@@ -805,7 +957,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
             <div className="text-xs text-gray-400 font-medium">Spend Authority</div>
             <div className="flex items-center gap-1.5">
               <ScoreCell 
-                score={lead.spendAuthorityScore} 
+                score={lead.spendAuthorityScore || calculateSpendAuthority(lead)} 
                 label="Spend Authority"
                 explanation={getScoreExplanation(lead, 'spend')}
               />
@@ -1047,7 +1199,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                           return (
                             <td key={column.id} className="py-3 px-4 whitespace-nowrap">
                               <ScoreCell 
-                                score={bestOverallScore}
+                                score={(lead as any).calculatedOverallScore}
                                 label="Best Overall"
                                 explanation="Weighted score based on your business priorities from onboarding. This indicates the lead's overall quality for your specific business needs."
                                 icon={<Trophy className="w-4 h-4" />}
@@ -1097,7 +1249,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                           return (
                             <td key={column.id} className="py-3 px-4 whitespace-nowrap">
                               <ScoreCell 
-                                score={lead.intentScore} 
+                                score={lead.intentScore || calculateIntentScore(lead)} 
                                 label="Intent Score"
                                 explanation={getScoreExplanation(lead, 'intent')}
                                 icon={<Target className="w-3.5 h-3.5 text-blue-500" />}
@@ -1108,7 +1260,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                           return (
                             <td key={column.id} className="py-3 px-4 whitespace-nowrap">
                               <ScoreCell 
-                                score={lead.spendAuthorityScore} 
+                                score={lead.spendAuthorityScore || calculateSpendAuthority(lead)} 
                                 label="Spend Authority"
                                 explanation={getScoreExplanation(lead, 'spend')}
                               />
@@ -1224,7 +1376,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                     </div>
                     <div className="flex items-center">
                       <ScoreCell 
-                        score={bestOverallScore} 
+                        score={(lead as any).calculatedOverallScore}
                         label="Best Overall"
                         explanation="Weighted score based on your business priorities from onboarding. This indicates the lead's overall quality for your specific business needs."
                         icon={<Trophy className="w-4 h-4" />}
@@ -1241,7 +1393,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                       </div>
                       <div className="flex items-center gap-1.5">
                         <ScoreCell 
-                          score={lead.intentScore} 
+                          score={lead.intentScore || calculateIntentScore(lead)} 
                           label="Intent Score"
                           explanation={getScoreExplanation(lead, 'intent')}
                           icon={<Target className="w-3.5 h-3.5 text-blue-500" />}
@@ -1271,7 +1423,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                       <div className="text-xs text-gray-400 font-medium">Spend Authority</div>
                       <div className="flex items-center gap-1.5">
                         <ScoreCell 
-                          score={lead.spendAuthorityScore} 
+                          score={lead.spendAuthorityScore || calculateSpendAuthority(lead)} 
                           label="Spend Authority"
                           explanation={getScoreExplanation(lead, 'spend')}
                         />
@@ -1314,13 +1466,13 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
             );
           })
         ) : (
-          <div className="text-center py-10 text-gray-500">
+          <div className="py-8 text-center text-gray-500">
             {searchTerm || statusFilter !== 'all' || marketingScoreFilter !== 'all' || budgetConfidenceFilter !== 'all' || orientationFilter !== 'all' 
-              ? 'No leads found matching your criteria.' 
-              : 'No leads to display.'}
+             ? 'No contacts match your search or filter criteria.' 
+             : 'No contacts found.'}
           </div>
         )}
       </div>
     </div>
   );
-} 
+}

@@ -147,7 +147,20 @@ Cheers,
     if (!baseMessage && selectedLead) {
       generateBaseMessage(selectedLead);
       // Wait a moment for baseMessage to be set
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+
+    // Safety check - if still no baseMessage, use current message or generate one
+    if (!baseMessage) {
+      if (message) {
+        setBaseMessage(message);
+      } else if (selectedLead) {
+        generateBaseMessage(selectedLead);
+        await new Promise(resolve => setTimeout(resolve, 300));
+      } else {
+        toast.error("Failed to generate base message");
+        return;
+      }
     }
 
     setLoading(true);

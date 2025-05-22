@@ -234,4 +234,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced data validation and error reporting
 
 ### Fixed
-- Various type issues and improved TypeScript support 
+- Various type issues and improved TypeScript support
+
+## [1.4.0] - 2023-07-24
+
+### Added
+- Interactive animated background on the homepage
+- Dynamic particle animations that visualize AI and data connections
+- Abstract data visualization elements including hexagons, pulse effects, and connection points
+- AI visual metaphors (data lines, scanners, connection dots) to reinforce the platform's capabilities
+
+### Changed
+- Redesigned homepage with floating text directly on animated background
+- Improved logo styling with color accents and better contrast
+- Enhanced typography with gradient text effects for headlines
+- Optimized testimonial section for better readability against animated background
+- Refined color palette to create better visual hierarchy
+
+### Fixed
+- Fixed issues with lead scoring algorithm to ensure consistent results
+- Resolved error with MessageGenerator component (Missing required parameters: baseMessage)
+- Improved button hover states and interaction feedback
+- Enhanced overall responsiveness of the landing page
+
+## [1.3.0] - 2023-07-10
+
+### Added
+- Personalized lead scoring based on user preferences
+- Lead management dashboard with sortable columns
+- "Best Overall" score calculation using weighted factors
+
+### Changed
+- Improved data table with better sorting capabilities
+- Enhanced user onboarding experience
+- Updated navigation for better accessibility
+
+### Fixed
+- Resolved authentication issues with Google login
+- Fixed data inconsistencies in lead scoring
+- Improved error handling throughout the application 

@@ -10,6 +10,252 @@
 
 body {
   min-height: 100vh;
+  background: linear-gradient(to bottom, rgb(var(--background-start-rgb)), rgb(var(--background-end-rgb)));
+}
+
+/* Hero section animations */
+@keyframes float {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translateY(-30px) scale(1.05);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.3;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* AI Visualization Animations */
+@keyframes scannerMove {
+  0% {
+    transform: translateY(0);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateY(20px);
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 0.8;
+  }
+}
+
+@keyframes dataLine {
+  0% {
+    width: 0;
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0.2;
+  }
+}
+
+@keyframes circlePulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+}
+
+@keyframes dotPulse {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(0.5);
+    opacity: 0.3;
+  }
+}
+
+@keyframes hexRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* AI Visualization Elements */
+.ai-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.8) 0%, rgba(79, 70, 229, 0.3) 70%);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: circlePulse 4s infinite ease-in-out;
+}
+
+.ai-pulse-ring {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 2px solid rgba(99, 102, 241, 0.5);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: pulse 3s infinite ease-in-out;
+}
+
+.ai-data-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ai-data-line {
+  height: 2px;
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.9) 0%, rgba(129, 140, 248, 0.4) 100%);
+  border-radius: 1px;
+  animation: dataLine 3s infinite ease-in-out;
+}
+
+.ai-hexagon {
+  width: 60px;
+  height: 52px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.4) 0%, rgba(79, 70, 229, 0.15) 100%);
+  position: relative;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  animation: hexRotate 20s infinite linear;
+}
+
+.ai-connection-dots {
+  position: relative;
+  width: 30px;
+  height: 30px;
+}
+
+.ai-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: rgba(99, 102, 241, 0.9);
+  position: absolute;
+  animation: dotPulse 3s infinite ease-in-out;
+}
+
+.ai-scanner {
+  width: 50px;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(129, 140, 248, 0) 0%, rgba(99, 102, 241, 0.9) 50%, rgba(129, 140, 248, 0) 100%);
+  animation: scannerMove 3s infinite ease-in-out;
+  position: relative;
+}
+
+.ai-scanner::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 0;
+  width: 100%;
+  height: 12px;
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0) 0%, rgba(99, 102, 241, 0.2) 50%, rgba(99, 102, 241, 0) 100%);
+  pointer-events: none;
+}
+
+.particle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background-color: rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+  animation: float 15s infinite ease-in-out;
+  pointer-events: none;
+}
+
+.particle-0 {
+  background-color: rgba(79, 70, 229, 0.5);
+  width: 4px;
+  height: 4px;
+}
+
+.particle-1 {
+  background-color: rgba(99, 102, 241, 0.5);
+  width: 5px;
+  height: 5px;
+}
+
+.particle-2 {
+  background-color: rgba(129, 140, 248, 0.5);
+  width: 7px;
+  height: 7px;
+}
+
+.particle-3 {
+  background-color: rgba(165, 180, 252, 0.4);
+  width: 5px;
+  height: 5px;
+}
+
+.particle-4 {
+  background-color: rgba(224, 231, 255, 0.3);
+  width: 3px;
+  height: 3px;
+}
+
+.glow-circle {
+  animation: pulse 8s infinite ease-in-out;
+  filter: blur(80px);
+}
+
+.animate-gradient-slow {
+  background-size: 200% 200%;
+  animation: gradientShift 15s ease infinite;
+}
+
+.bg-grid-pattern-light {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
 }
 
 @layer components {

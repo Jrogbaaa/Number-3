@@ -12,6 +12,8 @@ AI-powered insights and outreach automation for lead management.
 - Personalized lead scoring based on user preferences
 - Customizable table columns that adapt to business needs
 - "Best Overall" score that weights factors according to user priorities
+- **🌟 Interactive Animated Background**: Dynamic animated elements that visualize AI and data connections
+- **✨ Modern UI/UX**: Clean, floating text design with gradient accents for improved readability and visual appeal
 
 ## Getting Started
 
@@ -624,3 +626,23 @@ The platform uses NextAuth.js for authentication with Google OAuth:
 - New users are automatically created in the database when they sign in with Google
 - User sessions are maintained using JWT tokens
 - Authentication state is accessible throughout the application via the NextAuth session provider 
+
+## UI/UX Enhancements
+
+### Interactive Animated Background
+The platform features a dynamic, interactive background animation on the homepage that creates a modern, tech-forward impression:
+
+- **Particle Animation**: Floating particles that respond subtly to user interaction
+- **Data Visualization Elements**: Abstract representations of AI data processing and connections
+- **Ambient Glow Effects**: Soft color gradients that add depth without compromising readability
+- **AI Visual Metaphors**: Hexagons, data lines, and scan patterns that reinforce the AI-powered nature of the platform
+
+### Modern Interface Design
+The user interface has been carefully crafted to balance aesthetics with usability:
+
+- **Floating Text Design**: Content appears to float directly on the animated background for a seamless experience
+- **Strategic Contrast**: Text and interactive elements maintain high readability against the dynamic background
+- **Gradient Accents**: Subtle color gradients highlight important information and create visual hierarchy
+- **Responsive Adaptations**: The UI automatically adjusts to provide optimal experiences across all device sizes
+
+These enhancements work together to create a memorable, professional impression while ensuring the platform remains highly functional and accessible. 

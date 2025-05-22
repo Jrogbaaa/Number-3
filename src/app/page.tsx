@@ -57,6 +57,96 @@ function SearchParamsWrapper({ children }: SearchParamsWrapperProps) {
   return children({ isLandingPage });
 }
 
+// Animation components for the hero background
+const ParticleBackground = () => {
+  return (
+    <div className="particle-container absolute inset-0 overflow-hidden -z-10">
+      <div className="particles">
+        {Array.from({ length: 50 }).map((_, index) => (
+          <div 
+            key={index} 
+            className={`particle particle-${index % 5}`}
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDuration: `${Math.random() * 10 + 10}s`,
+              animationDelay: `${Math.random() * 5}s`,
+              opacity: Math.random() * 0.5 + 0.2,
+            }}
+          />
+        ))}
+      </div>
+      <div className="glow-circle absolute left-1/4 top-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-indigo-500/20 blur-3xl"></div>
+      <div className="glow-circle absolute right-1/4 top-1/3 -translate-y-1/2 w-80 h-80 rounded-full bg-blue-500/20 blur-3xl"></div>
+      <div className="glow-circle absolute left-[60%] bottom-1/4 w-64 h-64 rounded-full bg-purple-500/15 blur-3xl"></div>
+    </div>
+  );
+};
+
+const AnimatedGradient = () => {
+  return (
+    <div className="absolute inset-0 -z-20">
+      <div className="absolute inset-0 bg-gradient-to-br from-navy via-dark-navy to-black animate-gradient-slow"></div>
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px]"></div>
+    </div>
+  );
+};
+
+const GridPattern = () => {
+  return (
+    <div className="absolute inset-0 -z-10 opacity-10">
+      <div className="h-full w-full bg-grid-pattern-light"></div>
+    </div>
+  );
+};
+
+// AI Visualization Element
+const AIPrecisionVisual = () => {
+  return (
+    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full h-full -z-5 opacity-30 pointer-events-none">
+      <div className="absolute top-20 right-[20%] w-32 h-32">
+        <div className="ai-circle"></div>
+        <div className="ai-pulse-ring"></div>
+      </div>
+      
+      <div className="absolute bottom-20 left-[25%]">
+        <div className="ai-data-lines">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="ai-data-line" style={{ 
+              width: `${30 + Math.random() * 70}px`,
+              animationDelay: `${i * 0.2}s`
+            }}></div>
+          ))}
+        </div>
+      </div>
+      
+      <div className="absolute top-[30%] left-[15%]">
+        <div className="ai-hexagon"></div>
+      </div>
+      
+      <div className="absolute top-[35%] right-[15%]">
+        <div className="ai-connection-dots">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="ai-dot" style={{
+              top: `${(i % 3) * 15}px`,
+              left: `${Math.floor(i / 3) * 15}px`,
+              animationDelay: `${i * 0.3}s`
+            }}></div>
+          ))}
+        </div>
+      </div>
+      
+      <div className="absolute bottom-[25%] right-[30%]">
+        <div className="ai-scanner"></div>
+      </div>
+      
+      {/* Additional glow elements */}
+      <div className="absolute top-[40%] left-[50%] w-64 h-64 rounded-full bg-indigo-500/5 blur-3xl"></div>
+      <div className="absolute top-[60%] left-[30%] w-32 h-32 rounded-full bg-blue-400/5 blur-2xl"></div>
+    </div>
+  );
+};
+
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [sessionError, setSessionError] = useState(false);
@@ -225,18 +315,26 @@ export default function Home() {
           handleSessionCheck(isLandingPage);
           
           return (
-            <div className="bg-gradient-to-b from-dark-navy to-navy min-h-screen">
+            <div className="min-h-screen relative">
+              {/* Animated background components - moved to cover entire page */}
+              <div className="fixed inset-0 z-0">
+                <AnimatedGradient />
+                <GridPattern />
+                <ParticleBackground />
+                <AIPrecisionVisual />
+              </div>
+              
               {/* Header/Navigation */}
-              <header className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6">
+              <header className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6 relative z-20 mt-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <Link 
                       href="/?landing=true"
-                      className="text-2xl font-bold text-white hover:text-gray-200 transition-colors"
+                      className="text-2xl font-bold flex items-center"
                       aria-label="OptiLeads.ai Home"
                       tabIndex={0}
                     >
-                      OptiLeads.ai
+                      <span className="text-white">Opti<span className="text-blue-400">Leads</span><span className="text-white opacity-80">.</span><span className="text-indigo-300">ai</span></span>
                     </Link>
                   </div>
                   <nav className="hidden md:flex space-x-8">
@@ -274,10 +372,10 @@ export default function Home() {
 
               {/* Hero Section with CTA */}
               <main>
-                <div className="relative isolate">
-                  <div className="mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8">
+                <div className="relative pt-10">
+                  <div className="mx-auto max-w-7xl px-6 py-20 sm:py-28 lg:px-8 relative z-10">
                     <div className="mx-auto max-w-2xl text-center">
-                      <h1 className="text-4xl font-bold tracking-tight text-white sm:text-6xl">
+                      <h1 className="text-4xl font-bold tracking-tight text-white sm:text-6xl bg-clip-text text-transparent bg-gradient-to-r from-white via-blue-100 to-indigo-200">
                         Find Your Best Leads with AI Precision
                       </h1>
                       <p className="mt-6 text-lg leading-8 text-gray-300">
@@ -287,18 +385,21 @@ export default function Home() {
                         <button
                           onClick={handleGetStarted}
                           disabled={isLoading}
-                          className="rounded-md bg-indigo-600 px-6 py-3 text-lg font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-all disabled:opacity-70"
+                          className="rounded-md bg-indigo-600 px-6 py-3 text-lg font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-all disabled:opacity-70 relative overflow-hidden group"
                           aria-label="Get started with OptiLeads.ai"
                           tabIndex={0}
                         >
-                          {isLoading ? (
-                            <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-white"></div>
-                          ) : (
-                            'Get Started for Free'
-                          )}
+                          <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                          <span className="relative">
+                            {isLoading ? (
+                              <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-white"></div>
+                            ) : (
+                              'Get Started for Free'
+                            )}
+                          </span>
                         </button>
-                        <a href="#how-it-works" className="text-sm font-semibold leading-6 text-white">
-                          Learn more <span aria-hidden="true">→</span>
+                        <a href="#how-it-works" className="text-sm font-semibold leading-6 text-white hover:text-indigo-300 transition-colors">
+                          Learn more <span aria-hidden="true" className="inline-block transition-transform group-hover:translate-x-1">→</span>
                         </a>
                       </div>
                     </div>
@@ -306,7 +407,7 @@ export default function Home() {
                 </div>
 
                 {/* Social Proof Section */}
-                <div className="bg-navy/60 py-10">
+                <div className="py-10 relative z-10">
                   <div className="mx-auto max-w-7xl px-6 lg:px-8">
                     <div className="mx-auto max-w-2xl text-center">
                       <h2 className="text-xl font-semibold leading-8 text-white">
@@ -324,7 +425,7 @@ export default function Home() {
                 </div>
 
                 {/* Featured Testimonial */}
-                <div className="bg-dark-navy py-24" id="testimonials">
+                <div className="py-24 relative z-10" id="testimonials">
                   <div className="mx-auto max-w-7xl px-6 lg:px-8">
                     <div className="mx-auto max-w-2xl text-center">
                       <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl mb-12">
@@ -335,7 +436,7 @@ export default function Home() {
                       {testimonials.map((testimonial) => (
                         <div 
                           key={testimonial.name}
-                          className="rounded-2xl bg-navy/40 p-8 backdrop-blur-sm shadow-lg ring-1 ring-white/10"
+                          className="rounded-2xl bg-navy/40 p-8 shadow-lg ring-1 ring-white/10"
                         >
                           <div className="flex items-center gap-4 mb-6">
                             <img 
@@ -356,7 +457,7 @@ export default function Home() {
                 </div>
 
                 {/* Stats Section */}
-                <div className="bg-navy/60 py-16">
+                <div className="py-16 relative z-10">
                   <div className="mx-auto max-w-7xl px-6 lg:px-8">
                     <div className="mx-auto max-w-2xl text-center">
                       <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl mb-8">
@@ -375,7 +476,7 @@ export default function Home() {
                 </div>
 
                 {/* Final CTA Section */}
-                <div className="bg-dark-navy py-16">
+                <div className="py-16 relative z-10">
                   <div className="mx-auto max-w-7xl px-6 lg:px-8">
                     <div className="mx-auto max-w-2xl text-center">
                       <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
@@ -405,13 +506,13 @@ export default function Home() {
               </main>
 
               {/* Footer */}
-              <footer className="bg-dark-navy border-t border-gray-800">
+              <footer className="border-t border-gray-800 relative z-10">
                 <div className="mx-auto max-w-7xl px-6 py-12 md:flex md:items-center md:justify-between lg:px-8">
                   <div className="flex justify-center space-x-6 md:order-2">
                     <a href="#" className="text-gray-400 hover:text-gray-300">
                       <span className="sr-only">LinkedIn</span>
-                                              <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                         <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.064-.926-2.065 0-1.138.92-2.063 2.064-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                      <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.064-.926-2.065 0-1.138.92-2.063 2.064-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
                       </svg>
                     </a>
                     <a href="#" className="text-gray-400 hover:text-gray-300">
