@@ -538,6 +538,17 @@ If you see stale data or need to refresh:
 - Verify the data was successfully uploaded via the Supabase Table Editor
 - Try clearing browser cache and reloading the page
 
+#### Lead Upload Issues (Recent Fix - December 2024)
+**Problem**: Leads uploaded but not appearing in dashboard
+**Solution**: This was a critical issue that has been resolved in the latest update. If you experience this:
+1. Make sure you're signed in with Google OAuth before uploading leads
+2. The system now properly routes authenticated users to database storage instead of localStorage
+3. Clear your browser's localStorage: `localStorage.clear()` in browser console
+4. Refresh the page and try uploading again
+5. Check that the upload success message indicates database storage, not localStorage
+
+**Technical Details**: Previous versions incorrectly used `allowUnauthenticated={true}` on the data-input page, causing all uploads to go to localStorage regardless of authentication status. This has been fixed to use `allowUnauthenticated={!isAuthenticated}`.
+
 #### Mobile Compatibility Issues
 - Clear browser cache and reload if CSS doesn't appear correct
 - Make sure you're using the latest version of your mobile browser

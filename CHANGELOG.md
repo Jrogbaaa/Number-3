@@ -5,6 +5,17 @@ All notable changes to this Contact Scoring Platform will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2024-12-07
+
+### Fixed
+- **Critical Lead Upload Issue**: Fixed leads not appearing in dashboard after upload
+  - Fixed data-input page configuration to use authenticated upload flow when user is signed in
+  - Previously, `allowUnauthenticated={true}` was causing all leads to be stored only in localStorage instead of the database
+  - Replaced problematic database upsert operation with manual duplicate checking to avoid constraint errors
+  - Fixed UUID generation to ensure proper database compatibility
+  - Updated ESLint configuration to remove unsupported "next/typescript" extension
+  - This resolves the complete user workflow: sign in → upload leads → view leads in dashboard
+
 ## [Unreleased] - 2024-07-15
 
 ### Added
@@ -234,7 +245,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced data validation and error reporting
 
 ### Fixed
-- Various type issues and improved TypeScript support
+- Various type issues and improved TypeScript support 
 
 ## [1.4.0] - 2023-07-24
 
