@@ -136,6 +136,13 @@ const MessageGenerator: React.FC<MessageGeneratorProps> = ({
     const senderProduct = userBusinessInfo?.companyProduct || 'innovative solutions';
     const senderIndustry = userBusinessInfo?.companyIndustry || '';
     
+    console.log('[MessageGenerator] Generating base message with business info:', {
+      senderCompany,
+      senderProduct: senderProduct.substring(0, 50) + (senderProduct.length > 50 ? '...' : ''),
+      senderIndustry,
+      hasBusinessInfo: !!userBusinessInfo
+    });
+    
     let openingInterest = '';
     if (lead.insights?.interests?.length && lead.insights.interests[0]) {
       openingInterest = `I saw you're interested in ${lead.insights.interests[0]} – that's pretty cool! `;
@@ -173,6 +180,12 @@ const MessageGenerator: React.FC<MessageGeneratorProps> = ({
       }
     }
 
+    // Show a helpful message if user hasn't completed onboarding
+    let onboardingNote = '';
+    if (!userBusinessInfo || (!userBusinessInfo.companyName && !userBusinessInfo.companyProduct)) {
+      onboardingNote = '\n\nNote: Complete your onboarding in settings to get fully personalized messages with your specific business information.';
+    }
+
     const baseTemplate = `Hey ${firstName},
 
 ${openingInterest}Came across your profile and thought what you're doing at ${companyName} (especially in ${leadTitle}) looks interesting.
@@ -183,10 +196,13 @@ No pressure at all, but wondering if you'd be open to a quick 10-15 min chat som
 
 Cheers,
 [Your Name]
-${senderCompany ? `${senderCompany}` : ''}`;
+${senderCompany ? `${senderCompany}` : ''}${onboardingNote}`;
 
+    console.log('[MessageGenerator] Generated base message length:', baseTemplate.length);
     setBaseMessage(baseTemplate);
     setMessage(baseTemplate);
+    
+    return baseTemplate; // Return the template for immediate use
   };
 
   // Handle lead selection change
@@ -227,28 +243,38 @@ ${senderCompany ? `${senderCompany}` : ''}`;
       return;
     }
 
-    // Ensure we have a baseMessage to work with
-    if (!baseMessage && selectedLead) {
-      generateBaseMessage(selectedLead);
-      // Wait a moment for baseMessage to be set
-      await new Promise(resolve => setTimeout(resolve, 300));
+    // Ensure we have a baseMessage to work with - make this synchronous
+    let currentBaseMessage = baseMessage;
+    let currentMessage = message;
+    
+    if (!currentBaseMessage && !currentMessage && selectedLead) {
+      // Generate base message synchronously and wait for state to update
+      const generatedMessage = generateBaseMessage(selectedLead);
+      currentMessage = generatedMessage;
+      currentBaseMessage = generatedMessage;
+      
+      // Also wait a bit for React state to update for UI consistency
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    // Safety check - if still no baseMessage, use current message or generate one
-    if (!baseMessage) {
-      if (message) {
-        setBaseMessage(message);
-      } else if (selectedLead) {
-        generateBaseMessage(selectedLead);
-        await new Promise(resolve => setTimeout(resolve, 300));
-      } else {
-        toast.error("Failed to generate base message");
-        return;
-      }
+    // Final validation - ensure we have something to send
+    const messageToSend = currentMessage || currentBaseMessage || baseMessage || message;
+    
+    if (!messageToSend || messageToSend.trim() === '') {
+      console.error('No valid message to send:', {
+        currentMessage,
+        currentBaseMessage,
+        baseMessage,
+        message,
+        selectedLead: selectedLead?.name
+      });
+      toast.error("Unable to generate base message. Please try refreshing the page.");
+      return;
     }
 
     setLoading(true);
     console.log(`Sending message customization request with prompt: "${promptToUse}"`);
+    console.log('Message being sent:', messageToSend.substring(0, 100) + '...');
 
     try {
       // Call our API endpoint
@@ -256,7 +282,7 @@ ${senderCompany ? `${senderCompany}` : ''}`;
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          baseMessage: message || baseMessage, // Use current message as base, or fall back to baseMessage
+          baseMessage: messageToSend,
           customPrompt: promptToUse, 
           lead: selectedLead 
         })
@@ -280,7 +306,7 @@ ${senderCompany ? `${senderCompany}` : ''}`;
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-              baseMessage, // Use original template
+              baseMessage: currentBaseMessage || messageToSend,
               customPrompt: promptToUse, 
               lead: selectedLead 
             })
