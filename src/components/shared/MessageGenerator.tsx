@@ -188,7 +188,7 @@ const MessageGenerator: React.FC<MessageGeneratorProps> = ({
 
     const baseTemplate = `Hey ${firstName},
 
-${openingInterest}Came across your profile and thought what you're doing at ${companyName} (especially in ${leadTitle}) looks interesting.
+${openingInterest}Came across your profile and thought what you're doing at ${companyName} looks interesting.
 
 We're ${valueProposition}, and thought it might genuinely be up your alley.${roleSpecificNote}
 
