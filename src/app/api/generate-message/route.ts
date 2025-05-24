@@ -1,6 +1,28 @@
 import { NextResponse } from 'next/server';
 import type { Lead } from '@/types/lead';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { createClient } from '@supabase/supabase-js';
+import { v5 } from 'uuid';
 import Replicate from 'replicate';
+
+// Create Supabase client with service role key for admin access
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+// UUID namespace for consistent ID generation
+const UUID_NAMESPACE = '1b671a64-40d5-491e-99b0-da01ff1f3341';
+
+// Helper to convert non-UUID user IDs to valid UUIDs
+const getUserUUID = (userId: string): string => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(userId)) {
+    return userId;
+  }
+  return v5(userId, UUID_NAMESPACE);
+};
 
 // Initialize Replicate client with API key from environment
 console.log("REPLICATE_API_KEY exists:", !!process.env.REPLICATE_API_KEY);
@@ -10,12 +32,61 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_KEY,
 });
 
-// In a real implementation, you would use an AI API like OpenAI
-// Example: https://platform.openai.com/docs/api-reference/chat/create
+// Interface for the request
 interface GenerateMessageRequest {
   baseMessage: string;
   customPrompt: string;
   lead: Lead;
+}
+
+// Interface for user business information from onboarding
+interface UserBusinessInfo {
+  companyName?: string;
+  companyIndustry?: string;
+  companyProduct?: string;
+  targetRoles?: string[];
+  targetIndustries?: string[];
+}
+
+// Fetch user's business information from preferences
+async function getUserBusinessInfo(userId: string): Promise<UserBusinessInfo | null> {
+  try {
+    const userUUID = getUserUUID(userId);
+    console.log(`[generate-message] Fetching business info for user: ${userUUID}`);
+    
+    const { data, error } = await supabase
+      .from('user_preferences')
+      .select('company_name, company_industry, company_product, target_roles, target_industries')
+      .eq('user_id', userUUID)
+      .single();
+
+    if (error) {
+      console.error('[generate-message] Error fetching user preferences:', error);
+      return null;
+    }
+
+    if (!data) {
+      console.log('[generate-message] No preferences found for user');
+      return null;
+    }
+
+    console.log('[generate-message] Retrieved business info:', {
+      companyName: data.company_name,
+      companyIndustry: data.company_industry,
+      companyProduct: data.company_product ? data.company_product.substring(0, 50) + '...' : null
+    });
+
+    return {
+      companyName: data.company_name,
+      companyIndustry: data.company_industry,
+      companyProduct: data.company_product,
+      targetRoles: data.target_roles || [],
+      targetIndustries: data.target_industries || [],
+    };
+  } catch (err) {
+    console.error('[generate-message] Unexpected error fetching business info:', err);
+    return null;
+  }
 }
 
 // Helper function to extract and handle signature
@@ -72,6 +143,16 @@ export async function POST(request: Request) {
   try {
     console.log("API: Received request to generate-message endpoint");
     
+    // Check authentication first
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      console.error("API: Unauthorized - no session");
+      return NextResponse.json({ success: false, error: 'Unauthorized - please sign in' }, { status: 401 });
+    }
+
+    // Fetch user's business information
+    const userBusinessInfo = await getUserBusinessInfo(session.user.id);
+    
     let requestBody;
     try {
       requestBody = await request.json();
@@ -92,6 +173,9 @@ export async function POST(request: Request) {
     }
     
     console.log(`API: Generating message for ${lead.name} (Lead ID: ${lead.id}) using prompt: "${customPrompt}"`);
+    if (userBusinessInfo?.companyName) {
+      console.log(`API: Using business context: ${userBusinessInfo.companyName} - ${userBusinessInfo.companyProduct?.substring(0, 50)}...`);
+    }
     
     const { messageBody, signature } = extractAndHandleSignature(baseMessage);
     
@@ -107,6 +191,13 @@ export async function POST(request: Request) {
         const prompt = `
 You are an expert in crafting personalized outreach messages. You're going to help transform a base message for a sales or marketing outreach.
 
+SENDER'S BUSINESS INFORMATION:
+- Company: ${userBusinessInfo?.companyName || '[Your Company]'}
+- Industry: ${userBusinessInfo?.companyIndustry || 'Business Services'}
+- Product/Service: ${userBusinessInfo?.companyProduct || '[Your Product/Service]'}
+- Target Industries: ${userBusinessInfo?.targetIndustries?.join(', ') || 'Various'}
+- Target Roles: ${userBusinessInfo?.targetRoles?.join(', ') || 'Decision makers'}
+
 LEAD INFORMATION:
 - Name: ${lead.name}
 - Company: ${lead.company || 'Unknown'}
@@ -121,15 +212,17 @@ ${messageBody}
 
 INSTRUCTION: ${customPrompt}
 
-Transform the message according to the instruction. Maintain the same general purpose and information of the original message, but adjust the tone, style, length, and content based on the instruction.
+Transform the message according to the instruction. Focus on how the sender's specific product/service can help this particular lead and their company.
 
 IMPORTANT GUIDELINES:
 - Keep the message professional and respectful
 - Personalize with the lead's information where appropriate
 - Address the lead by name
-- Don't change any contact information or offerings in the original message
-- Don't add made-up information about the sender's company/product
-- The transformed message should clearly communicate the same core value proposition
+- Specifically mention how your product/service can benefit their company
+- Reference relevant industry connections or shared challenges
+- Make the value proposition clear and specific to their role/industry
+- Use the sender's business context to create authentic, relevant outreach
+- Don't add made-up information - only use the provided business and lead data
 - Return ONLY the transformed message body, without any explanation or commentary
 
 TRANSFORMED MESSAGE:`;
@@ -177,6 +270,27 @@ TRANSFORMED MESSAGE:`;
     let promptApplied = false;
     const lowerPrompt = customPrompt.toLowerCase();
     const firstName = lead.name.split(' ')[0];
+
+    // Business context from user onboarding
+    const companyName = userBusinessInfo?.companyName || '[Your Company]';
+    const companyProduct = userBusinessInfo?.companyProduct || '[Your Product/Service]';
+    const userIndustry = userBusinessInfo?.companyIndustry || '';
+
+    // Replace placeholder values with actual business information
+    newMessageBody = newMessageBody.replace(/\[Your Company\]/g, companyName);
+    newMessageBody = newMessageBody.replace(/\[Your Product\/Service\]/g, companyProduct);
+    newMessageBody = newMessageBody.replace(/\[Your Core Value Prop[^\]]*\]/g, companyProduct);
+    
+    // Add industry-specific context if there's a match
+    if (userIndustry && lead.company) {
+      const industryBenefit = `helping ${lead.company} with ${companyProduct}`;
+      if (!newMessageBody.toLowerCase().includes(companyProduct.toLowerCase()) && companyProduct !== '[Your Product/Service]') {
+        newMessageBody = newMessageBody.replace(
+          /We help companies like [^\.]+\./,
+          `We help companies like ${lead.company} with ${companyProduct}.`
+        );
+      }
+    }
 
     // --- Enhanced Personalization & Conversational Logic ---
 
@@ -240,7 +354,7 @@ TRANSFORMED MESSAGE:`;
       if (lead.outreachReason) {
         opening = `${firstName}, touching base because ${lead.outreachReason.toLowerCase()}. `;
       }
-      const coreValueProp = '[Your Core Value Prop - e.g., AI-driven content marketing]';
+      const coreValueProp = companyProduct !== '[Your Product/Service]' ? companyProduct : 'AI-driven solutions';
       newMessageBody = `${opening}We help companies like ${lead.company || 'yours'} with ${coreValueProp}.\\n\\n10-15 mins to see if it's a fit?`;
       newSignature = '\\n\\nBest,\\n[Your Name]';
       promptApplied = true;
@@ -250,16 +364,22 @@ TRANSFORMED MESSAGE:`;
       newMessageBody = newMessageBody.replace('Would you be open', 'I have a couple of slots free this week. Any chance you\'re available');
       newMessageBody = newMessageBody.replace('open to a quick 10-15 min chat sometime', 'free for a quick 10-15 min chat this week');
       if(!newMessageBody.includes('P.S.')){ // Avoid multiple P.S.
-        newMessageBody = newMessageBody + '\\n\\nP.S. We\'re offering a special early bird discount this month only.';
+        if (companyProduct !== '[Your Product/Service]') {
+          newMessageBody = newMessageBody + `\\n\\nP.S. We're rolling out ${companyProduct} to a select number of ${userIndustry || 'companies'} this month.`;
+        } else {
+          newMessageBody = newMessageBody + '\\n\\nP.S. We\'re offering a special early bird discount this month only.';
+        }
       }
       promptApplied = true;
     }
     
     if (lowerPrompt.includes('industry') || lowerPrompt.includes('expertise') || lowerPrompt.includes('specific')) {
       const industryInsight = lead.insights?.industryGroupParticipation?.[0] || lead.insights?.topics?.[0] || lead.company || 'your specific industry';
-      const specificBenefit = '[mention specific benefit e.g., boosting engagement by X% or streamlining content creation]';
+      const specificBenefit = companyProduct !== '[Your Product/Service]' ? 
+        `implementing ${companyProduct} to boost efficiency and results` : 
+        '[mention specific benefit e.g., boosting engagement by X% or streamlining content creation]';
       if (!newMessageBody.toLowerCase().includes(industryInsight.toLowerCase())) { // Avoid redundancy
-         newMessageBody = newMessageBody + `\\n\\nOur platform has seen great results with companies in ${industryInsight}, particularly around ${specificBenefit}.`;
+         newMessageBody = newMessageBody + `\\n\\nOur ${companyProduct !== '[Your Product/Service]' ? companyProduct : 'platform'} has seen great results with companies in ${industryInsight}, particularly around ${specificBenefit}.`;
       }
       promptApplied = true;
     }

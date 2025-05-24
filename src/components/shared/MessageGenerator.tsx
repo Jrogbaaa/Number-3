@@ -1,14 +1,31 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import React, { useState, useEffect, useRef } from 'react';
+import { toast } from 'sonner';
+import { MessageSquare, Loader2, Copy, CheckCircle, RotateCcw, Sparkles } from 'lucide-react';
+import type { Lead } from '@/types/lead';
+import { useSession } from 'next-auth/react';
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, CopyIcon, CheckIcon, MessageSquare, Wand, Sparkles, RefreshCw } from 'lucide-react';
-import { toast } from 'sonner';
-import type { Lead } from '@/types/lead';
+
+// User business info interface
+interface UserBusinessInfo {
+  companyName?: string;
+  companyIndustry?: string;
+  companyProduct?: string;
+  targetRoles?: string[];
+  targetIndustries?: string[];
+}
 
 // Example prompts to inspire users
 const EXAMPLE_PROMPTS = [
@@ -35,6 +52,7 @@ const MessageGenerator: React.FC<MessageGeneratorProps> = ({
   selectedLeadId,
   onMessageGenerated 
 }) => {
+  const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [baseMessage, setBaseMessage] = useState('');
@@ -45,8 +63,38 @@ const MessageGenerator: React.FC<MessageGeneratorProps> = ({
   );
   const [copied, setCopied] = useState(false);
   const [generateAttempts, setGenerateAttempts] = useState(0);
+  const [userBusinessInfo, setUserBusinessInfo] = useState<UserBusinessInfo | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const promptInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch user business information
+  useEffect(() => {
+    const fetchUserBusinessInfo = async () => {
+      if (!session?.user?.id) return;
+      
+      try {
+        const response = await fetch('/api/user-preferences');
+        if (response.ok) {
+          const data = await response.json();
+          setUserBusinessInfo({
+            companyName: data.companyName,
+            companyIndustry: data.companyIndustry, 
+            companyProduct: data.companyProduct,
+            targetRoles: data.targetRoles || [],
+            targetIndustries: data.targetIndustries || [],
+          });
+          console.log('[MessageGenerator] Loaded user business info:', {
+            companyName: data.companyName,
+            companyProduct: data.companyProduct?.substring(0, 50) + '...'
+          });
+        }
+      } catch (error) {
+        console.error('[MessageGenerator] Error fetching user business info:', error);
+      }
+    };
+
+    fetchUserBusinessInfo();
+  }, [session?.user?.id]);
 
   // Update selected lead when selectedLeadId changes
   useEffect(() => {
@@ -83,6 +131,11 @@ const MessageGenerator: React.FC<MessageGeneratorProps> = ({
     const companyName = lead.company || 'your company';
     const leadTitle = lead.title || 'your role';
     
+    // Use user's business information if available
+    const senderCompany = userBusinessInfo?.companyName || '[Your Company]';
+    const senderProduct = userBusinessInfo?.companyProduct || 'innovative solutions';
+    const senderIndustry = userBusinessInfo?.companyIndustry || '';
+    
     let openingInterest = '';
     if (lead.insights?.interests?.length && lead.insights.interests[0]) {
       openingInterest = `I saw you're interested in ${lead.insights.interests[0]} – that's pretty cool! `;
@@ -90,16 +143,47 @@ const MessageGenerator: React.FC<MessageGeneratorProps> = ({
       openingInterest = `Noticed your focus on ${lead.insights.topics[0]}. `;
     }
 
+    // Create industry connection if there's a match
+    let industryConnection = '';
+    if (senderIndustry && lead.company && userBusinessInfo?.targetIndustries?.length) {
+      const isTargetIndustry = userBusinessInfo.targetIndustries.some(industry => 
+        lead.insights?.topics?.some(topic => topic.toLowerCase().includes(industry.toLowerCase()))
+      );
+      if (isTargetIndustry) {
+        industryConnection = `We work specifically with companies in your space, `;
+      }
+    }
+
+    // Create value proposition based on user's product/service
+    let valueProposition = '';
+    if (senderProduct !== 'innovative solutions') {
+      valueProposition = `${industryConnection}helping companies like ${companyName} with ${senderProduct}`;
+    } else {
+      valueProposition = `${industryConnection}working on some stuff that helps folks like you turn expert knowledge into marketing content`;
+    }
+
+    // Create role-specific message if the lead's role matches target roles
+    let roleSpecificNote = '';
+    if (userBusinessInfo?.targetRoles?.length && lead.title) {
+      const matchingRole = userBusinessInfo.targetRoles.find(role => 
+        lead.title?.toLowerCase().includes(role.toLowerCase())
+      );
+      if (matchingRole) {
+        roleSpecificNote = ` This seems especially relevant for someone in ${leadTitle}.`;
+      }
+    }
+
     const baseTemplate = `Hey ${firstName},
 
 ${openingInterest}Came across your profile and thought what you're doing at ${companyName} (especially in ${leadTitle}) looks interesting.
 
-We're working on some stuff that helps folks like you turn expert knowledge into marketing content, and thought it might genuinely be up your alley.
+We're ${valueProposition}, and thought it might genuinely be up your alley.${roleSpecificNote}
 
 No pressure at all, but wondering if you'd be open to a quick 10-15 min chat sometime if this sounds like something you're exploring?
 
 Cheers,
-[Your Name]`;
+[Your Name]
+${senderCompany ? `${senderCompany}` : ''}`;
 
     setBaseMessage(baseTemplate);
     setMessage(baseTemplate);
@@ -304,7 +388,7 @@ Cheers,
               onClick={resetMessage}
               title="Reset to original template"
             >
-              <RefreshCw className="h-3.5 w-3.5" />
+              <RotateCcw className="h-3.5 w-3.5" />
               <span>Reset</span>
             </Button>
           </div>
@@ -324,9 +408,9 @@ Cheers,
               onClick={copyToClipboard}
             >
               {copied ? (
-                <><CheckIcon className="h-3.5 w-3.5" /> Copied</>
+                <><CheckCircle className="h-3.5 w-3.5" /> Copied</>
               ) : (
-                <><CopyIcon className="h-3.5 w-3.5" /> Copy</>
+                <><Copy className="h-3.5 w-3.5" /> Copy</>
               )}
             </Button>
           </div>
@@ -335,7 +419,7 @@ Cheers,
         {/* Prompt input section */}
         <div className="bg-gray-800/70 p-4 rounded-lg border border-gray-700">
           <Label htmlFor="prompt" className="flex items-center gap-1.5 text-sm text-blue-400 mb-2">
-            <Wand className="h-3.5 w-3.5" />
+            <Sparkles className="h-3.5 w-3.5" />
             <span>Customize with AI prompt</span>
           </Label>
           
