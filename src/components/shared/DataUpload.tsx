@@ -207,15 +207,17 @@ const mapSourceToLeadSource = (source: string): LeadSource => {
   const lowerSource = source.toLowerCase();
   if (lowerSource.includes('linkedin')) return 'LinkedIn';
   if (lowerSource.includes('website')) return 'Website';
+  if (lowerSource.includes('email')) return 'Cold Outreach';
   if (lowerSource.includes('referral')) return 'Referral';
   return 'Other';
 };
 
-interface Props {
-  onUploadComplete?: () => void;
+export interface DataUploadProps {
+  onUploadComplete?: (uploadedLeads?: ProcessedLead[]) => void;
+  allowUnauthenticated?: boolean;
 }
 
-const DataUpload: FC<Props> = ({ onUploadComplete }) => {
+const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticated = false }) => {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<UploadProgress | null>(null);
@@ -258,6 +260,14 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
       return;
     }
 
+    console.log('[DataUpload] Starting upload process');
+    console.log('[DataUpload] allowUnauthenticated:', allowUnauthenticated);
+    console.log('[DataUpload] File details:', {
+      name: file.name,
+      size: file.size,
+      type: file.type
+    });
+
     setIsProcessing(true);
     setIsCancelled(false);
     setResults(null);
@@ -270,6 +280,7 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
 
     try {
       const processedLeads = await processCSV(file);
+      console.log('[DataUpload] Processed leads count:', processedLeads.length);
       toast.dismiss(loadingToast);
       
       // Check for cancellation *after* parsing and *before* starting upload
@@ -280,6 +291,35 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
         return; // Stop before calling uploadLeads
       }
 
+      // Check if we should skip the API call for unauthenticated users
+      if (allowUnauthenticated) {
+        console.log('[DataUpload] Running unauthenticated flow - skipping API call');
+        // For unauthenticated users, just process locally without API call
+        toast.dismiss(loadingToast);
+        toast.success(`${processedLeads.length} leads analyzed successfully! Sign in to save results.`);
+        
+        // Set results to show successful local processing
+        setResults({
+          success: true,
+          inserted: processedLeads.length,
+          duplicates: 0,
+          total: processedLeads.length
+        });
+        
+        // Clear file input and notify parent
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        console.log('[DataUpload] Calling onUploadComplete with', processedLeads.length, 'leads');
+        if (onUploadComplete) {
+          onUploadComplete(processedLeads);
+        }
+        setProgress(null);
+        setIsProcessing(false);
+        return; // Skip API call completely
+      }
+
+      console.log('[DataUpload] Running authenticated flow - calling API');
       const uploadingToast = toast.loading('Uploading leads to database...');
       setProgress({ processed: 0, total: processedLeads.length });
 
@@ -344,10 +384,12 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
         
         if (!response.ok) {
           const errorData = await response.json();
+          console.error('[DataUpload] API response error:', errorData);
           throw new Error(errorData.error || `Server error: ${response.status}`);
         }
         
         uploadResult = await response.json();
+        console.log('[DataUpload] API response:', uploadResult);
         // --- End API call ---
       } catch (uploadError: any) {
         console.error('Upload error:', uploadError);
@@ -439,7 +481,7 @@ const DataUpload: FC<Props> = ({ onUploadComplete }) => {
            fileInputRef.current.value = ''; // Clear file input
         }
         if (onUploadComplete) {
-           onUploadComplete(); // Notify parent component
+           onUploadComplete(processedLeads); // Notify parent component
         }
         router.refresh(); // Refresh data on page
       }
