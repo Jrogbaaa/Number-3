@@ -2,6 +2,8 @@
 
 AI-powered insights and outreach automation for lead management.
 
+<!-- Deployment trigger: 2024-12-07 Force rebuild -->
+
 ## Features
 
 - Google Authentication
