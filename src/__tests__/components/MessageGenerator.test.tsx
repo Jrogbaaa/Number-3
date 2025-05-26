@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import MessageGenerator from '@/components/shared/MessageGenerator';
+import { MessageGenerator } from '@/components/shared/MessageGenerator';
 import '@testing-library/jest-dom';
 
 // Mock the fetch function
@@ -12,6 +12,11 @@ const mockLead = {
   email: 'john@example.com',
   company: 'Acme Inc',
   title: 'Marketing Director',
+  score: 85,
+  source: 'LinkedIn' as const,
+  status: 'New' as const,
+  value: 5000,
+  created_at: '2024-01-01',
   insights: {
     interests: ['AI', 'Marketing'],
     topics: ['Content Marketing'],
@@ -32,7 +37,7 @@ describe('MessageGenerator Component', () => {
   });
 
   it('renders the component correctly', () => {
-    render(<MessageGenerator lead={mockLead} />);
+    render(<MessageGenerator leads={[mockLead]} selectedLeadId={mockLead.id} />);
     
     // Check if the component renders with expected elements
     expect(screen.getByText(/personalize message/i)).toBeInTheDocument();
@@ -41,7 +46,7 @@ describe('MessageGenerator Component', () => {
   });
 
   it('allows users to enter custom prompts', () => {
-    render(<MessageGenerator lead={mockLead} />);
+    render(<MessageGenerator leads={[mockLead]} selectedLeadId={mockLead.id} />);
     
     const input = screen.getByPlaceholderText(/enter a custom prompt/i);
     fireEvent.change(input, { target: { value: 'make it more conversational' } });
@@ -50,7 +55,7 @@ describe('MessageGenerator Component', () => {
   });
 
   it('calls the API when the customize button is clicked', async () => {
-    render(<MessageGenerator lead={mockLead} />);
+    render(<MessageGenerator leads={[mockLead]} selectedLeadId={mockLead.id} />);
     
     // Enter a custom prompt
     const input = screen.getByPlaceholderText(/enter a custom prompt/i);
@@ -76,7 +81,7 @@ describe('MessageGenerator Component', () => {
   });
 
   it('displays the transformed message after successful API call', async () => {
-    render(<MessageGenerator lead={mockLead} />);
+    render(<MessageGenerator leads={[mockLead]} selectedLeadId={mockLead.id} />);
     
     // Submit a custom prompt
     const input = screen.getByPlaceholderText(/enter a custom prompt/i);
@@ -102,7 +107,7 @@ describe('MessageGenerator Component', () => {
       }),
     });
     
-    render(<MessageGenerator lead={mockLead} />);
+    render(<MessageGenerator leads={[mockLead]} selectedLeadId={mockLead.id} />);
     
     // Submit a custom prompt
     const input = screen.getByPlaceholderText(/enter a custom prompt/i);

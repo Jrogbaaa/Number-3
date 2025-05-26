@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Lead } from '@/types/lead';
-import { Star, ExternalLink, User, ArrowUpRight, Building2, Briefcase, TrendingUp, ArrowUpDown, Users, Download, Filter, ChevronDown, Clock, HelpCircle, BarChart2, Trophy, Target, Layers } from 'lucide-react';
+import { Star, ExternalLink, User, ArrowUpRight, Building2, Briefcase, TrendingUp, ArrowUpDown, Users, Download, Filter, ChevronDown, Clock, HelpCircle, BarChart2, Trophy, Target, Layers, MessageSquare, Mail, Reply } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -150,6 +150,19 @@ const ScoreCell = ({ score, label, explanation, icon, isBestOverall = false }: {
   );
 };
 
+// Add function to save lead order to localStorage
+const LEADS_STORAGE_KEY = 'optileads_sorted_leads_ids';
+
+const saveLeadOrderToLocalStorage = (leads: Lead[]) => {
+  try {
+    const leadIds = leads.map(lead => lead.id).filter(Boolean) as string[];
+    localStorage.setItem(LEADS_STORAGE_KEY, JSON.stringify(leadIds));
+    console.log('Lead order saved to localStorage');
+  } catch (e) {
+    console.error('Error saving lead order:', e);
+  }
+};
+
 export default function LeadsTable({ leads, showChromeScore = false }: LeadsTableProps) {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
@@ -161,12 +174,21 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
   
   // Initialize columns based on user preferences
   useEffect(() => {
-    if (!preferences) return;
+    if (!preferences) {
+      // Fallback columns when no preferences are loaded
+      setColumns([
+        { id: 'contact', name: 'Contact', show: true },
+        { id: 'bestOverall', name: 'Best Overall', show: true },
+        { id: 'added', name: 'Added', key: 'created_at' as keyof Lead, show: true },
+      ]);
+      return;
+    }
     
     // Default columns that are always shown (removed Status)
     const defaultColumns = [
       { id: 'contact', name: 'Contact', show: true },
       { id: 'bestOverall', name: 'Best Overall', show: true },
+      { id: 'actions', name: 'Actions', show: true },
       { id: 'added', name: 'Added', key: 'created_at' as keyof Lead, show: true },
     ];
     
@@ -238,6 +260,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
     
     // Combine default and additional columns
     setColumns([...defaultColumns, ...additionalColumns]);
+    console.log('Desktop columns configured:', [...defaultColumns, ...additionalColumns]);
   }, [preferences]);
   
   // --- Filtering State --- 
@@ -245,6 +268,39 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
   const [budgetConfidenceFilter, setBudgetConfidenceFilter] = useState<string>('all');
   const [orientationFilter, setOrientationFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  // Global stable hash function to ensure consistency across all calls
+  const getStableHashFromLead = (lead: Lead): number => {
+    // Use a more deterministic approach to create the hash
+    // Concatenate specific fields in a fixed order with fixed delimiters
+    const idPart = lead.id || '';
+    const namePart = (lead.name || '').toLowerCase();
+    const emailPart = (lead.email || '').toLowerCase();
+    const companyPart = (lead.company || '').toLowerCase();
+    const titlePart = (lead.title || '').toLowerCase();
+    
+    // Create a string with fixed structure: id|name|email|company|title
+    const str = `${idPart}|${namePart}|${emailPart}|${companyPart}|${titlePart}`;
+    
+    // Create a deterministic hash from the string
+    // Using a simpler algorithm that's more consistent across browsers
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      // Use a fixed algorithm with modulo to ensure same results each time
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash + char) | 0; // Convert to 32bit integer with bitwise OR
+    }
+    
+    // Convert to a positive number between 0-25 using absolute value and modulo
+    const positiveHash = Math.abs(hash) % 26;
+    
+    // Log hash for debugging if needed
+    if (showDebugInfo) {
+      console.log(`Hash for ${lead.name}: ${positiveHash} (from string: ${str})`);
+    }
+    
+    return positiveHash;
+  };
 
   // Calculate Best Overall score based on user preferences
   const calculateBestOverallScore = (lead: Lead) => {
@@ -465,19 +521,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
 
   // Calculate intent score based on lead attributes when not explicitly provided
   const calculateIntentScore = (lead: Lead): number => {
-    // Use a deterministic approach based on the lead's properties
-    // Hash function to generate a stable number from the lead name/email
-    const getStableHashFromLead = (lead: Lead): number => {
-      const str = (lead.name || '') + (lead.email || '') + (lead.company || '');
-      let hash = 0;
-      for (let i = 0; i < str.length; i++) {
-        hash = ((hash << 5) - hash) + str.charCodeAt(i);
-        hash = hash & hash; // Convert to 32bit integer
-      }
-      // Return a positive number between 0-25
-      return Math.abs(hash % 26);
-    };
-    
+    // Use our global hash function instead of a local one
     // Base score between 55-65
     let baseScore = 55 + getStableHashFromLead(lead) % 11;
     
@@ -519,21 +563,9 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
   
   // Calculate spend authority when not explicitly provided
   const calculateSpendAuthority = (lead: Lead): number => {
-    // Use a deterministic approach based on the lead's properties
-    // Hash function to generate a stable number from the lead name/email
-    const getStableHashFromLead = (lead: Lead): number => {
-      const str = (lead.name || '') + (lead.email || '') + (lead.id || '');
-      let hash = 0;
-      for (let i = 0; i < str.length; i++) {
-        hash = ((hash << 5) - hash) + str.charCodeAt(i);
-        hash = hash & hash; // Convert to 32bit integer
-      }
-      // Return a positive number between 0-20
-      return Math.abs(hash % 21);
-    };
-    
-    // Base score between 45-55
-    let baseScore = 45 + getStableHashFromLead(lead) % 11;
+    // Use our global hash function instead of a local one
+    // Base score between 50-60
+    let baseScore = 50 + getStableHashFromLead(lead) % 11;
     
     // Adjust based on seniority
     if (lead.title) {
@@ -575,20 +607,53 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
   };
 
   const processedLeads = useMemo(() => {
+    // Create a cache to store calculated scores, keyed by lead ID
+    const scoreCache = new Map<string, {
+      intentScore: number,
+      spendAuthorityScore: number,
+      calculatedOverallScore: number
+    }>();
+    
     // Pre-calculate all scores for all leads first to ensure consistency
     const scoredLeads = leads.map(lead => {
-      // Calculate and assign scores if not already present
-      if (lead.intentScore === undefined) {
-        lead.intentScore = calculateIntentScore(lead);
+      // If we have a lead ID and it's in the cache, use the cached scores
+      if (lead.id && scoreCache.has(lead.id)) {
+        const cachedScores = scoreCache.get(lead.id)!;
+        return {
+          ...lead,
+          intentScore: lead.intentScore ?? cachedScores.intentScore,
+          spendAuthorityScore: lead.spendAuthorityScore ?? cachedScores.spendAuthorityScore,
+          calculatedOverallScore: cachedScores.calculatedOverallScore
+        };
       }
       
-      if (lead.spendAuthorityScore === undefined) {
-        lead.spendAuthorityScore = calculateSpendAuthority(lead);
+      // Otherwise calculate and cache the scores
+      const intentScore = lead.intentScore ?? calculateIntentScore(lead);
+      const spendAuthorityScore = lead.spendAuthorityScore ?? calculateSpendAuthority(lead);
+      
+      // Create a lead with assigned scores for consistent Best Overall calculation
+      const leadWithScores = {
+        ...lead,
+        intentScore,
+        spendAuthorityScore
+      };
+      
+      const calculatedOverallScore = calculateBestOverallScore(leadWithScores);
+      
+      // Cache the scores if we have an ID
+      if (lead.id) {
+        scoreCache.set(lead.id, {
+          intentScore,
+          spendAuthorityScore,
+          calculatedOverallScore
+        });
       }
       
       return {
         ...lead,
-        calculatedOverallScore: calculateBestOverallScore(lead)
+        intentScore,
+        spendAuthorityScore,
+        calculatedOverallScore
       };
     });
     
@@ -651,11 +716,11 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
         } else if (typeof aValue === 'string' && typeof bValue === 'string') {
           comparison = aValue.localeCompare(bValue);
         } else {
-          comparison = String(aValue).localeCompare(String(bValue));
+           comparison = String(aValue).localeCompare(String(bValue));
         }
         return sortConfig.direction === 'ascending' ? comparison : comparison * -1;
       });
-    } else {
+      } else {
       // Default sorting by Best Overall score (highest to lowest)
       sortedLeads = [...filteredLeads].sort((a, b) => {
         // Primary sort: Best Overall score (descending)
@@ -663,11 +728,11 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
         const scoreB = b.calculatedOverallScore;
         const scoreDiff = scoreB - scoreA;
         if (scoreDiff !== 0) return scoreDiff;
-        
+
         // Secondary sort: Created date (newest first)
         const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
         const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-        return dateB - dateA;
+        return dateB - dateA; 
       });
     }
     
@@ -676,8 +741,17 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
       score: lead.calculatedOverallScore 
     })));
     
+    // Save the final sorted leads order to localStorage for persistence
+    // Use requestAnimationFrame to avoid blocking the main thread
+    requestAnimationFrame(() => {
+      saveLeadOrderToLocalStorage(sortedLeads);
+    });
+
     return sortedLeads;
   }, [leads, searchTerm, sortConfig, statusFilter, marketingScoreFilter, budgetConfidenceFilter, orientationFilter]);
+
+  // Debug logging for desktop table rendering
+  console.log('Desktop table rendering - Columns:', columns.length, 'Visible columns:', columns.filter(col => col.show).length, 'Leads:', processedLeads.length);
 
   const requestSort = (key: keyof Lead) => {
     let direction: 'ascending' | 'descending' = 'ascending';
@@ -685,6 +759,8 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
       direction = 'descending';
     }
     setSortConfig({ key, direction });
+    
+    // On next render, processedLeads will be updated and the order saved to localStorage
   };
 
   const handleExport = () => {
@@ -799,19 +875,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
 
   // Calculate engagement potential based on lead attributes
   const calculateEngagementPotential = (lead: Lead) => {
-    // Use a deterministic approach based on the lead's properties
-    // Hash function to generate a stable number from the lead name/email
-    const getStableHashFromLead = (lead: Lead): number => {
-      const str = (lead.name || '') + (lead.email || '') + (lead.company || '');
-      let hash = 0;
-      for (let i = 0; i < str.length; i++) {
-        hash = ((hash << 5) - hash) + str.charCodeAt(i);
-        hash = hash & hash; // Convert to 32bit integer
-      }
-      // Return a positive number between 0-15
-      return Math.abs(hash % 16);
-    };
-    
+    // Use our global hash function instead of a local one
     // Base factors for engagement (42-57 range)
     let baseScore = 42 + getStableHashFromLead(lead);
     
@@ -920,49 +984,49 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
         </div>
         
         {columns.find(col => col.id === 'intent' && col.show) && (
-          <div className="space-y-1.5">
+        <div className="space-y-1.5">
             <div className="text-xs text-gray-400 font-medium flex items-center gap-1">
               <Target className="w-3.5 h-3.5 text-blue-500" />
               Intent
             </div>
-            <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5">
               <ScoreCell 
                 score={lead.intentScore || calculateIntentScore(lead)} 
                 label="Intent Score"
                 explanation={getScoreExplanation(lead, 'intent')}
                 icon={<Target className="w-3.5 h-3.5 text-blue-500" />}
               />
-            </div>
           </div>
+        </div>
         )}
         
         {columns.find(col => col.id === 'budget' && col.show) && (
-          <div className="space-y-1.5">
-            <div className="text-xs text-gray-400 font-medium">Budget Potential</div>
-            <div className="flex items-center gap-1.5">
+        <div className="space-y-1.5">
+          <div className="text-xs text-gray-400 font-medium">Budget Potential</div>
+          <div className="flex items-center gap-1.5">
               <ScoreCell 
                 score={lead.budgetPotential} 
                 label="Budget Potential"
                 explanation={getScoreExplanation(lead, 'budget')}
               />
-              <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getConfidenceBadgeClass(lead.budgetConfidence)}`} title={`Budget Confidence: ${lead.budgetConfidence || 'N/A'}`}>
-                {lead.budgetConfidence || 'N/A'}
-              </span>
-            </div>
+            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getConfidenceBadgeClass(lead.budgetConfidence)}`} title={`Budget Confidence: ${lead.budgetConfidence || 'N/A'}`}>
+              {lead.budgetConfidence || 'N/A'}
+            </span>
           </div>
+        </div>
         )}
         
         {columns.find(col => col.id === 'spendAuth' && col.show) && (
-          <div className="space-y-1.5">
-            <div className="text-xs text-gray-400 font-medium">Spend Authority</div>
-            <div className="flex items-center gap-1.5">
+        <div className="space-y-1.5">
+          <div className="text-xs text-gray-400 font-medium">Spend Authority</div>
+          <div className="flex items-center gap-1.5">
               <ScoreCell 
                 score={lead.spendAuthorityScore || calculateSpendAuthority(lead)} 
                 label="Spend Authority"
                 explanation={getScoreExplanation(lead, 'spend')}
               />
-            </div>
           </div>
+        </div>
         )}
         
         {columns.find(col => col.id === 'engagement' && col.show) && (
@@ -983,18 +1047,18 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
         )}
         
         {columns.find(col => col.id === 'companyFocus' && col.show) && (
-          <div className="space-y-1.5">
-            <div className="text-xs text-gray-400 font-medium">Company Focus</div>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className={`text-sm px-2 py-0.5 rounded font-medium ${getOrientationBadgeClass(lead.businessOrientation)}`} title={`Company Focus: ${lead.businessOrientation || 'Unknown'}`}>
-                {lead.businessOrientation || 'Unknown'}
-              </span>
-              <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getConfidenceBadgeClass(lead.orientationConfidence)}`} title={`Focus Confidence: ${lead.orientationConfidence || 'N/A'}`}>
-                {lead.orientationConfidence || 'N/A'}
-              </span>
-            </div>
+        <div className="space-y-1.5">
+          <div className="text-xs text-gray-400 font-medium">Company Focus</div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+             <span className={`text-sm px-2 py-0.5 rounded font-medium ${getOrientationBadgeClass(lead.businessOrientation)}`} title={`Company Focus: ${lead.businessOrientation || 'Unknown'}`}>
+              {lead.businessOrientation || 'Unknown'}
+            </span>
+             <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getConfidenceBadgeClass(lead.orientationConfidence)}`} title={`Focus Confidence: ${lead.orientationConfidence || 'N/A'}`}>
+              {lead.orientationConfidence || 'N/A'}
+            </span>
           </div>
-        )}
+                </div>
+              )}
       </div>
     </div>
   );
@@ -1137,10 +1201,11 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
           </div>
           <div className="pt-2 border-t border-gray-700/50 text-gray-300">
             <p>Lead scores are now being logged to the console</p>
+              </div>
           </div>
-        </div>
       )}
 
+      {/* Desktop Table View */}
       <div className="hidden md:block overflow-hidden rounded-xl border border-gray-800/50 shadow-sm">
         <table className="w-full table-fixed">
           <thead className="bg-gray-800/50">
@@ -1158,7 +1223,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                   <div className="flex items-center">
                     {column.name} {column.key && renderSortIcon(column.key)}
                   </div>
-                </th>
+              </th>
               ))}
             </tr>
           </thead>
@@ -1170,30 +1235,30 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                 const engagementPotential = calculateEngagementPotential(lead);
                 
                 return (
-                  <tr 
-                    key={lead.id} 
-                    className="text-sm text-gray-300 hover:bg-gray-700/50 transition-colors duration-150 cursor-pointer odd:bg-gray-800/30"
-                    onClick={() => handleLeadClick(lead.id)}
-                    onKeyDown={(e: React.KeyboardEvent<HTMLTableRowElement>) => (e.key === 'Enter' || e.key === ' ') && handleLeadClick(lead.id)}
-                    tabIndex={0}
-                    role="link"
-                    aria-label={`View details for ${lead.name || 'lead'}`}
-                  >
+                <tr 
+                  key={lead.id} 
+                  className="text-sm text-gray-300 hover:bg-gray-700/50 transition-colors duration-150 cursor-pointer odd:bg-gray-800/30"
+                  onClick={() => handleLeadClick(lead.id)}
+                  onKeyDown={(e: React.KeyboardEvent<HTMLTableRowElement>) => (e.key === 'Enter' || e.key === ' ') && handleLeadClick(lead.id)}
+                  tabIndex={0}
+                  role="link"
+                  aria-label={`View details for ${lead.name || 'lead'}`}
+                >
                     {columns.filter(col => col.show).map((column) => {
                       // Render appropriate cell based on column id
                       switch (column.id) {
                         case 'contact':
                           return (
                             <td key={column.id} className="py-3 px-4 whitespace-nowrap truncate">
-                              <div className="font-medium text-white truncate" title={lead.name || 'N/A'}>{lead.name || 'N/A'}</div>
-                              <div className="text-gray-400 truncate" title={lead.email || 'No email'}>{lead.email || 'No email'}</div>
-                              {(lead.company || lead.title) && (
-                                <div className="text-gray-500 text-xs mt-1 flex items-center flex-wrap gap-x-2">
-                                  {lead.company && <span className="inline-flex items-center truncate" title={lead.company}><Building2 className="w-3 h-3 mr-1 flex-shrink-0" />{lead.company}</span>}
-                                  {lead.title && <span className="inline-flex items-center truncate" title={lead.title}><Briefcase className="w-3 h-3 mr-1 flex-shrink-0" />{lead.title}</span>}
-                                </div>
-                              )}
-                            </td>
+                    <div className="font-medium text-white truncate" title={lead.name || 'N/A'}>{lead.name || 'N/A'}</div>
+                    <div className="text-gray-400 truncate" title={lead.email || 'No email'}>{lead.email || 'No email'}</div>
+                     {(lead.company || lead.title) && (
+                        <div className="text-gray-500 text-xs mt-1 flex items-center flex-wrap gap-x-2">
+                          {lead.company && <span className="inline-flex items-center truncate" title={lead.company}><Building2 className="w-3 h-3 mr-1 flex-shrink-0" />{lead.company}</span>}
+                          {lead.title && <span className="inline-flex items-center truncate" title={lead.title}><Briefcase className="w-3 h-3 mr-1 flex-shrink-0" />{lead.title}</span>}
+                        </div>
+                     )}
+                  </td>
                           );
                         case 'bestOverall':
                           return (
@@ -1205,7 +1270,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                                 icon={<Trophy className="w-4 h-4" />}
                                 isBestOverall={true}
                               />
-                            </td>
+                  </td>
                           );
                         case 'marketing':
                           return (
@@ -1220,30 +1285,30 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                         case 'budget':
                           return (
                             <td key={column.id} className="py-3 px-4 whitespace-nowrap">
-                              <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5">
                                 <ScoreCell 
                                   score={lead.budgetPotential} 
                                   label="Budget Potential"
                                   explanation={getScoreExplanation(lead, 'budget')}
                                 />
-                                <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getConfidenceBadgeClass(lead.budgetConfidence)}`} title={`Budget Confidence: ${lead.budgetConfidence || 'N/A'}`}>
-                                  {lead.budgetConfidence || 'N/A'}
-                                </span>
-                              </div>
-                            </td>
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getConfidenceBadgeClass(lead.budgetConfidence)}`} title={`Budget Confidence: ${lead.budgetConfidence || 'N/A'}`}>
+                        {lead.budgetConfidence || 'N/A'}
+                      </span>
+                    </div>
+                  </td>
                           );
                         case 'companyFocus':
                           return (
                             <td key={column.id} className="py-3 px-4 whitespace-nowrap">
-                              <div className="flex items-center gap-1.5">
-                                <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${getOrientationBadgeClass(lead.businessOrientation)}`} title={`Company Focus: ${lead.businessOrientation || 'Unknown'}`}>
-                                  {lead.businessOrientation || 'Unknown'}
-                                </span>
-                                <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getConfidenceBadgeClass(lead.orientationConfidence)}`} title={`Focus Confidence: ${lead.orientationConfidence || 'N/A'}`}>
-                                  {lead.orientationConfidence || 'N/A'}
-                                </span>
-                              </div>
-                            </td>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${getOrientationBadgeClass(lead.businessOrientation)}`} title={`Company Focus: ${lead.businessOrientation || 'Unknown'}`}>
+                        {lead.businessOrientation || 'Unknown'}
+                      </span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${getConfidenceBadgeClass(lead.orientationConfidence)}`} title={`Focus Confidence: ${lead.orientationConfidence || 'N/A'}`}>
+                        {lead.orientationConfidence || 'N/A'}
+                      </span>
+                    </div>
+                  </td>
                           );
                         case 'intent':
                           return (
@@ -1254,7 +1319,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                                 explanation={getScoreExplanation(lead, 'intent')}
                                 icon={<Target className="w-3.5 h-3.5 text-blue-500" />}
                               />
-                            </td>
+                  </td>
                           );
                         case 'spendAuth':
                           return (
@@ -1264,7 +1329,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                                 label="Spend Authority"
                                 explanation={getScoreExplanation(lead, 'spend')}
                               />
-                            </td>
+                  </td>
                           );
                         case 'engagement':
                           return (
@@ -1280,35 +1345,60 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                         case 'status':
                           return (
                             <td key={column.id} className="py-3 px-4 whitespace-nowrap">
-                              <span
-                                className={`px-2.5 py-1 rounded-full text-[11px] font-medium inline-block ${ 
-                                    lead.status === 'Converted' ? 'bg-green-500/20 text-green-400 border border-green-500/20' : '' 
-                                }${ 
-                                    lead.status === 'Qualified' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/20' : '' 
-                                }${ 
-                                    lead.status === 'New' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/20' : '' 
-                                }${ 
-                                    lead.status === 'Contacted' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/20' : '' 
-                                }${ 
-                                    lead.status === 'Lost' ? 'bg-red-500/20 text-red-400 border border-red-500/20' : '' 
-                                }`}
-                                title={`Status: ${lead.status || 'Unknown'}`}
-                              >
-                                {lead.status || 'Unknown'}
-                              </span>
+                     <span
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-medium inline-block ${ 
+                            lead.status === 'Converted' ? 'bg-green-500/20 text-green-400 border border-green-500/20' : '' 
+                        }${ 
+                            lead.status === 'Qualified' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/20' : '' 
+                        }${ 
+                            lead.status === 'New' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/20' : '' 
+                        }${ 
+                            lead.status === 'Contacted' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/20' : '' 
+                        }${ 
+                            lead.status === 'Lost' ? 'bg-red-500/20 text-red-400 border border-red-500/20' : '' 
+                        }`}
+                        title={`Status: ${lead.status || 'Unknown'}`}
+                    >
+                        {lead.status || 'Unknown'}
+                    </span>
+                  </td>
+                          );
+                        case 'actions':
+                          return (
+                            <td key={column.id} className="py-3 px-4 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <Link
+                                  href={`/outreach/lead/${lead.id}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                                  title="Create outreach message"
+                                >
+                                  <Mail className="w-3 h-3" />
+                                  Outreach
+                                </Link>
+                                <Link
+                                  href={`/outreach/lead/${lead.id}?tab=follow-up`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors"
+                                  title="Create follow-up message"
+                                >
+                                  <Reply className="w-3 h-3" />
+                                  Follow-up
+                                </Link>
+                              </div>
                             </td>
                           );
                         case 'added':
                           return (
                             <td key={column.id} className="py-3 px-4 whitespace-nowrap text-gray-400">
-                              {lead.created_at ? new Date(lead.created_at).toLocaleDateString() : 'N/A'}
-                            </td>
+                    {lead.created_at ? new Date(lead.created_at).toLocaleDateString() : 'N/A'}
+                  </td>
                           );
                         default:
                           return <td key={column.id} className="py-3 px-4"></td>;
                       }
                     })}
-                  </tr>
+                </tr>
                 );
               })
             ) : (
@@ -1467,7 +1557,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
           })
         ) : (
           <div className="py-8 text-center text-gray-500">
-            {searchTerm || statusFilter !== 'all' || marketingScoreFilter !== 'all' || budgetConfidenceFilter !== 'all' || orientationFilter !== 'all' 
+             {searchTerm || statusFilter !== 'all' || marketingScoreFilter !== 'all' || budgetConfidenceFilter !== 'all' || orientationFilter !== 'all' 
              ? 'No contacts match your search or filter criteria.' 
              : 'No contacts found.'}
           </div>
@@ -1475,4 +1565,4 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
       </div>
     </div>
   );
-}
+} 

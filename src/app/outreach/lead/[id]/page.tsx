@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { getLeads } from '@/lib/supabase';
 import { Lead } from '@/types/lead';
@@ -9,6 +9,7 @@ import { ExternalLink, Briefcase, Award, Calendar, Mail, Phone, MessageSquare, L
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { MessageGenerator } from '@/components/shared/MessageGenerator';
+import { FollowUpGenerator } from '@/components/shared/FollowUpGenerator';
 
 interface OutreachTemplate {
   id: string;
@@ -209,7 +210,7 @@ function AudioRecorder({ leadName }: { leadName: string }) {
       <div className="mb-4 bg-gray-800/50 rounded-lg p-4 border border-gray-700/30">
         <div className="text-gray-400 mb-2 text-sm font-medium">Suggested script:</div>
         <p className="text-gray-300 text-sm">
-          Hi {leadName}, this is [Your Name] from PROPS. I noticed your impressive work at your company and wanted to personally reach out. I'd love to discuss how our solutions might align with your needs. Feel free to call me back at [phone number] or respond to my email. Looking forward to connecting!
+          Hi {leadName}, this is [Your Name] from OptiLeads. I noticed your impressive work at your company and wanted to personally reach out. I'd love to discuss how our solutions might align with your needs. Feel free to call me back at [phone number] or respond to my email. Looking forward to connecting!
         </p>
       </div>
 
@@ -274,11 +275,18 @@ function AudioRecorder({ leadName }: { leadName: string }) {
 // Client component that uses useParams
 function LeadDetailContent() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const leadId = params.id as string;
+  const tabParam = searchParams.get('tab');
   
   const [lead, setLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<'templates' | 'audio'>('templates');
+  const [activeTab, setActiveTab] = useState<'templates' | 'follow-up' | 'audio'>(() => {
+    // Set initial tab based on URL parameter
+    if (tabParam === 'follow-up') return 'follow-up';
+    if (tabParam === 'audio') return 'audio';
+    return 'templates';
+  });
   const [selectedTemplate, setSelectedTemplate] = useState<string>('linkedin');
   const [personalizedMessage, setPersonalizedMessage] = useState<string>('');
   const [isCopied, setIsCopied] = useState(false);
@@ -289,8 +297,20 @@ function LeadDetailContent() {
     async function fetchLead() {
       try {
         setLoading(true);
-        const leads = await getLeads();
-        const foundLead = leads.find(l => l.id === leadId);
+        
+        // Use the API endpoint instead of direct Supabase call to avoid auth issues
+        const response = await fetch('/api/fetch-leads');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch leads: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to load leads');
+        }
+        
+        const leads = data.leads || [];
+        const foundLead = leads.find((l: any) => l.id === leadId);
         
         if (foundLead) {
           setLead(foundLead);
@@ -387,7 +407,7 @@ function LeadDetailContent() {
               <div className="flex items-center gap-3">
                 <Award className="w-5 h-5 text-gray-400" />
                 <div>
-                  <p className="text-sm text-gray-400">PROPS Score</p>
+                  <p className="text-sm text-gray-400">OptiLeads Score</p>
                   <p className="font-medium text-green-400">{lead.chromeScore || lead.score}%</p>
                 </div>
               </div>
@@ -487,7 +507,18 @@ function LeadDetailContent() {
                   : 'border-transparent text-gray-400 hover:text-gray-300'
               }`}
             >
-              Text Templates
+              Initial Outreach
+            </button>
+            <button
+              onClick={() => setActiveTab('follow-up')}
+              className={`px-4 py-2 border-b-2 flex items-center ${
+                activeTab === 'follow-up' 
+                  ? 'border-orange-500 text-orange-400' 
+                  : 'border-transparent text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Follow-up Messages
             </button>
             <button
               onClick={() => setActiveTab('audio')}
@@ -502,7 +533,7 @@ function LeadDetailContent() {
             </button>
           </div>
           
-          {/* Text Templates Tab */}
+          {/* Initial Outreach Tab */}
           {activeTab === 'templates' && (
             <>
               {/* Replaced custom implementation with MessageGenerator component */}
@@ -530,6 +561,34 @@ function LeadDetailContent() {
               </div>
             </>
           )}
+
+          {/* Follow-up Messages Tab */}
+          {activeTab === 'follow-up' && (
+            <>
+              <FollowUpGenerator
+                leads={[lead]}
+                selectedLeadId={lead.id}
+                onMessageGenerated={(message, leadId, followUpType) => {
+                  setPersonalizedMessage(message);
+                  toast.success(`${followUpType} follow-up message generated!`);
+                }}
+              />
+              
+              {/* Copy Button */}
+              <div className="flex justify-end mt-4">
+                  <button
+                    onClick={handleCopy}
+                    className={`px-4 py-2 ${
+                      isCopied
+                        ? 'bg-green-500/20 text-green-400'
+                        : 'bg-orange-600 hover:bg-orange-700 text-white'
+                    } rounded-lg transition-colors`}
+                  >
+                  {isCopied ? 'Copied' : 'Copy Follow-up to Clipboard'}
+                  </button>
+              </div>
+            </>
+          )}
           
           {/* Audio Message Tab */}
           {activeTab === 'audio' && (
@@ -541,4 +600,13 @@ function LeadDetailContent() {
   );
 }
 
-export default LeadDetailContent;
+// Wrapper component with Suspense for useSearchParams
+export default function LeadDetailPage() {
+  return (
+    <DashboardLayout>
+      <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="animate-pulse text-gray-400">Loading...</div></div>}>
+        <LeadDetailContent />
+      </Suspense>
+    </DashboardLayout>
+  );
+}
