@@ -179,6 +179,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
       setColumns([
         { id: 'contact', name: 'Contact', show: true },
         { id: 'bestOverall', name: 'Best Overall', show: true },
+        { id: 'actions', name: 'Actions', show: true },
         { id: 'added', name: 'Added', key: 'created_at' as keyof Lead, show: true },
       ]);
       return;
@@ -1210,21 +1211,51 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
         <table className="w-full table-fixed">
           <thead className="bg-gray-800/50">
             <tr className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-              {columns.filter(col => col.show).map((column) => (
-                <th 
-                  key={column.id} 
-                  className={`py-3 px-4 ${column.id === 'contact' ? 'w-1/4' : ''} cursor-pointer group hover:bg-gray-700/50 transition-colors duration-150`}
-                  onClick={() => column.key && requestSort(column.key)}
-                  onKeyDown={(e: React.KeyboardEvent<HTMLTableCellElement>) => column.key && (e.key === 'Enter' || e.key === ' ') && requestSort(column.key)}
-                  tabIndex={0}
-                  aria-sort={column.key && sortConfig?.key === column.key ? (sortConfig.direction === 'ascending' ? 'ascending' : 'descending') : 'none'}
-                  aria-label={`Sort by ${column.name}`}
-                >
-                  <div className="flex items-center">
-                    {column.name} {column.key && renderSortIcon(column.key)}
-                  </div>
-              </th>
-              ))}
+              {columns.filter(col => col.show).map((column) => {
+                // Define specific widths for each column to prevent overlapping
+                let widthClass = '';
+                switch (column.id) {
+                  case 'contact':
+                    widthClass = 'w-1/4';
+                    break;
+                  case 'bestOverall':
+                    widthClass = 'w-24';
+                    break;
+                  case 'actions':
+                    widthClass = 'w-40';
+                    break;
+                  case 'added':
+                    widthClass = 'w-24';
+                    break;
+                  case 'intent':
+                  case 'budget':
+                  case 'spendAuth':
+                  case 'engagement':
+                    widthClass = 'w-28';
+                    break;
+                  case 'companyFocus':
+                    widthClass = 'w-32';
+                    break;
+                  default:
+                    widthClass = 'w-24';
+                }
+                
+                return (
+                  <th 
+                    key={column.id} 
+                    className={`py-3 px-4 ${widthClass} cursor-pointer group hover:bg-gray-700/50 transition-colors duration-150`}
+                    onClick={() => column.key && requestSort(column.key)}
+                    onKeyDown={(e: React.KeyboardEvent<HTMLTableCellElement>) => column.key && (e.key === 'Enter' || e.key === ' ') && requestSort(column.key)}
+                    tabIndex={0}
+                    aria-sort={column.key && sortConfig?.key === column.key ? (sortConfig.direction === 'ascending' ? 'ascending' : 'descending') : 'none'}
+                    aria-label={`Sort by ${column.name}`}
+                  >
+                    <div className="flex items-center">
+                      {column.name} {column.key && renderSortIcon(column.key)}
+                    </div>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800/50 bg-gray-900/50">
@@ -1245,11 +1276,39 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                   aria-label={`View details for ${lead.name || 'lead'}`}
                 >
                     {columns.filter(col => col.show).map((column) => {
+                      // Define consistent width classes for table cells
+                      let widthClass = '';
+                      switch (column.id) {
+                        case 'contact':
+                          widthClass = 'w-1/4';
+                          break;
+                        case 'bestOverall':
+                          widthClass = 'w-24';
+                          break;
+                        case 'actions':
+                          widthClass = 'w-40';
+                          break;
+                        case 'added':
+                          widthClass = 'w-24';
+                          break;
+                        case 'intent':
+                        case 'budget':
+                        case 'spendAuth':
+                        case 'engagement':
+                          widthClass = 'w-28';
+                          break;
+                        case 'companyFocus':
+                          widthClass = 'w-32';
+                          break;
+                        default:
+                          widthClass = 'w-24';
+                      }
+                      
                       // Render appropriate cell based on column id
                       switch (column.id) {
                         case 'contact':
                           return (
-                            <td key={column.id} className="py-3 px-4 whitespace-nowrap truncate">
+                            <td key={column.id} className={`py-3 px-4 whitespace-nowrap truncate ${widthClass}`}>
                     <div className="font-medium text-white truncate" title={lead.name || 'N/A'}>{lead.name || 'N/A'}</div>
                     <div className="text-gray-400 truncate" title={lead.email || 'No email'}>{lead.email || 'No email'}</div>
                      {(lead.company || lead.title) && (
@@ -1262,7 +1321,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                           );
                         case 'bestOverall':
                           return (
-                            <td key={column.id} className="py-3 px-4 whitespace-nowrap">
+                            <td key={column.id} className={`py-3 px-4 whitespace-nowrap ${widthClass}`}>
                               <ScoreCell 
                                 score={(lead as any).calculatedOverallScore}
                                 label="Best Overall"
@@ -1274,7 +1333,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                           );
                         case 'marketing':
                           return (
-                            <td key={column.id} className="py-3 px-4 whitespace-nowrap">
+                            <td key={column.id} className={`py-3 px-4 whitespace-nowrap ${widthClass}`}>
                               <ScoreCell 
                                 score={lead.marketingScore} 
                                 label="Marketing Score"
@@ -1284,7 +1343,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                           );
                         case 'budget':
                           return (
-                            <td key={column.id} className="py-3 px-4 whitespace-nowrap">
+                            <td key={column.id} className={`py-3 px-4 whitespace-nowrap ${widthClass}`}>
                     <div className="flex items-center gap-1.5">
                                 <ScoreCell 
                                   score={lead.budgetPotential} 
@@ -1299,7 +1358,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                           );
                         case 'companyFocus':
                           return (
-                            <td key={column.id} className="py-3 px-4 whitespace-nowrap">
+                            <td key={column.id} className={`py-3 px-4 whitespace-nowrap ${widthClass}`}>
                     <div className="flex items-center gap-1.5">
                       <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${getOrientationBadgeClass(lead.businessOrientation)}`} title={`Company Focus: ${lead.businessOrientation || 'Unknown'}`}>
                         {lead.businessOrientation || 'Unknown'}
@@ -1312,7 +1371,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                           );
                         case 'intent':
                           return (
-                            <td key={column.id} className="py-3 px-4 whitespace-nowrap">
+                            <td key={column.id} className={`py-3 px-4 whitespace-nowrap ${widthClass}`}>
                               <ScoreCell 
                                 score={lead.intentScore || calculateIntentScore(lead)} 
                                 label="Intent Score"
@@ -1323,7 +1382,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                           );
                         case 'spendAuth':
                           return (
-                            <td key={column.id} className="py-3 px-4 whitespace-nowrap">
+                            <td key={column.id} className={`py-3 px-4 whitespace-nowrap ${widthClass}`}>
                               <ScoreCell 
                                 score={lead.spendAuthorityScore || calculateSpendAuthority(lead)} 
                                 label="Spend Authority"
@@ -1333,7 +1392,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                           );
                         case 'engagement':
                           return (
-                            <td key={column.id} className="py-3 px-4 whitespace-nowrap">
+                            <td key={column.id} className={`py-3 px-4 whitespace-nowrap ${widthClass}`}>
                               <ScoreCell 
                                 score={engagementPotential}
                                 label="Engagement Potential"
@@ -1344,7 +1403,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                           );
                         case 'status':
                           return (
-                            <td key={column.id} className="py-3 px-4 whitespace-nowrap">
+                            <td key={column.id} className={`py-3 px-4 whitespace-nowrap ${widthClass}`}>
                      <span
                         className={`px-2.5 py-1 rounded-full text-[11px] font-medium inline-block ${ 
                             lead.status === 'Converted' ? 'bg-green-500/20 text-green-400 border border-green-500/20' : '' 
@@ -1365,7 +1424,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                           );
                         case 'actions':
                           return (
-                            <td key={column.id} className="py-3 px-4 whitespace-nowrap">
+                            <td key={column.id} className={`py-3 px-4 whitespace-nowrap ${widthClass}`}>
                               <div className="flex items-center gap-2">
                                 <Link
                                   href={`/outreach/lead/${lead.id}`}
@@ -1390,12 +1449,12 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                           );
                         case 'added':
                           return (
-                            <td key={column.id} className="py-3 px-4 whitespace-nowrap text-gray-400">
+                            <td key={column.id} className={`py-3 px-4 whitespace-nowrap text-gray-400 ${widthClass}`}>
                     {lead.created_at ? new Date(lead.created_at).toLocaleDateString() : 'N/A'}
                   </td>
                           );
                         default:
-                          return <td key={column.id} className="py-3 px-4"></td>;
+                          return <td key={column.id} className={`py-3 px-4 ${widthClass}`}></td>;
                       }
                     })}
                 </tr>
@@ -1403,10 +1462,22 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
               })
             ) : (
               <tr>
-                <td colSpan={columns.filter(col => col.show).length} className="py-8 text-center text-gray-500">
-                  {searchTerm || statusFilter !== 'all' || marketingScoreFilter !== 'all' || budgetConfidenceFilter !== 'all' || orientationFilter !== 'all' 
-                   ? 'No contacts match your search or filter criteria.' 
-                   : 'No contacts found.'}
+                <td colSpan={columns.filter(col => col.show).length} className="py-12">
+                  <div className="flex flex-col items-center justify-center text-center">
+                    <div className="p-4 bg-gradient-to-br from-gray-800/40 to-gray-700/20 rounded-xl mb-4">
+                      <Users className="w-8 h-8 text-gray-500" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-400 mb-2">
+                      {searchTerm || statusFilter !== 'all' || marketingScoreFilter !== 'all' || budgetConfidenceFilter !== 'all' || orientationFilter !== 'all' 
+                       ? 'No matches found' 
+                       : 'No leads yet'}
+                    </h3>
+                    <p className="text-gray-500 text-sm max-w-md">
+                      {searchTerm || statusFilter !== 'all' || marketingScoreFilter !== 'all' || budgetConfidenceFilter !== 'all' || orientationFilter !== 'all' 
+                       ? 'Try adjusting your search terms or filters to find what you\'re looking for.' 
+                       : 'Upload your first CSV file to start analyzing and scoring your leads.'}
+                    </p>
+                  </div>
                 </td>
               </tr>
             )}
@@ -1556,10 +1627,22 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
             );
           })
         ) : (
-          <div className="py-8 text-center text-gray-500">
-             {searchTerm || statusFilter !== 'all' || marketingScoreFilter !== 'all' || budgetConfidenceFilter !== 'all' || orientationFilter !== 'all' 
-             ? 'No contacts match your search or filter criteria.' 
-             : 'No contacts found.'}
+          <div className="py-12">
+            <div className="flex flex-col items-center justify-center text-center">
+              <div className="p-4 bg-gradient-to-br from-gray-800/40 to-gray-700/20 rounded-xl mb-4">
+                <Users className="w-8 h-8 text-gray-500" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-400 mb-2">
+                {searchTerm || statusFilter !== 'all' || marketingScoreFilter !== 'all' || budgetConfidenceFilter !== 'all' || orientationFilter !== 'all' 
+                 ? 'No matches found' 
+                 : 'No leads yet'}
+              </h3>
+              <p className="text-gray-500 text-sm max-w-md">
+                {searchTerm || statusFilter !== 'all' || marketingScoreFilter !== 'all' || budgetConfidenceFilter !== 'all' || orientationFilter !== 'all' 
+                 ? 'Try adjusting your search terms or filters to find what you\'re looking for.' 
+                 : 'Upload your first CSV file to start analyzing and scoring your leads.'}
+              </p>
+            </div>
           </div>
         )}
       </div>

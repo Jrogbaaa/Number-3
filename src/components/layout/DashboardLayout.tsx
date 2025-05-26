@@ -55,10 +55,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         <header className="md:hidden bg-gray-900 p-4 flex items-center justify-between shadow-md">
           <Link 
             href="/?landing=true"
-            className="text-white font-bold hover:text-gray-200 transition-colors"
+            className="font-bold hover:opacity-80 transition-all duration-200"
             aria-label="OptiLeads.ai Home"
           >
-            OptiLeads.ai
+            <span className="text-white">Opti<span className="text-blue-400">Leads</span><span className="text-white opacity-80">.</span><span className="text-indigo-300">ai</span></span>
           </Link>
           <button
             onClick={toggleSidebar}

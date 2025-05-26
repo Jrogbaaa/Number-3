@@ -60,13 +60,13 @@ const ResetSettingsButton = () => {
   };
 
   const ConfirmDialog = () => (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-lg border border-gray-700 p-6 max-w-md w-full">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-gradient-to-br from-gray-900 via-gray-900 to-gray-950 rounded-xl border border-gray-700/50 p-6 max-w-md w-full shadow-2xl backdrop-blur-sm">
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-orange-900/30 rounded-full">
+          <div className="p-2 bg-gradient-to-br from-orange-600/30 to-red-600/20 rounded-lg shadow-lg">
             <AlertTriangle className="h-5 w-5 text-orange-400" />
           </div>
-          <h3 className="text-lg font-semibold text-white">Reset Targeting Settings?</h3>
+          <h3 className="text-lg font-bold bg-gradient-to-r from-white to-orange-100 bg-clip-text text-transparent">Reset Targeting Settings?</h3>
         </div>
         
         <p className="text-gray-300 mb-6 leading-relaxed">
@@ -80,21 +80,21 @@ const ResetSettingsButton = () => {
           <li>• <strong className="text-gray-200">Messaging:</strong> Personalized outreach templates</li>
         </ul>
         
-        <p className="text-orange-300 text-sm mb-6 bg-orange-900/20 p-3 rounded-md">
+        <p className="text-orange-300 text-sm mb-6 bg-gradient-to-r from-orange-900/20 to-red-900/10 p-3 rounded-lg border border-orange-700/30 backdrop-blur-sm">
           ⚠️ This will re-score all your leads based on your new preferences.
         </p>
         
         <div className="flex gap-3">
           <button
             onClick={() => setShowConfirmDialog(false)}
-            className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors"
+            className="flex-1 px-4 py-2.5 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105"
           >
             Cancel
           </button>
           <button
             onClick={handleReset}
             disabled={isLoading}
-            className="flex-1 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-800 text-white rounded-md transition-colors flex items-center justify-center gap-2"
+            className="flex-1 px-4 py-2.5 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 disabled:from-orange-800 disabled:to-red-800 text-white rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 hover:scale-105 disabled:hover:scale-100"
           >
             {isLoading ? (
               <>
@@ -117,7 +117,7 @@ const ResetSettingsButton = () => {
     <>
       <button
         onClick={() => setShowConfirmDialog(true)}
-        className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white rounded-lg transition-colors text-sm font-medium border border-gray-600"
+        className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500 text-gray-300 hover:text-white rounded-lg transition-all duration-200 text-sm font-medium border border-gray-600/50 shadow-lg hover:shadow-xl hover:scale-105"
         title="Reset targeting preferences to change who you want to reach"
       >
         <RotateCcw className="h-4 w-4" />

@@ -111,24 +111,26 @@ export default function DataInputPage() {
   return (
     <DashboardLayout>
       <div className="p-6 md:p-8 space-y-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Database className="h-6 w-6 text-blue-400" />
-            <h1 className="text-2xl font-semibold">Upload Leads</h1>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-white via-blue-100 to-indigo-200 bg-clip-text text-transparent mb-2">Upload Your Leads</h1>
+            <p className="text-gray-400">Upload and analyze your leads with AI-powered scoring</p>
           </div>
-          <div className="text-gray-400 px-3 py-1.5 bg-gray-800/70 rounded-md border border-gray-700/50 text-sm flex items-center gap-1.5">
-            <Upload className="h-4 w-4" />
+          <div className="text-gray-300 px-4 py-2.5 bg-gradient-to-r from-gray-800/60 to-gray-700/40 rounded-lg border border-gray-700/50 text-sm flex items-center gap-2 backdrop-blur-sm">
+            <Upload className="h-4 w-4 text-blue-400" />
             <span>{isAuthenticated ? 'Import your lead data' : 'Try our lead scoring - no sign up required'}</span>
           </div>
         </div>
 
         {/* Authentication status banner for unauthenticated users */}
         {!isAuthenticated && (
-          <div className="bg-blue-900/20 border border-blue-800/30 rounded-lg p-4 flex items-start gap-3">
-            <Info className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" />
+          <div className="bg-gradient-to-r from-blue-900/20 to-indigo-900/10 border border-blue-700/30 rounded-xl p-5 flex items-start gap-4 backdrop-blur-sm shadow-lg">
+            <div className="p-2 bg-blue-600/20 rounded-lg flex-shrink-0">
+              <Info className="h-5 w-5 text-blue-400" />
+            </div>
             <div className="flex-1">
-              <h3 className="text-blue-300 font-medium mb-1">Ready to See Your Personalized Results</h3>
-              <p className="text-gray-300 text-sm">
+              <h3 className="text-blue-300 font-semibold mb-2">Ready to See Your Personalized Results</h3>
+              <p className="text-gray-300 text-sm leading-relaxed">
                 Upload your leads now to see our AI analyze them based on your preferences. You'll get personalized lead scores, insights, and recommendations tailored to your business.
               </p>
             </div>
@@ -137,13 +139,13 @@ export default function DataInputPage() {
 
         {/* Sign-in prompt modal for successful upload */}
         {showSignInPrompt && temporaryLeads.length > 0 && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80">
-            <div className="bg-gray-900 border border-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+            <div className="bg-gradient-to-br from-gray-900 via-gray-900 to-gray-950 border border-gray-700/50 rounded-xl shadow-2xl p-6 w-full max-w-md mx-4 backdrop-blur-sm">
               <div className="text-center">
-                <div className="h-12 w-12 rounded-full bg-green-600/20 flex items-center justify-center mx-auto mb-4">
+                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-green-600/30 to-emerald-600/20 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-green-500/20">
                   <Upload className="h-6 w-6 text-green-400" />
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-2">
+                <h3 className="text-xl font-bold bg-gradient-to-r from-white to-green-100 bg-clip-text text-transparent mb-2">
                   Perfect! {temporaryLeads.length} Leads Analyzed
                 </h3>
                 <p className="text-gray-300 mb-6">
@@ -153,7 +155,7 @@ export default function DataInputPage() {
                 <div className="space-y-3">
                   <button
                     onClick={handleSignInClick}
-                    className="w-full flex items-center justify-center gap-3 rounded-md bg-blue-600 px-4 py-3 text-white font-medium hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"
+                    className="w-full flex items-center justify-center gap-3 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-white font-medium hover:from-blue-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2 transition-all duration-200 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-105"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5">
                       <path fill="#fff" d="M5.26620003,9.76452941 C6.19878754,6.93863203 8.85444915,4.90909091 12,4.90909091 C13.6909091,4.90909091 15.2181818,5.50909091 16.4181818,6.49090909 L19.9090909,3 C17.7818182,1.14545455 15.0545455,0 12,0 C7.27006974,0 3.1977497,2.69829785 1.23999023,6.65002441 L5.26620003,9.76452941 Z" />
@@ -176,16 +178,16 @@ export default function DataInputPage() {
           </div>
         )}
 
-        <div className="bg-gray-900/70 rounded-xl p-6 border border-gray-800/50 shadow-md">
+        <div className="bg-gradient-to-br from-gray-900/80 via-gray-900/60 to-gray-800/40 rounded-xl p-6 border border-gray-700/50 shadow-xl backdrop-blur-sm">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-medium">Upload CSV File</h2>
-            <div className="flex items-center gap-2">
-              <div className="text-xs text-gray-500 bg-gray-800/70 px-2 py-1 rounded">
+            <h2 className="text-xl font-semibold bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">Upload CSV File</h2>
+            <div className="flex items-center gap-3">
+              <div className="text-xs text-gray-400 bg-gradient-to-r from-gray-800/60 to-gray-700/40 px-3 py-1.5 rounded-lg border border-gray-700/30">
                 {isAuthenticated ? 'Lead Import' : 'Lead Analysis'}
               </div>
               <button
                 onClick={() => router.refresh()}
-                className="p-1.5 text-blue-400 hover:bg-blue-900/20 rounded-md"
+                className="p-2 text-blue-400 hover:bg-blue-900/30 rounded-lg transition-all duration-200 hover:scale-105"
                 aria-label="Refresh page"
               >
                 <RefreshCw className="h-4 w-4" />

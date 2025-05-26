@@ -15,7 +15,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 import ResetSettingsButton from '@/components/ui/ResetSettingsButton';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Users, Calendar, Info, TrendingUp, Target } from 'lucide-react';
 
 // Extend the Window interface to include our custom property
 declare global {
@@ -88,8 +88,9 @@ export default function DashboardPage() {
   const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(false);
   const [showDebugInfo, setShowDebugInfo] = useState<boolean>(process.env.NODE_ENV !== 'production');
   const [isOnboardingActive, setIsOnboardingActive] = useState<boolean>(false);
-  const [preventWelcomeModal, setPreventWelcomeModal] = useState<boolean>(true); // Start with prevention enabled
+  const [preventWelcomeModal, setPreventWelcomeModal] = useState<boolean>(true);
   const [isResetting, setIsResetting] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<'leads' | 'outreach'>('leads');
   
   // Check for reset state on mount and periodically
   useEffect(() => {
@@ -673,13 +674,16 @@ export default function DashboardPage() {
       {showWelcomeModal && hasCompletedOnboarding && !preventWelcomeModal && !isOnboardingActive && <WelcomeModal onClose={handleCloseWelcomeModal} />}
       
       <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-white via-blue-100 to-indigo-200 bg-clip-text text-transparent">Dashboard</h1>
+            <p className="text-gray-400 mt-1">Manage and analyze your leads with AI-powered insights</p>
+          </div>
           <div className="flex items-center gap-3">
             <ResetSettingsButton />
             <Link
               href="/data-input"
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-500 transition-colors text-sm font-medium"
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2.5 rounded-lg hover:from-blue-500 hover:to-indigo-500 transition-all duration-200 text-sm font-medium shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-105"
             >
               Upload Leads
             </Link>
@@ -688,14 +692,23 @@ export default function DashboardPage() {
         
         {/* Error message */}
         {error && (
-          <div className="mb-6 p-4 bg-red-500/20 border border-red-500/30 rounded-lg text-red-200">
-            <p className="font-medium">{error}</p>
-            <button 
-              onClick={fetchLeads}
-              className="mt-2 text-sm text-red-300 hover:text-red-100 underline"
-            >
-              Try Again
-            </button>
+          <div className="mb-6 p-6 bg-gradient-to-r from-red-900/30 to-red-800/20 border border-red-600/30 rounded-xl text-red-200 backdrop-blur-sm shadow-lg">
+            <div className="flex items-start gap-4">
+              <div className="p-2 bg-red-600/20 rounded-lg flex-shrink-0">
+                <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-red-100 mb-2">{error}</p>
+                <button 
+                  onClick={fetchLeads}
+                  className="text-sm text-red-300 hover:text-red-100 underline hover:no-underline transition-all duration-200"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
           </div>
         )}
         
@@ -711,45 +724,126 @@ export default function DashboardPage() {
 
         {/* Reset Settings Info - Only show if user has completed onboarding */}
         {hasCompletedOnboarding && leads.length > 0 && (
-          <div className="mb-6 p-4 bg-blue-900/20 border border-blue-800/30 rounded-lg text-blue-200">
-            <div className="flex items-start gap-3">
-              <div className="p-1 bg-blue-800/30 rounded-full mt-0.5">
-                <RotateCcw className="h-4 w-4 text-blue-400" />
+          <div className="mb-6 p-4 bg-gradient-to-r from-blue-900/20 to-indigo-900/10 border border-blue-700/30 rounded-xl text-blue-200 backdrop-blur-sm">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-600/20 rounded-lg">
+                <RotateCcw className="h-4 w-4 text-blue-400 flex-shrink-0" />
               </div>
-              <div className="flex-1">
-                <p className="font-medium mb-1">Want to target different types of leads?</p>
-                <p className="text-sm text-blue-300">
-                  Use "Reset Settings" to change your targeting criteria. Switch from targeting Marketing Directors to CEOs, 
-                  focus on different industries, or update your business information to get leads prioritized differently.
-                </p>
-              </div>
+              <p className="text-sm text-blue-300 font-medium">
+                Want to target different leads? Use "Reset Settings" to change your targeting criteria.
+              </p>
             </div>
           </div>
         )}
-        
-        {/* Lead Score Distribution */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Lead Quality Distribution</h2>
-          <div className="rounded-lg">
-            <LeadScoreDistribution />
-          </div>
-        </div>
 
-        {/* Content Calendar */}
+        {/* Tabbed Interface */}
         <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Outreach Calendar</h2>
-          <div className="rounded-lg">
-            <ContentCalendar />
+          {/* Tab Navigation */}
+          <div className="flex space-x-1 bg-gradient-to-r from-gray-800/50 to-gray-700/30 p-1.5 rounded-xl mb-8 backdrop-blur-sm border border-gray-700/30">
+            <button
+              onClick={() => setActiveTab('leads')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-medium transition-all duration-200 relative overflow-hidden ${
+                activeTab === 'leads'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-gradient-to-r hover:from-gray-700/60 hover:to-gray-600/40'
+              }`}
+            >
+              {activeTab === 'leads' && (
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 rounded-lg"></div>
+              )}
+              <Users className="w-4 h-4 relative z-10" />
+              <span className="relative z-10">Leads</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('outreach')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-medium transition-all duration-200 relative overflow-hidden ${
+                activeTab === 'outreach'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-gradient-to-r hover:from-gray-700/60 hover:to-gray-600/40'
+              }`}
+            >
+              {activeTab === 'outreach' && (
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 rounded-lg"></div>
+              )}
+              <Calendar className="w-4 h-4 relative z-10" />
+              <span className="relative z-10">Outreach Calendar</span>
+            </button>
           </div>
-        </div>
 
-        {/* Leads Table */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Top Leads</h2>
-          <LeadsTable 
-            leads={leads} 
-            showChromeScore={true}
-          />
+          {/* Tab Content */}
+          {activeTab === 'leads' && (
+            <div className="space-y-6">
+              {/* Leads Tab Description */}
+              <div className="bg-gradient-to-r from-gray-800/40 to-gray-700/20 border border-gray-600/30 rounded-xl p-6 backdrop-blur-sm shadow-lg">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-gradient-to-br from-blue-600/30 to-indigo-600/20 rounded-xl shadow-lg">
+                    <Target className="w-6 h-6 text-blue-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-semibold bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent mb-3">How Your Leads Are Scored</h3>
+                    <p className="text-gray-300 text-sm leading-relaxed">
+                      Our AI-powered scoring system uses proven machine learning methodologies and data enrichment to evaluate lead quality. 
+                      Each lead is analyzed across multiple dimensions including intent signals, budget authority, and business fit using your 
+                      specific targeting criteria. Higher scores indicate leads with stronger conversion potential based on research-backed 
+                      predictive models used by leading SaaS platforms.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Leads Table */}
+              <div>
+                <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                  <div className="p-2 bg-gradient-to-br from-blue-600/30 to-indigo-600/20 rounded-lg">
+                    <Users className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <span className="bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">Your Top Leads</span>
+                </h2>
+                <LeadsTable 
+                  leads={leads} 
+                  showChromeScore={true}
+                />
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'outreach' && (
+            <div className="space-y-6">
+              {/* Outreach Tab Description */}
+              <div className="bg-gradient-to-r from-gray-800/40 to-gray-700/20 border border-gray-600/30 rounded-xl p-6 backdrop-blur-sm shadow-lg">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-gradient-to-br from-green-600/30 to-emerald-600/20 rounded-xl shadow-lg">
+                    <Calendar className="w-6 h-6 text-green-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-semibold bg-gradient-to-r from-white to-green-100 bg-clip-text text-transparent mb-3">Your Outreach Calendar</h3>
+                    <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                      Here's your place where you can outreach to your top leads. Your leads are organized by day based on their 
+                      priority scores, with the highest-scoring leads scheduled earlier in the week. This helps you focus your 
+                      outreach efforts on the most promising prospects first.
+                    </p>
+                    <p className="text-gray-300 text-sm leading-relaxed">
+                      You can follow up using follow-up messages. Click on any lead to view their detailed profile and generate 
+                      personalized outreach messages tailored to their background and company.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Content Calendar */}
+              <div>
+                <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                  <div className="p-2 bg-gradient-to-br from-green-600/30 to-emerald-600/20 rounded-lg">
+                    <Calendar className="w-5 h-5 text-green-400" />
+                  </div>
+                  <span className="bg-gradient-to-r from-white to-green-100 bg-clip-text text-transparent">Weekly Outreach Schedule</span>
+                </h2>
+                <div className="rounded-lg">
+                  <ContentCalendar />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         
         {/* Debug info - only visible in development */}
