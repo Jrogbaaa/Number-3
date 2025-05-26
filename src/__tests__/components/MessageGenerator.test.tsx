@@ -1,6 +1,24 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MessageGenerator } from '@/components/shared/MessageGenerator';
 import '@testing-library/jest-dom';
+import { toast } from 'sonner';
+
+// Mock NextAuth
+jest.mock('next-auth/react', () => ({
+  useSession: () => ({
+    data: { user: { id: 'test-user-id' } },
+    status: 'authenticated'
+  })
+}));
+
+// Mock sonner toast
+jest.mock('sonner', () => ({
+  toast: {
+    success: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+  },
+}));
 
 // Mock the fetch function
 global.fetch = jest.fn();
@@ -26,6 +44,8 @@ const mockLead = {
 describe('MessageGenerator Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (toast.error as jest.Mock).mockClear();
+    (toast.success as jest.Mock).mockClear();
     // Mock successful API response
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
@@ -40,15 +60,15 @@ describe('MessageGenerator Component', () => {
     render(<MessageGenerator leads={[mockLead]} selectedLeadId={mockLead.id} />);
     
     // Check if the component renders with expected elements
-    expect(screen.getByText(/personalize message/i)).toBeInTheDocument();
-    expect(screen.getByRole('textbox')).toBeInTheDocument();
-    expect(screen.getByText(/example prompts/i)).toBeInTheDocument();
+    expect(screen.getByText(/outreach message generator/i)).toBeInTheDocument();
+    expect(screen.getByDisplayValue(/Hey John/)).toBeInTheDocument();
+    expect(screen.getByText(/try these example prompts/i)).toBeInTheDocument();
   });
 
   it('allows users to enter custom prompts', () => {
     render(<MessageGenerator leads={[mockLead]} selectedLeadId={mockLead.id} />);
     
-    const input = screen.getByPlaceholderText(/enter a custom prompt/i);
+    const input = screen.getByPlaceholderText(/make it shorter, funnier, add urgency/i);
     fireEvent.change(input, { target: { value: 'make it more conversational' } });
     
     expect(input).toHaveValue('make it more conversational');
@@ -58,11 +78,11 @@ describe('MessageGenerator Component', () => {
     render(<MessageGenerator leads={[mockLead]} selectedLeadId={mockLead.id} />);
     
     // Enter a custom prompt
-    const input = screen.getByPlaceholderText(/enter a custom prompt/i);
+    const input = screen.getByPlaceholderText(/make it shorter, funnier, add urgency/i);
     fireEvent.change(input, { target: { value: 'make it more conversational' } });
     
     // Click the customize button
-    const button = screen.getByRole('button', { name: /customize/i });
+    const button = screen.getByRole('button', { name: /apply prompt/i });
     fireEvent.click(button);
     
     // Verify API was called with correct parameters
@@ -84,10 +104,10 @@ describe('MessageGenerator Component', () => {
     render(<MessageGenerator leads={[mockLead]} selectedLeadId={mockLead.id} />);
     
     // Submit a custom prompt
-    const input = screen.getByPlaceholderText(/enter a custom prompt/i);
+    const input = screen.getByPlaceholderText(/make it shorter, funnier, add urgency/i);
     fireEvent.change(input, { target: { value: 'make it more conversational' } });
     
-    const button = screen.getByRole('button', { name: /customize/i });
+    const button = screen.getByRole('button', { name: /apply prompt/i });
     fireEvent.click(button);
     
     // Check that transformed message is displayed
@@ -110,15 +130,17 @@ describe('MessageGenerator Component', () => {
     render(<MessageGenerator leads={[mockLead]} selectedLeadId={mockLead.id} />);
     
     // Submit a custom prompt
-    const input = screen.getByPlaceholderText(/enter a custom prompt/i);
+    const input = screen.getByPlaceholderText(/make it shorter, funnier, add urgency/i);
     fireEvent.change(input, { target: { value: 'make it more conversational' } });
     
-    const button = screen.getByRole('button', { name: /customize/i });
+    const button = screen.getByRole('button', { name: /apply prompt/i });
     fireEvent.click(button);
     
-    // Check that error message is displayed
+    // Check that error toast was called
     await waitFor(() => {
-      expect(screen.getByText(/failed to customize message/i)).toBeInTheDocument();
+      expect(toast.error).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to generate message')
+      );
     });
   });
 }); 
