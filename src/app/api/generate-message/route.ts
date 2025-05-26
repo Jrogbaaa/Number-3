@@ -186,7 +186,7 @@ export async function POST(request: Request) {
         console.log("Replicate API key exists in this context:", !!process.env.REPLICATE_API_KEY);
         
         // Use Llama-3 model with Replicate
-        const model = "meta/llama-3-8b-instruct:2669038035d87286f952bf9490e97bb11e863ad97c42ee9ef51a0681d744cb89";
+        const model = "meta/meta-llama-3-8b-instruct";
         
         const prompt = `
 You are an expert in crafting personalized outreach messages. You're going to help transform a base message for a sales or marketing outreach.

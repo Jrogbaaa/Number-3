@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         debugInfo.replicateApiKeyPresent = true;
         
         // Use Llama-3 model with Replicate
-        const model = "meta/llama-3-8b-instruct:2669038035d87286f952bf9490e97bb11e863ad97c42ee9ef51a0681d744cb89";
+        const model = "meta/meta-llama-3-8b-instruct";
         debugInfo.modelId = model;
         
         const prompt = `
