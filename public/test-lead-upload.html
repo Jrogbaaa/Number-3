@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Lead Upload</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test Lead Upload</h1>
+        <p>This page will help test the lead upload functionality.</p>
+        
+        <button onclick="testUploadLeads()">Upload Test Leads</button>
+        <button onclick="testFetchLeads()">Fetch Leads</button>
+        <button onclick="clearResults()">Clear Results</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const testLeads = [
+            {
+                id: "test-lead-1",
+                name: "John Smith",
+                email: "john.smith@example.com",
+                company: "Example Corp",
+                title: "Marketing Manager",
+                source: "CSV Upload",
+                status: "New",
+                score: 85
+            },
+            {
+                id: "test-lead-2", 
+                name: "Jane Doe",
+                email: "jane.doe@testco.com",
+                company: "Test Company",
+                title: "Sales Director",
+                source: "CSV Upload",
+                status: "New",
+                score: 92
+            },
+            {
+                id: "test-lead-3",
+                name: "Mike Johnson",
+                email: "mike.j@sampleinc.com",
+                company: "Sample Inc",
+                title: "CEO",
+                source: "CSV Upload", 
+                status: "New",
+                score: 95
+            }
+        ];
+
+        async function testUploadLeads() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="info">Uploading test leads...</div>';
+            
+            try {
+                const response = await fetch('/api/upload-leads', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ leads: testLeads })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    resultsDiv.innerHTML = `
+                        <div class="success">
+                            <h3>Upload Successful!</h3>
+                            <p>Success: ${result.success}</p>
+                            <p>Total Leads: ${result.count}</p>
+                            <p>Successfully Uploaded: ${result.successCount}</p>
+                            <p>Duplicates: ${result.duplicateCount}</p>
+                            <p>Errors: ${result.errorsCount}</p>
+                            ${result.errors ? `<p>Error Details: ${JSON.stringify(result.errors)}</p>` : ''}
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="error">
+                            <h3>Upload Failed</h3>
+                            <p>Status: ${response.status}</p>
+                            <p>Error: ${result.error}</p>
+                            <pre>${JSON.stringify(result, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="error">
+                        <h3>Upload Error</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testFetchLeads() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="info">Fetching leads...</div>';
+            
+            try {
+                const response = await fetch('/api/fetch-leads');
+                const result = await response.json();
+                
+                if (response.ok) {
+                    resultsDiv.innerHTML = `
+                        <div class="success">
+                            <h3>Fetch Successful!</h3>
+                            <p>Success: ${result.success}</p>
+                            <p>Leads Count: ${result.leads ? result.leads.length : 0}</p>
+                            <details>
+                                <summary>Leads Data</summary>
+                                <pre>${JSON.stringify(result.leads, null, 2)}</pre>
+                            </details>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="error">
+                            <h3>Fetch Failed</h3>
+                            <p>Status: ${response.status}</p>
+                            <p>Error: ${result.error}</p>
+                            <pre>${JSON.stringify(result, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="error">
+                        <h3>Fetch Error</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+    </script>
+</body>
+</html> 

@@ -201,7 +201,8 @@ export async function GET(request: NextRequest) {
           }
 
           console.log('[API:user-preferences] GET - Created default preferences successfully');
-          return NextResponse.json(newPrefs);
+          const camelCaseNewPrefs = snakeToCamel(newPrefs);
+          return NextResponse.json(camelCaseNewPrefs);
         } catch (createErr) {
           console.error('[API:user-preferences] GET - Failed to create default preferences:', createErr);
           return NextResponse.json({ 
@@ -236,11 +237,14 @@ export async function GET(request: NextRequest) {
       }
 
       console.log('[API:user-preferences] GET - Created default preferences successfully');
-      return NextResponse.json(newPrefs);
+      const camelCaseNewPrefs = snakeToCamel(newPrefs);
+      return NextResponse.json(camelCaseNewPrefs);
     }
 
     console.log('[API:user-preferences] GET - Returning existing preferences');
-    return NextResponse.json(data);
+    // Convert snake_case fields to camelCase for frontend consumption
+    const camelCaseData = snakeToCamel(data);
+    return NextResponse.json(camelCaseData);
   } catch (err) {
     console.error('[API:user-preferences] GET - Unexpected error:', err);
     return NextResponse.json(
@@ -319,7 +323,8 @@ export async function PUT(request: NextRequest) {
       }
 
       console.log('[API:user-preferences] PUT - Created new preferences successfully');
-      return NextResponse.json(insertedData);
+      const camelCaseInserted = snakeToCamel(insertedData);
+      return NextResponse.json(camelCaseInserted);
     }
 
     // Update existing record
@@ -337,7 +342,8 @@ export async function PUT(request: NextRequest) {
     }
 
     console.log('[API:user-preferences] PUT - Updated preferences successfully');
-    return NextResponse.json(updatedData);
+    const camelCaseUpdated = snakeToCamel(updatedData);
+    return NextResponse.json(camelCaseUpdated);
   } catch (err) {
     console.error('[API:user-preferences] PUT - Unexpected error:', err);
     return NextResponse.json(

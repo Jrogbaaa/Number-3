@@ -1,40 +1,62 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import { checkAuthentication, getAuthenticatedUser } from '@/lib/auth-helpers';
 
+/**
+ * Debug API route to test if authentication is working properly
+ * Used to diagnose auth issues and cookie handling in Next.js
+ */
 export async function GET() {
   try {
-    // Get session using server-side method
-    const session = await getServerSession(authOptions);
+    console.log('AUTH-DEBUG: Starting authentication test');
     
-    // Check environment variables (without revealing values)
-    const envVars = {
-      hasNextAuthSecret: typeof process.env.NEXTAUTH_SECRET === 'string' && process.env.NEXTAUTH_SECRET.length > 0,
-      nextAuthUrl: process.env.NEXTAUTH_URL || 'not set',
-      hasGoogleClientId: typeof process.env.GOOGLE_CLIENT_ID === 'string' && process.env.GOOGLE_CLIENT_ID.length > 0,
-      hasGoogleClientSecret: typeof process.env.GOOGLE_CLIENT_SECRET === 'string' && process.env.GOOGLE_CLIENT_SECRET.length > 0,
-      environmentMode: process.env.NODE_ENV || 'not set',
-      hasSupabaseUrl: typeof process.env.NEXT_PUBLIC_SUPABASE_URL === 'string' && process.env.NEXT_PUBLIC_SUPABASE_URL.length > 0,
-    };
+    // Test 1: Use our auth helper
+    console.log('AUTH-DEBUG: Testing checkAuthentication()...');
+    const authError = await checkAuthentication();
     
-    // Return diagnostic information
+    // Test 2: Try the getAuthenticatedUser helper
+    console.log('AUTH-DEBUG: Testing getAuthenticatedUser()...');
+    const { user: authHelperUser, error: authHelperError } = await getAuthenticatedUser();
+    
+    // Test 3: Create a direct Supabase client using the recommended pattern
+    console.log('AUTH-DEBUG: Testing direct Supabase client creation...');
+    const supabase = createServerComponentClient({ cookies });
+    
+    // Test 4: Get session with direct client
+    console.log('AUTH-DEBUG: Testing direct session access...');
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    // Return all diagnostics
     return NextResponse.json({
-      authenticated: !!session,
-      session: session ? {
-        userId: session.user?.id || 'not available',
-        userEmail: session.user?.email || 'not available',
-        userName: session.user?.name || 'not available',
-        // Don't include the full session object for security
-      } : null,
-      environmentVariables: envVars,
       timestamp: new Date().toISOString(),
+      tests: {
+        checkAuthentication: {
+          passed: !authError,
+          error: authError ? authError.error : null
+        },
+        getAuthenticatedUser: {
+          passed: !!authHelperUser && !authHelperError,
+          userId: authHelperUser?.id || null,
+          error: authHelperError || null
+        },
+        directSessionAccess: {
+          passed: !!session && !sessionError,
+          userId: session?.user?.id || null,
+          error: sessionError ? sessionError.message : null
+        }
+      },
+      summary: 
+        (!authError && !!authHelperUser && !!session) 
+          ? "All authentication checks passed" 
+          : "Some authentication checks failed - see details"
     });
   } catch (error) {
-    // Return error information
+    console.error('AUTH-DEBUG: Error during authentication test:', error);
     return NextResponse.json({
-      authenticated: false,
+      success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString(),
+      stack: error instanceof Error ? error.stack : undefined
     }, { status: 500 });
   }
 } 

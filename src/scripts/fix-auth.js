@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
 
-console.log('🔍 PROPS Google Auth Diagnostics 🔍');
+console.log('🔍 OptiLeads Google Auth Diagnostics 🔍');
 console.log('=================================\n');
 
 // First load from .env if it exists

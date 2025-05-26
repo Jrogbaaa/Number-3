@@ -4,7 +4,9 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { NextAuthProvider } from '@/providers/NextAuthProvider';
 import { UserPreferencesProvider } from '@/providers/UserPreferencesProvider';
-import { ErrorBoundary } from '@/components';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { AuthProvider } from '@/providers/AuthProvider';
+import { ClientErrorSuppress } from '@/components/ClientErrorSuppress';
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -31,6 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${inter.variable} font-sans bg-dark-navy text-white min-h-screen`}>
+        <ClientErrorSuppress />
         <ErrorBoundary>
           <NextAuthProvider>
             <UserPreferencesProvider>

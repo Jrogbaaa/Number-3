@@ -20,7 +20,7 @@ export default function WelcomeModal({ onClose }: WelcomeModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
       <div className="bg-gray-900 border border-gray-800 rounded-lg shadow-xl p-8 w-full max-w-lg mx-4 animate-in fade-in-0 slide-in-from-bottom-5 duration-300">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-semibold text-white">Welcome to PROPS</h2>
+          <h2 className="text-2xl font-semibold text-white">Welcome to OptiLeads</h2>
           <button 
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors"
@@ -37,7 +37,7 @@ export default function WelcomeModal({ onClose }: WelcomeModalProps) {
             <Database className="h-14 w-14 text-blue-400" />
           </div>
           <p className="text-gray-300 text-center mb-4">
-            Get started by uploading your leads to take advantage of PROPS' powerful lead scoring and outreach system.
+            Get started by uploading your leads to take advantage of OptiLeads' powerful lead scoring and outreach system.
           </p>
           <div className="bg-blue-900/20 border border-blue-800/30 rounded-lg p-4 text-sm text-gray-300">
             <p className="font-medium text-blue-400 mb-1">Quick Start Guide:</p>

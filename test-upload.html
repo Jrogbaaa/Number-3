@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test CSV Upload</title>
+</head>
+<body>
+    <h1>Test CSV Upload</h1>
+    <input type="file" id="csvFile" accept=".csv">
+    <button onclick="testUpload()">Test Upload</button>
+    <div id="result"></div>
+
+    <script>
+        async function testUpload() {
+            const fileInput = document.getElementById('csvFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a CSV file');
+                return;
+            }
+
+            // Create test lead data
+            const testLeads = [
+                {
+                    name: 'Test Lead 1',
+                    email: 'test1@example.com',
+                    company: 'Test Company 1',
+                    title: 'Marketing Manager',
+                    source: 'Website',
+                    status: 'New',
+                    score: 75,
+                    value: 5000
+                },
+                {
+                    name: 'Test Lead 2', 
+                    email: 'test2@example.com',
+                    company: 'Test Company 2',
+                    title: 'CEO',
+                    source: 'LinkedIn',
+                    status: 'New',
+                    score: 90,
+                    value: 10000
+                }
+            ];
+
+            try {
+                console.log('Sending test leads:', testLeads);
+                
+                const response = await fetch('/api/upload-leads', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ leads: testLeads }),
+                });
+
+                const result = await response.json();
+                console.log('Upload result:', result);
+                
+                document.getElementById('result').innerHTML = 
+                    '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+                    
+                if (result.success) {
+                    alert('Upload successful! Check the dashboard.');
+                } else {
+                    alert('Upload failed: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert('Upload error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html> 

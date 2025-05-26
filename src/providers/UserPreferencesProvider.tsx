@@ -39,7 +39,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   updatedAt: new Date()
 };
 
-// Helper to convert snake_case to camelCase for API responses
+// Helper to convert snake_case to camelCase for our app
 const snakeToCamel = (obj: any): any => {
   if (obj === null || typeof obj !== 'object') {
     return obj;
@@ -59,6 +59,11 @@ const snakeToCamel = (obj: any): any => {
     } else {
       // Recursively convert nested objects
       acc[camelKey] = snakeToCamel(obj[key]);
+    }
+    
+    // Debug logging for the specific field we're having trouble with
+    if (key === 'has_completed_onboarding') {
+      console.log('[UserPreferencesProvider] Converting has_completed_onboarding:', obj[key], 'to hasCompletedOnboarding:', acc[camelKey]);
     }
     
     return acc;
@@ -120,20 +125,23 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
   }, []);
 
   // Load preferences from localStorage if available (for fallback)
-  const loadFromLocalStorage = () => {
-    if (!session?.user?.id || isIncognitoDetected) return null;
+  const loadFromLocalStorage = (userIdParam?: string) => {
+    const sessionAny = session as any;
+    const userId = userIdParam || session?.user?.id || sessionAny?.user?.sub || sessionAny?.nextAuth?.user?.id || sessionAny?.supabase?.user?.id;
+    
+    if (!userId || isIncognitoDetected) return null;
     
     try {
       // Try loading with the original user ID
-      const localPrefs = localStorage.getItem(`user-preferences-${session.user.id}`);
+      const localPrefs = localStorage.getItem(`user-preferences-${userId}`);
       
       if (localPrefs) {
         const parsedPrefs = JSON.parse(localPrefs);
-        console.log('[UserPreferencesProvider] Loaded preferences from localStorage');
+        console.log('[UserPreferencesProvider] Loaded preferences from localStorage:', parsedPrefs);
         
         // Ensure the userId in the preferences matches the session userId
         // This handles cases where the backend might have transformed the ID
-        parsedPrefs.userId = session.user.id;
+        parsedPrefs.userId = userId;
         
         return parsedPrefs;
       }
@@ -144,17 +152,40 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
     // Return default preferences if nothing in localStorage
     return {
       ...DEFAULT_PREFERENCES,
-      userId: session.user.id
+      userId: userId
     };
   };
 
+  // Check if onboarding was completed in localStorage (to prevent reset)
+  const checkOnboardingCompletionInLocalStorage = (userIdParam?: string) => {
+    const sessionAny = session as any;
+    const userId = userIdParam || session?.user?.id || sessionAny?.user?.sub || sessionAny?.nextAuth?.user?.id || sessionAny?.supabase?.user?.id;
+    
+    if (!userId || isIncognitoDetected) return false;
+    
+    try {
+      const localPrefs = localStorage.getItem(`user-preferences-${userId}`);
+      if (localPrefs) {
+        const parsedPrefs = JSON.parse(localPrefs);
+        return parsedPrefs.hasCompletedOnboarding || false;
+      }
+    } catch (err) {
+      console.error('[UserPreferencesProvider] Error checking onboarding completion:', err);
+    }
+    
+    return false;
+  };
+
   // Save preferences to localStorage as backup
-  const saveToLocalStorage = (prefs: UserPreferences) => {
-    if (!session?.user?.id || isIncognitoDetected) return;
+  const saveToLocalStorage = (prefs: UserPreferences, userIdParam?: string) => {
+    const sessionAny = session as any;
+    const userId = userIdParam || session?.user?.id || sessionAny?.user?.sub || sessionAny?.nextAuth?.user?.id || sessionAny?.supabase?.user?.id;
+    
+    if (!userId || isIncognitoDetected) return;
     
     try {
       localStorage.setItem(
-        `user-preferences-${session.user.id}`,
+        `user-preferences-${userId}`,
         JSON.stringify(prefs)
       );
     } catch (err) {
@@ -164,8 +195,14 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
 
   // Fetch user preferences when session is available
   useEffect(() => {
+    // Extract user ID from different possible locations in the session
+    const sessionAny = session as any; // Type assertion to access extended properties
+    const userId = session?.user?.id || sessionAny?.user?.sub || sessionAny?.nextAuth?.user?.id || sessionAny?.supabase?.user?.id;
+    
     // Skip fetching if not authenticated - critical fix for auth flow
-    if (status !== 'authenticated' || !session?.user?.id) {
+    if (status !== 'authenticated' || !userId) {
+      console.log('[UserPreferencesProvider] Skipping fetch - status:', status, 'userId:', userId);
+      console.log('[UserPreferencesProvider] Full session object:', session);
       setLoading(false);
       return;
     }
@@ -173,10 +210,12 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
     const fetchPreferences = async () => {
       try {
         setLoading(true);
-        console.log('[UserPreferencesProvider] Fetching preferences for user:', session.user.id);
+        console.log('[UserPreferencesProvider] Fetching preferences for user:', userId);
+        console.log('[UserPreferencesProvider] Current useLocalStorage flag:', useLocalStorage);
         
         // Always try to load from localStorage first as a backup
-        const localPrefs = loadFromLocalStorage();
+        const localPrefs = loadFromLocalStorage(userId);
+        console.log('[UserPreferencesProvider] LocalPrefs loaded:', localPrefs);
         
         if (useLocalStorage) {
           // If we already know we should use localStorage, don't try the API
@@ -188,7 +227,12 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
         
         try {
           // Try the API
-          const response = await fetch(`/api/user-preferences`);
+          const response = await fetch(`/api/user-preferences`, {
+            credentials: 'include', // Include cookies for session
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
           
           if (!response.ok) {
             const errorData = await response.json();
@@ -198,19 +242,22 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
           
           const data = await response.json();
           console.log('[UserPreferencesProvider] Successfully fetched preferences from API:', data);
+          console.log('[UserPreferencesProvider] Raw API data has_completed_onboarding:', data.has_completed_onboarding);
           
           // Convert from snake_case (from DB) to camelCase (for our app)
           const camelCaseData = snakeToCamel(data);
+          console.log('[UserPreferencesProvider] After camelCase conversion - hasCompletedOnboarding:', camelCaseData.hasCompletedOnboarding);
           
           // Ensure the userId in the preferences matches the session userId
           // This handles cases where the backend might have transformed the ID
-          camelCaseData.userId = session.user.id;
+          camelCaseData.userId = userId;
           
+          console.log('[UserPreferencesProvider] Final preferences object:', camelCaseData);
           setPreferences(camelCaseData);
           
           // Also save to localStorage as backup (if not in incognito)
           if (!isIncognitoDetected) {
-            saveToLocalStorage(camelCaseData);
+            saveToLocalStorage(camelCaseData, userId);
           }
         } catch (apiError) {
           console.error('[UserPreferencesProvider] API error, falling back to localStorage:', apiError);
@@ -230,10 +277,13 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
             // Use the localPrefs we loaded earlier
             setPreferences(localPrefs);
           } else {
-            // In incognito mode without API, use memory-only default preferences
+            // In incognito mode without API, preserve onboarding completion if it exists
+            const hadCompletedOnboarding = checkOnboardingCompletionInLocalStorage(userId);
             setPreferences({
               ...DEFAULT_PREFERENCES,
-              userId: session.user.id || 'anonymous'
+              userId: userId || 'anonymous',
+              hasCompletedOnboarding: hadCompletedOnboarding,
+              onboardingStep: hadCompletedOnboarding ? 7 : DEFAULT_PREFERENCES.onboardingStep
             });
           }
           
@@ -249,13 +299,16 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
         // Fall back to localStorage or memory
         if (!isIncognitoDetected) {
           setUseLocalStorage(true);
-          const localPrefs = loadFromLocalStorage();
+          const localPrefs = loadFromLocalStorage(userId);
           setPreferences(localPrefs);
         } else {
-          // In incognito mode, use memory-only preferences
+          // In incognito mode, preserve onboarding completion if it exists
+          const hadCompletedOnboarding = checkOnboardingCompletionInLocalStorage(userId);
           setPreferences({
             ...DEFAULT_PREFERENCES,
-            userId: session.user.id || 'anonymous'
+            userId: userId || 'anonymous',
+            hasCompletedOnboarding: hadCompletedOnboarding,
+            onboardingStep: hadCompletedOnboarding ? 7 : DEFAULT_PREFERENCES.onboardingStep
           });
         }
       } finally {
@@ -264,20 +317,23 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
     };
 
     fetchPreferences();
-  }, [session?.user?.id, status, useLocalStorage, isIncognitoDetected]);
+  }, [status, useLocalStorage, isIncognitoDetected, session]);
 
   const updatePreferences = async (newPrefs: Partial<UserPreferences>): Promise<void> => {
-    if (!session?.user?.id) {
-      throw new Error('User must be authenticated to update preferences');
-    }
-
     try {
       setLoading(true);
+      
+      // Extract user ID from session
+      const sessionAny = session as any;
+      const userId = session?.user?.id || sessionAny?.user?.sub || sessionAny?.nextAuth?.user?.id || sessionAny?.supabase?.user?.id;
+      
+      // Check if user is authenticated
+      const isAuthenticated = !!userId;
       
       // Get current preferences to merge with
       const currentPrefs = preferences || {
         ...DEFAULT_PREFERENCES,
-        userId: session.user.id
+        userId: userId || 'anonymous-user' // Always use a string value
       };
       
       // Merge with new preferences
@@ -287,16 +343,26 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
         updatedAt: new Date()
       };
       
-      // Always update localStorage as backup (if not in incognito)
-      if (!isIncognitoDetected) {
-        saveToLocalStorage(mergedPrefs);
-      }
-      
-      if (useLocalStorage || isIncognitoDetected) {
-        // If in localStorage mode or incognito, don't try API
+      // If not authenticated or in localStorage mode, save to localStorage
+      if (!isAuthenticated || useLocalStorage || isIncognitoDetected) {
+        console.log('[UserPreferencesProvider] User not authenticated or using local storage mode, saving preferences locally');
+        
+        if (!isIncognitoDetected) {
+          // Save to localStorage if not in incognito
+          saveToLocalStorage(mergedPrefs, userId);
+        }
+        
+        // Update state
         setPreferences(mergedPrefs);
         setLoading(false);
         return;
+      }
+      
+      // If we got here, user is authenticated and we're not in localStorage mode
+      
+      // Always update localStorage as backup (if not in incognito)
+      if (!isIncognitoDetected) {
+        saveToLocalStorage(mergedPrefs, userId);
       }
       
       try {
@@ -306,6 +372,7 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
         
         const response = await fetch('/api/user-preferences', {
           method: 'PUT',
+          credentials: 'include', // Include cookies for session
           headers: {
             'Content-Type': 'application/json',
           },
@@ -323,7 +390,7 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
         
         // Also update localStorage backup (if not in incognito)
         if (!isIncognitoDetected) {
-          saveToLocalStorage(camelCaseUpdated);
+          saveToLocalStorage(camelCaseUpdated, userId);
         }
       } catch (apiError) {
         console.error('[UserPreferencesProvider] API update error, falling back to localStorage:', apiError);

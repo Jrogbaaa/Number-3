@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import type { Lead } from '@/types/lead';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 export async function GET() {
   try {
+    console.log('API: Processing fetch-leads request');
+    
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -16,12 +20,30 @@ export async function GET() {
       }, { status: 500 });
     }
 
+    // Check authentication using NextAuth
+    console.log('API: Checking authentication via NextAuth...');
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user) {
+      console.log('API: No NextAuth session found');
+      return NextResponse.json({ 
+        success: false, 
+        error: 'User not authenticated',
+        leads: [],
+      }, { status: 401 });
+    }
+
+    const userId = session.user.id;
+    console.log(`API: User authenticated with NextAuth, ID: ${userId}`);
+    
+    // Create Supabase client with service role to bypass RLS
     const supabase = createClient(supabaseUrl, serviceRoleKey);
-    console.log('API: Attempting to fetch leads from Supabase...');
+    console.log(`API: Attempting to fetch leads for user ${userId} from Supabase...`);
 
     const { data, error } = await supabase
       .from('leads')
       .select('*')
+      .eq('user_id', userId) // Only get leads for the current user
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -43,7 +65,7 @@ export async function GET() {
       });
     }
     
-    console.log(`API: Successfully fetched ${data.length} leads from Supabase.`);
+    console.log(`API: Successfully fetched ${data.length} leads for user ${userId} from Supabase.`);
 
     const processedLeads = data.map(lead => {
       const parsedInsights = lead.insights ? (

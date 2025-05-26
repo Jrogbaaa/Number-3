@@ -13,6 +13,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/signin') ||
     pathname.startsWith('/debug-auth') ||
+    pathname.startsWith('/onboarding') || // Allow onboarding without authentication
+    pathname.startsWith('/data-input') || // Allow data upload without authentication
     pathname === '/' || // Allow access to home page
     pathname.includes('.') // Files like favicon.ico, etc.
   ) {
@@ -40,6 +42,13 @@ export async function middleware(request: NextRequest) {
       console.log(`[Middleware] Token found for ${pathname} - user: ${token.name || 'unnamed'}`);
     } else {
       console.log(`[Middleware] No token found for ${pathname} - redirecting to signin`);
+      
+      // Special handling for dashboard - redirect to onboarding instead if no token
+      if (pathname.startsWith('/dashboard')) {
+        console.log(`[Middleware] Redirecting dashboard access to onboarding for non-authenticated users`);
+        return NextResponse.redirect(new URL('/onboarding', request.url));
+      }
+      
       return NextResponse.redirect(new URL('/signin', request.url));
     }
     

@@ -363,13 +363,7 @@ TRANSFORMED MESSAGE:`;
     if (lowerPrompt.includes('urgency') || lowerPrompt.includes('urgent')) {
       newMessageBody = newMessageBody.replace('Would you be open', 'I have a couple of slots free this week. Any chance you\'re available');
       newMessageBody = newMessageBody.replace('open to a quick 10-15 min chat sometime', 'free for a quick 10-15 min chat this week');
-      if(!newMessageBody.includes('P.S.')){ // Avoid multiple P.S.
-        if (companyProduct !== '[Your Product/Service]') {
-          newMessageBody = newMessageBody + `\\n\\nP.S. We're rolling out ${companyProduct} to a select number of ${userIndustry || 'companies'} this month.`;
-        } else {
-          newMessageBody = newMessageBody + '\\n\\nP.S. We\'re offering a special early bird discount this month only.';
-        }
-      }
+      // Remove the P.S. section entirely for urgency - it was adding unwanted content
       promptApplied = true;
     }
     
@@ -472,6 +466,16 @@ TRANSFORMED MESSAGE:`;
 
       if (lead.insights?.interests?.[0] && newMessageBody.length > 70 && !newMessageBody.toLowerCase().includes(lead.insights.interests[0].toLowerCase()) && !newMessageBody.includes('P.S.')) {
         newMessageBody += `\\n\\n(P.S. Saw you\'re into ${lead.insights.interests[0]} – cool stuff!)`;
+      }
+    }
+    
+    // Preserve user's company name in signature if it exists
+    const userCompanyName = userBusinessInfo?.companyName;
+    if (userCompanyName && userCompanyName !== '[Your Company]' && userCompanyName.trim() !== '') {
+      // Check if signature already contains the company name
+      if (!newSignature.includes(userCompanyName)) {
+        // Add company name to signature
+        newSignature = newSignature.replace('[Your Name]', `[Your Name]\n${userCompanyName}`);
       }
     }
     

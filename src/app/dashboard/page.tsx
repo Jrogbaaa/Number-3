@@ -11,6 +11,11 @@ import LeadScoreDistribution from '@/components/dashboard/LeadScoreDistribution'
 import WelcomeModal from '@/components/ui/WelcomeModal';
 import OnboardingModal from '@/components/ui/OnboardingModal';
 import { useUserPreferences } from '@/providers/UserPreferencesProvider';
+import { useAuth } from '@/providers/AuthProvider';
+import { toast } from 'react-hot-toast';
+import Link from 'next/link';
+import ResetSettingsButton from '@/components/ui/ResetSettingsButton';
+import { RotateCcw } from 'lucide-react';
 
 // Extend the Window interface to include our custom property
 declare global {
@@ -23,11 +28,13 @@ declare global {
 const DebugInfo = ({ 
   session, 
   status, 
-  preferences 
+  preferences,
+  auth
 }: { 
   session: any; 
   status: 'loading' | 'authenticated' | 'unauthenticated'; 
   preferences: any;
+  auth: any;
 }) => {
   // Only show in development mode
   if (process.env.NODE_ENV === 'production') return null;
@@ -41,6 +48,13 @@ const DebugInfo = ({
           <h4 className="font-medium text-amber-300">Authentication:</h4>
           <pre className="p-1 bg-gray-900/50 rounded mt-1 overflow-x-auto">
             {JSON.stringify({ status, session }, null, 2)}
+          </pre>
+        </div>
+        
+        <div>
+          <h4 className="font-medium text-amber-300">Auth Provider:</h4>
+          <pre className="p-1 bg-gray-900/50 rounded mt-1 overflow-x-auto">
+            {JSON.stringify(auth, null, 2)}
           </pre>
         </div>
         
@@ -66,64 +80,223 @@ const DebugInfo = ({
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
+  const auth = useAuth();
   const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(false);
   const [showDebugInfo, setShowDebugInfo] = useState<boolean>(process.env.NODE_ENV !== 'production');
+  const [isOnboardingActive, setIsOnboardingActive] = useState<boolean>(false);
+  const [preventWelcomeModal, setPreventWelcomeModal] = useState<boolean>(true); // Start with prevention enabled
+  const [isResetting, setIsResetting] = useState<boolean>(false);
+  
+  // Check for reset state on mount and periodically
+  useEffect(() => {
+    const checkResetState = () => {
+      const lastResetTime = localStorage.getItem('lastSettingsReset');
+      const isVeryRecentReset = lastResetTime && (Date.now() - parseInt(lastResetTime)) < 45 * 1000;
+      setIsResetting(!!isVeryRecentReset);
+    };
+    
+    // Check immediately
+    checkResetState();
+    
+    // Check every 2 seconds for the first minute after mount
+    const interval = setInterval(checkResetState, 2000);
+    
+    // Clear interval after 60 seconds
+    const timeout = setTimeout(() => {
+      clearInterval(interval);
+    }, 60000);
+    
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, []);
   
   // Always call the hook, but only use its values when authenticated
   const userPreferences = useUserPreferences();
   
-  // Safely access user preferences values
-  const hasCompletedOnboarding = status === 'authenticated' ? userPreferences.hasCompletedOnboarding : false;
-  const preferencesLoading = status === 'authenticated' ? userPreferences.loading : false;
+  // Check onboarding completion for both authenticated and unauthenticated users
+  // since onboarding data can be stored locally
+  const hasCompletedOnboarding = userPreferences.hasCompletedOnboarding;
+  const preferencesLoading = userPreferences.loading;
   const preferences = status === 'authenticated' ? userPreferences.preferences : null;
   const preferencesError = status === 'authenticated' ? userPreferences.error : null;
+
+  // Track onboarding state changes and prevent welcome modal during onboarding/reset
+  useEffect(() => {
+    setIsOnboardingActive(!hasCompletedOnboarding);
+    
+    // Check if this is a recent reset (within last 2 minutes for reset state)
+    const lastResetTime = localStorage.getItem('lastSettingsReset');
+    const isRecentReset = lastResetTime && (Date.now() - parseInt(lastResetTime)) < 2 * 60 * 1000;
+    
+    // Set resetting state if it's a very recent reset (within 45 seconds to account for page reload)
+    const isVeryRecentReset = lastResetTime && (Date.now() - parseInt(lastResetTime)) < 45 * 1000;
+    setIsResetting(!!isVeryRecentReset);
+    
+    // If onboarding is not completed OR this is a recent reset, prevent welcome modal
+    if (!hasCompletedOnboarding || isRecentReset) {
+      setPreventWelcomeModal(true);
+      // Also clear the welcome modal state if it was set
+      setShowWelcomeModal(false);
+    } else {
+      // Only allow welcome modal if onboarding is truly complete AND no recent reset
+      // Add a delay to ensure everything is stable
+      const timer = setTimeout(() => {
+        setPreventWelcomeModal(false);
+      }, 3000); // 3 second delay to ensure onboarding is fully complete
+      
+      return () => clearTimeout(timer);
+    }
+  }, [hasCompletedOnboarding]);
+
+  // Debug onboarding state
+  console.log('[Dashboard] Onboarding state check:', {
+    hasCompletedOnboarding,
+    preferencesLoading,
+    status,
+    preferences: preferences ? 'loaded' : 'none',
+    isOnboardingActive,
+    preventWelcomeModal,
+    showWelcomeModal,
+    isResetting
+  });
+
+  // Import temporary leads when user signs in
+  const importTemporaryLeads = async (tempLeads: any[]) => {
+    try {
+      console.log(`Importing ${tempLeads.length} temporary leads for authenticated user`);
+      
+      const response = await fetch('/api/upload-leads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ leads: tempLeads }),
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Temporary leads imported successfully:', result);
+        // Refresh leads data
+        fetchLeads();
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to import temporary leads:', errorData);
+      }
+    } catch (error) {
+      console.error('Error importing temporary leads:', error);
+    }
+  };
 
   // Check authentication
   useEffect(() => {
     console.log('Dashboard - auth status:', status);
     console.log('Dashboard - session:', session);
+    console.log('Dashboard - AuthProvider status:', auth.authStatus);
     console.log('Dashboard - hasCompletedOnboarding:', hasCompletedOnboarding);
     
-    if (status === 'unauthenticated') {
-      console.log('Dashboard: User not authenticated, redirecting to signin');
+    // Only redirect to signin if user is unauthenticated AND hasn't completed onboarding
+    if (status === 'unauthenticated' && !hasCompletedOnboarding) {
+      console.log('Dashboard: User not authenticated and onboarding incomplete, redirecting to signin');
       router.push('/signin');
     }
-  }, [status, router, hasCompletedOnboarding]);
+    
+    // Check for temporary leads when user signs in
+    if (status === 'authenticated' && session?.user) {
+      try {
+        const tempLeads = localStorage.getItem('temporary-leads');
+        if (tempLeads) {
+          const leads = JSON.parse(tempLeads);
+          if (leads && Array.isArray(leads) && leads.length > 0) {
+            // Import temporary leads to user's account
+            importTemporaryLeads(leads);
+            // Clear temporary leads from localStorage
+            localStorage.removeItem('temporary-leads');
+          }
+        }
+      } catch (error) {
+        console.error('Error checking for temporary leads:', error);
+      }
+    }
+    
+    // Sync authentication with backend if needed
+    if (status === 'authenticated' && auth.authStatus !== 'authenticated') {
+      auth.syncWithBackend().catch(err => {
+        console.error('Failed to sync authentication with backend:', err);
+      });
+    }
+  }, [status, router, hasCompletedOnboarding, auth, session]);
 
   // Define fetchLeads outside the conditional block to avoid linter error
   const fetchLeads = async () => {
-      try {
-        setLoading(true);
+    // Only fetch if we have confirmed authentication sync
+    if (!auth.isAuthenticated) {
+      console.log('Dashboard: Not authenticated or sync not complete, waiting before fetching leads');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      console.log('Dashboard: Starting to fetch leads...');
+      
+      // Use the new server-side API route instead of direct Supabase call
+      const response = await fetch('/api/fetch-leads');
+      console.log('Dashboard: API response status:', response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.log('Dashboard: API error response:', errorData);
         
-        // Use the new server-side API route instead of direct Supabase call
-        const response = await fetch('/api/fetch-leads');
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `Server error: ${response.status}`);
+        // Handle specific error types
+        if (response.status === 401) {
+          console.log('Authentication error when fetching leads, redirecting to signin');
+          router.push('/signin');
+          return;
         }
         
-        const data = await response.json();
-        
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to load leads data');
-        }
-        
-        const fetchedLeads = data.leads || [];
-        
-        // Apply scoring based on user preferences - key enhancement to make leads relevant
-        const scoredLeads = scoreLeadsBasedOnPreferences(fetchedLeads, preferences);
-        
-        setLeads(scoredLeads);
-      } catch (err) {
-        console.error('Error fetching leads:', err);
-        setError('Failed to load leads data');
-      } finally {
-        setLoading(false);
+        throw new Error(errorData.error || `Server error: ${response.status}`);
       }
+      
+      const data = await response.json();
+      console.log('Dashboard: API success response:', { 
+        success: data.success, 
+        leadCount: data.leads?.length || 0,
+        hasLeads: !!data.leads 
+      });
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to load leads data');
+      }
+      
+      const fetchedLeads = data.leads || [];
+      console.log('Dashboard: Fetched leads:', fetchedLeads.length);
+      
+      // Apply scoring based on user preferences - key enhancement to make leads relevant
+      const scoredLeads = scoreLeadsBasedOnPreferences(fetchedLeads, preferences);
+      console.log('Dashboard: Scored leads:', scoredLeads.length);
+      
+      setLeads(scoredLeads);
+      console.log('Dashboard: Leads set to state successfully');
+    } catch (err) {
+      console.error('Error fetching leads:', err);
+      
+      // Provide more user-friendly error message
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      if (errorMessage.includes('authenticated') || errorMessage.includes('auth')) {
+        setError('Please sign in to view your leads');
+        // Redirect to signin after a short delay to allow the error to be seen
+        setTimeout(() => router.push('/signin'), 2000);
+      } else {
+        setError('Failed to load your leads. Please try again later.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Score leads based on user preferences from onboarding
@@ -309,29 +482,64 @@ export default function DashboardPage() {
     });
   };
 
+  // Only load leads when authenticated and sync is complete
   useEffect(() => {
-    // Only fetch leads if user is authenticated
-    if (status === 'authenticated') {
+    if (status === 'authenticated' && auth.isAuthenticated) {
       fetchLeads();
     }
-  }, [status]);
+  }, [status, auth.isAuthenticated]); // Add auth.isAuthenticated as dependency
 
   // Check for first visit when component mounts
   useEffect(() => {
     // Skip if not authenticated
     if (status !== 'authenticated') return;
     
-    // Only show welcome modal if user has completed onboarding
-    // For users who haven't completed onboarding, they'll see the OnboardingModal instead
-    if (hasCompletedOnboarding) {
-      // Check if the user has visited the dashboard before
-      const hasVisitedBefore = localStorage.getItem('hasVisitedDashboard');
-      
-      // If this is the first visit, show the welcome modal and set the localStorage flag
-      if (!hasVisitedBefore) {
-        setShowWelcomeModal(true);
-        localStorage.setItem('hasVisitedDashboard', 'true');
-      }
+    // COMPLETELY DISABLE welcome modal if any of these conditions are true:
+    // 1. Onboarding not completed
+    // 2. Preferences not loaded
+    // 3. Prevention flag is set
+    // 4. Onboarding is active
+    // 5. Recent reset activity
+    // 6. Current onboarding step is not complete (7)
+    // 7. Currently in resetting state
+    
+    const lastResetTime = localStorage.getItem('lastSettingsReset');
+    const isRecentReset = lastResetTime && (Date.now() - parseInt(lastResetTime)) < 10 * 60 * 1000; // 10 minutes
+    const currentStep = preferences?.onboardingStep || 1;
+    
+    const shouldBlockWelcomeModal = (
+      !hasCompletedOnboarding ||
+      !preferences ||
+      preventWelcomeModal ||
+      isOnboardingActive ||
+      isRecentReset ||
+      currentStep < 7 ||
+      preferencesLoading ||
+      isResetting // Add this critical check
+    );
+    
+    if (shouldBlockWelcomeModal) {
+      console.log('[Dashboard] Blocking welcome modal due to:', {
+        hasCompletedOnboarding,
+        hasPreferences: !!preferences,
+        preventWelcomeModal,
+        isOnboardingActive,
+        isRecentReset,
+        currentStep,
+        preferencesLoading,
+        isResetting
+      });
+      // Actively hide welcome modal if it's currently showing
+      setShowWelcomeModal(false);
+      return; // Don't show welcome modal
+    }
+    
+    // Only show welcome modal if ALL conditions are met and it's first visit
+    const hasVisitedBefore = localStorage.getItem('hasVisitedDashboard');
+    if (!hasVisitedBefore) {
+      console.log('[Dashboard] Showing welcome modal - all conditions met');
+      setShowWelcomeModal(true);
+      localStorage.setItem('hasVisitedDashboard', 'true');
     }
     
     // Add developer utility to reset first visit flag (available in browser console)
@@ -345,7 +553,7 @@ export default function DashboardPage() {
     return () => {
       delete window.resetFirstVisitFlag;
     };
-  }, [status, hasCompletedOnboarding]);
+  }, [status, hasCompletedOnboarding, preferences, preventWelcomeModal, isOnboardingActive, preferencesLoading, isResetting]);
 
   const handleCloseWelcomeModal = () => {
     setShowWelcomeModal(false);
@@ -387,7 +595,16 @@ export default function DashboardPage() {
     return (
       <DashboardLayout>
         <div className="flex flex-col justify-center items-center h-screen">
-          <div className="text-xl text-white mb-4">Please sign in to access your dashboard</div>
+          {hasCompletedOnboarding ? (
+            <>
+              <div className="text-xl text-white mb-2">Welcome back!</div>
+              <div className="text-gray-300 mb-6 text-center max-w-md">
+                You've completed the onboarding process. Sign in to access your personalized dashboard and start managing your leads.
+              </div>
+            </>
+          ) : (
+            <div className="text-xl text-white mb-4">Please sign in to access your dashboard</div>
+          )}
           
           <a 
             href="/api/auth/signin/google?callbackUrl=/dashboard"
@@ -437,14 +654,37 @@ export default function DashboardPage() {
   // Content for authenticated users
   return (
     <DashboardLayout>
-      {/* Render OnboardingModal if the user hasn't completed onboarding */}
-      {!hasCompletedOnboarding && <OnboardingModal />}
+      {/* Show loading state during reset, otherwise show onboarding modal if user hasn't completed onboarding */}
+      {isResetting ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80">
+          <div className="bg-gray-900 border border-gray-800 rounded-lg shadow-xl p-8 w-full max-w-md mx-4">
+            <div className="flex flex-col items-center justify-center">
+              <div className="h-12 w-12 rounded-full border-2 border-blue-600 border-t-transparent animate-spin mb-4"></div>
+              <h3 className="text-xl font-medium text-white mb-2">Resetting Settings</h3>
+              <p className="text-gray-400 text-center">Please wait while we reset your preferences and prepare the onboarding process...</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        !hasCompletedOnboarding && <OnboardingModal />
+      )}
       
-      {/* Show welcome modal on first visit (only if the user has completed onboarding) */}
-      {showWelcomeModal && <WelcomeModal onClose={handleCloseWelcomeModal} />}
+      {/* Show welcome modal on first visit (only if the user has completed onboarding and not prevented) */}
+      {showWelcomeModal && hasCompletedOnboarding && !preventWelcomeModal && !isOnboardingActive && <WelcomeModal onClose={handleCloseWelcomeModal} />}
       
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-semibold">Dashboard</h1>
+          <div className="flex items-center gap-3">
+            <ResetSettingsButton />
+            <Link
+              href="/data-input"
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-500 transition-colors text-sm font-medium"
+            >
+              Upload Leads
+            </Link>
+          </div>
+        </div>
         
         {/* Error message */}
         {error && (
@@ -466,6 +706,24 @@ export default function DashboardPage() {
             <p className="mt-2 text-sm">
               Your preferences are currently stored locally. They will sync automatically when the database connection is restored.
             </p>
+          </div>
+        )}
+
+        {/* Reset Settings Info - Only show if user has completed onboarding */}
+        {hasCompletedOnboarding && leads.length > 0 && (
+          <div className="mb-6 p-4 bg-blue-900/20 border border-blue-800/30 rounded-lg text-blue-200">
+            <div className="flex items-start gap-3">
+              <div className="p-1 bg-blue-800/30 rounded-full mt-0.5">
+                <RotateCcw className="h-4 w-4 text-blue-400" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium mb-1">Want to target different types of leads?</p>
+                <p className="text-sm text-blue-300">
+                  Use "Reset Settings" to change your targeting criteria. Switch from targeting Marketing Directors to CEOs, 
+                  focus on different industries, or update your business information to get leads prioritized differently.
+                </p>
+              </div>
+            </div>
           </div>
         )}
         
@@ -510,6 +768,7 @@ export default function DashboardPage() {
               session={session} 
               status={status} 
               preferences={preferences} 
+              auth={auth}
             />
           </div>
         )}

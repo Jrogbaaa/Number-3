@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { X, ChevronRight, ChevronLeft, Check, Building, Users, Briefcase, Target, Settings, AlertCircle } from 'lucide-react';
 import { useUserPreferences } from '@/providers/UserPreferencesProvider';
 import { OnboardingStep, OnboardingSteps } from '@/types/user';
+import { useSession } from 'next-auth/react';
 
 // Industry options
 const INDUSTRY_OPTIONS = [
@@ -55,33 +56,39 @@ const LOCATION_OPTIONS = [
 
 export default function OnboardingModal() {
   const router = useRouter();
-  const { 
-    preferences, 
-    updatePreferences, 
-    currentOnboardingStep, 
+  const {
+    preferences,
+    updatePreferences,
+    hasCompletedOnboarding,
+    currentOnboardingStep,
     setOnboardingStep,
     completeOnboarding,
     error: preferencesError,
-    loading
+    loading,
   } = useUserPreferences();
   
-  // Sync the state with provider
-  useEffect(() => {
-    if (preferences && currentOnboardingStep > 0) {
-      const stepName = Object.keys(OnboardingSteps).find(
-        key => OnboardingSteps[key as OnboardingStep] === currentOnboardingStep
-      ) as OnboardingStep | undefined;
-      
-      if (stepName) {
-        setCurrentStep(stepName);
-      }
-    }
-  }, [preferences, currentOnboardingStep]);
+  // Add session to check authentication status
+  const { status } = useSession();
   
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('welcome');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isSavingLocal, setIsSavingLocal] = useState<boolean>(false);
+  
+  // Sync the state with provider
+  useEffect(() => {
+    // Only sync from provider if we haven't started onboarding locally yet
+    // and if onboarding is not completed
+    if (preferences && currentOnboardingStep > 0 && !hasCompletedOnboarding && currentStep === 'welcome') {
+      const stepName = Object.keys(OnboardingSteps).find(
+        key => OnboardingSteps[key as OnboardingStep] === currentOnboardingStep
+      ) as OnboardingStep | undefined;
+      
+      if (stepName && stepName !== 'complete') {
+        setCurrentStep(stepName);
+      }
+    }
+  }, [preferences, currentOnboardingStep, hasCompletedOnboarding, currentStep]);
   
   // Form state
   const [companyName, setCompanyName] = useState(preferences?.companyName || '');
@@ -108,8 +115,7 @@ export default function OnboardingModal() {
   // Handle next step
   const handleNextStep = async () => {
     setIsSubmitting(true);
-    setErrorMessage(null);
-    setIsSavingLocal(false);
+    setErrorMessage('');
     
     try {
       let nextStep: OnboardingStep;
@@ -119,9 +125,9 @@ export default function OnboardingModal() {
           nextStep = 'company-info';
           break;
         case 'company-info':
-          // Validate fields
-          if (!companyName.trim()) {
-            setErrorMessage('Please enter your company name');
+          // Validate inputs
+          if (!companyName || !companyIndustry || !companySize || !companyProduct) {
+            setErrorMessage('Please fill in all fields');
             setIsSubmitting(false);
             return;
           }
@@ -136,9 +142,9 @@ export default function OnboardingModal() {
           nextStep = 'target-roles';
           break;
         case 'target-roles':
-          // Validate selection
+          // Validate roles
           if (selectedRoles.length === 0) {
-            setErrorMessage('Please select at least one target role');
+            setErrorMessage('Please select at least one role');
             setIsSubmitting(false);
             return;
           }
@@ -150,19 +156,19 @@ export default function OnboardingModal() {
           nextStep = 'target-demographics';
           break;
         case 'target-demographics':
-          // Validate selection
+          // Validate demographics (at least locations)
           if (selectedLocations.length === 0) {
             setErrorMessage('Please select at least one location');
             setIsSubmitting(false);
             return;
           }
           
-          // Save demographic preferences
+          // Save target demographics
           await updatePreferences({
             targetDemographics: {
-              gender,
-              locations: selectedLocations,
+              gender: gender,
               ageRanges: [],
+              locations: selectedLocations,
               otherCriteria: []
             }
           });
@@ -184,9 +190,11 @@ export default function OnboardingModal() {
           nextStep = 'confirmation';
           break;
         case 'confirmation':
-          // Complete onboarding
+          // Mark onboarding as complete in local state
           await completeOnboarding();
-          router.push('/dashboard');
+          
+          // Redirect to data input so users can upload leads after onboarding
+          router.push('/data-input');
           return;
         default:
           nextStep = 'welcome';
@@ -289,7 +297,7 @@ export default function OnboardingModal() {
             <div className="flex items-center justify-center h-24 w-24 rounded-full bg-blue-600/20 mx-auto mb-4">
               <Settings className="h-12 w-12 text-blue-400" />
             </div>
-            <h2 className="text-2xl font-semibold text-center">Welcome to PROPS</h2>
+            <h2 className="text-2xl font-semibold text-center">Welcome to OptiLeads</h2>
             <p className="text-gray-300 text-center">
               Let's set up your account to customize your lead scoring experience. This will help us
               provide more relevant insights for your business.
@@ -689,6 +697,11 @@ export default function OnboardingModal() {
         </div>
       </div>
     );
+  }
+  
+  // Don't render the modal if onboarding is already completed
+  if (hasCompletedOnboarding) {
+    return null;
   }
   
   return (

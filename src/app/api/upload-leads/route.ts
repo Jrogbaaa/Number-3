@@ -157,9 +157,9 @@ export async function POST(request: Request) {
         // Insert only new leads
         if (newLeads.length > 0) {
           const { data: insertData, error: insertError } = await supabase
-            .from('leads')
+          .from('leads')
             .insert(newLeads)
-            .select('id, email');
+          .select('id, email');
 
           if (insertError) {
             console.error(`API: Error inserting batch ${Math.floor(i/batchSize) + 1}:`, insertError);

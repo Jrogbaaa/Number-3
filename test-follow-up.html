@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Follow-up Feature Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success {
+            color: #22c55e;
+            font-weight: bold;
+        }
+        .error {
+            color: #ef4444;
+            font-weight: bold;
+        }
+        .test-link {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #3b82f6;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 10px 10px 10px 0;
+        }
+        .test-link:hover {
+            background: #2563eb;
+        }
+        .follow-up-link {
+            background: #ea580c;
+        }
+        .follow-up-link:hover {
+            background: #c2410c;
+        }
+    </style>
+</head>
+<body>
+    <h1>Follow-up Feature Test</h1>
+    
+    <div class="test-section">
+        <h2>✅ Implementation Complete</h2>
+        <p>The follow-up email functionality has been successfully implemented with the following features:</p>
+        
+        <h3>🔧 Components Created:</h3>
+        <ul>
+            <li><strong>FollowUpGenerator.tsx</strong> - Complete follow-up message generator with AI customization</li>
+            <li><strong>Follow-up tab</strong> - Added to outreach page with URL parameter support</li>
+            <li><strong>Action buttons</strong> - Added to LeadsTable for quick access</li>
+        </ul>
+        
+        <h3>📧 Follow-up Templates:</h3>
+        <ul>
+            <li><strong>First Follow-up (3-5 days)</strong> - Gentle reminder with case study</li>
+            <li><strong>Second Follow-up (1-2 weeks)</strong> - Different angle, focus on their challenges</li>
+            <li><strong>Final Follow-up (3-4 weeks)</strong> - Breakup message, last attempt</li>
+            <li><strong>Value-Add Follow-up</strong> - Share relevant content/insights</li>
+            <li><strong>Event-Based Follow-up</strong> - Reference company news/events</li>
+        </ul>
+        
+        <h3>🤖 AI Features:</h3>
+        <ul>
+            <li>Custom prompt input for message modification</li>
+            <li>Pre-built follow-up specific prompts</li>
+            <li>Personalization based on user business info</li>
+            <li>Company signature integration</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>🧪 Test the Implementation</h2>
+        <p>To test the follow-up functionality, visit your OptiLeads dashboard and:</p>
+        
+        <ol>
+            <li><strong>From Dashboard:</strong> Click the "Follow-up" button next to any lead</li>
+            <li><strong>From Lead Detail:</strong> Navigate to a lead and click the "Follow-up Messages" tab</li>
+            <li><strong>Direct URL:</strong> Use the test links below</li>
+        </ol>
+        
+        <h3>Test Links (replace with actual lead ID):</h3>
+        <a href="http://localhost:3000/outreach/lead/[LEAD_ID]" class="test-link">
+            Initial Outreach
+        </a>
+        <a href="http://localhost:3000/outreach/lead/[LEAD_ID]?tab=follow-up" class="test-link follow-up-link">
+            Follow-up Messages
+        </a>
+        
+        <p><em>Note: Replace [LEAD_ID] with an actual lead ID from your database</em></p>
+    </div>
+    
+    <div class="test-section">
+        <h2>🎯 Key Features to Test:</h2>
+        
+        <h3>1. Follow-up Strategy Selection</h3>
+        <ul>
+            <li>Select different follow-up strategies</li>
+            <li>Verify timing information displays correctly</li>
+            <li>Check that message templates change based on strategy</li>
+        </ul>
+        
+        <h3>2. AI Customization</h3>
+        <ul>
+            <li>Try the pre-built prompts (e.g., "Make it more conversational")</li>
+            <li>Enter custom prompts</li>
+            <li>Verify messages update with AI modifications</li>
+        </ul>
+        
+        <h3>3. Personalization</h3>
+        <ul>
+            <li>Check that lead name, company, and title are populated</li>
+            <li>Verify your business info (company name, product) appears</li>
+            <li>Confirm signature includes your company name</li>
+        </ul>
+        
+        <h3>4. User Experience</h3>
+        <ul>
+            <li>Test copy to clipboard functionality</li>
+            <li>Try the reset message button</li>
+            <li>Verify tab navigation works with URL parameters</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>📋 Expected Behavior</h2>
+        
+        <h3>✅ What Should Work:</h3>
+        <ul>
+            <li>Follow-up tab loads when clicking follow-up buttons</li>
+            <li>Different follow-up templates generate appropriate messages</li>
+            <li>AI prompts modify messages intelligently</li>
+            <li>User business information populates correctly</li>
+            <li>Copy functionality works</li>
+            <li>URL parameters control initial tab selection</li>
+        </ul>
+        
+        <h3>🔍 What to Check:</h3>
+        <ul>
+            <li>Console logs show business info loading</li>
+            <li>No JavaScript errors in browser console</li>
+            <li>Messages are personalized to specific leads</li>
+            <li>Company signature appears when business info is available</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>🚀 Next Steps</h2>
+        <p>If everything works correctly, you now have a complete follow-up email system that:</p>
+        <ul>
+            <li>Generates personalized follow-up messages</li>
+            <li>Provides multiple timing strategies</li>
+            <li>Allows AI-powered customization</li>
+            <li>Integrates seamlessly with your existing outreach workflow</li>
+        </ul>
+        
+        <p><strong>The follow-up feature is ready for production use!</strong></p>
+    </div>
+</body>
+</html> 

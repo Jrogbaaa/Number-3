@@ -12,7 +12,7 @@ const dotenv = require('dotenv');
 dotenv.config({ path: '.env' });
 dotenv.config({ path: '.env.local' });
 
-console.log('🔍 PROPS User Preferences Table Check 🔍');
+console.log('🔍 OptiLeads User Preferences Table Check 🔍');
 console.log('=========================================\n');
 
 // Check Supabase environment variables
@@ -88,7 +88,7 @@ async function main() {
             console.log('\nYou need to create the table manually or run the migration script:');
             console.log('node src/scripts/apply-migration.js');
           } else {
-            console.log('✅ user_preferences table created successfully via RPC!');
+            console.log('✅ user_preferences table created successfully via migration SQL!');
           }
         } else {
           console.log('✅ user_preferences table created successfully via migration SQL!');

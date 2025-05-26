@@ -85,8 +85,14 @@ const MessageGenerator: React.FC<MessageGeneratorProps> = ({
           });
           console.log('[MessageGenerator] Loaded user business info:', {
             companyName: data.companyName,
-            companyProduct: data.companyProduct?.substring(0, 50) + '...'
+            companyIndustry: data.companyIndustry,
+            companyProduct: data.companyProduct?.substring(0, 50) + (data.companyProduct?.length > 50 ? '...' : ''),
+            targetRoles: data.targetRoles,
+            targetIndustries: data.targetIndustries,
+            fullData: data
           });
+        } else {
+          console.error('[MessageGenerator] Failed to fetch user preferences:', response.status, response.statusText);
         }
       } catch (error) {
         console.error('[MessageGenerator] Error fetching user business info:', error);
@@ -163,10 +169,14 @@ const MessageGenerator: React.FC<MessageGeneratorProps> = ({
 
     // Create value proposition based on user's product/service
     let valueProposition = '';
-    if (senderProduct !== 'innovative solutions') {
+    if (senderProduct && senderProduct !== 'innovative solutions' && senderProduct.trim() !== '') {
       valueProposition = `${industryConnection}helping companies like ${companyName} with ${senderProduct}`;
+    } else if (senderCompany && senderCompany !== '[Your Company]' && senderCompany.trim() !== '') {
+      // If we have company name but no specific product, use company name
+      valueProposition = `${industryConnection}working with ${senderCompany} to help companies like ${companyName}`;
     } else {
-      valueProposition = `${industryConnection}working on some stuff that helps folks like you turn expert knowledge into marketing content`;
+      // Only fall back to generic message if we truly have no business info
+      valueProposition = `${industryConnection}working on some solutions that might help companies like ${companyName}`;
     }
 
     // Create role-specific message if the lead's role matches target roles
@@ -180,11 +190,27 @@ const MessageGenerator: React.FC<MessageGeneratorProps> = ({
       }
     }
 
-    // Show a helpful message if user hasn't completed onboarding
+    // No onboarding note needed - user has completed onboarding
     let onboardingNote = '';
-    if (!userBusinessInfo || (!userBusinessInfo.companyName && !userBusinessInfo.companyProduct)) {
-      onboardingNote = '\n\nNote: Complete your onboarding in settings to get fully personalized messages with your specific business information.';
-    }
+    
+    console.log('[MessageGenerator] Business info loaded:', {
+      hasUserBusinessInfo: !!userBusinessInfo,
+      companyName: userBusinessInfo?.companyName,
+      companyProduct: userBusinessInfo?.companyProduct?.substring(0, 50)
+    });
+
+    // Create a proper signature with the user's actual company name
+    const hasValidCompanyName = userBusinessInfo?.companyName && 
+                               userBusinessInfo.companyName.trim() !== '' && 
+                               userBusinessInfo.companyName !== '[Your Company]';
+    
+    const signature = hasValidCompanyName ? userBusinessInfo.companyName : '';
+    
+    console.log('[MessageGenerator] Signature logic:', {
+      rawCompanyName: userBusinessInfo?.companyName,
+      hasValidCompanyName,
+      finalSignature: signature
+    });
 
     const baseTemplate = `Hey ${firstName},
 
@@ -195,8 +221,7 @@ We're ${valueProposition}, and thought it might genuinely be up your alley.${rol
 No pressure at all, but wondering if you'd be open to a quick 10-15 min chat sometime if this sounds like something you're exploring?
 
 Cheers,
-[Your Name]
-${senderCompany ? `${senderCompany}` : ''}${onboardingNote}`;
+[Your Name]${signature ? `\n${signature}` : ''}${onboardingNote}`;
 
     console.log('[MessageGenerator] Generated base message length:', baseTemplate.length);
     setBaseMessage(baseTemplate);
@@ -421,6 +446,7 @@ ${senderCompany ? `${senderCompany}` : ''}${onboardingNote}`;
           <Textarea 
             ref={textareaRef}
             id="message" 
+            name="message"
             className="h-48 bg-gray-800 border-gray-700 resize-none"
             value={message}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setMessage(e.target.value)}
@@ -453,6 +479,7 @@ ${senderCompany ? `${senderCompany}` : ''}${onboardingNote}`;
             <Input 
               ref={promptInputRef}
               id="prompt"
+              name="prompt"
               className="bg-gray-900 border-gray-700"
               placeholder="Make it shorter, funnier, add urgency, etc."
               value={promptValue}

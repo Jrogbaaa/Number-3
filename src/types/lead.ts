@@ -57,6 +57,7 @@ export interface Lead {
   optimalOutreachTime?: string;
   outreachReason?: string;
   tags?: string[];
+  user_id?: string;
 
   marketingScore?: number;
   budgetPotential?: number;

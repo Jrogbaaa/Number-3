@@ -22,6 +22,9 @@ import LeadsTable from '@/components/LeadsTable'; // Import LeadsTable
 
 // ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale);
 
+// Create a key for localStorage to store the sorted leads
+const LEADS_STORAGE_KEY = 'optileads_sorted_leads_ids';
+
 const Dashboard = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   // Analytics might still be useful for overall stats, but not the pie chart data
@@ -30,19 +33,76 @@ const Dashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Helper function to sort leads based on stored order
+  const sortLeadsBasedOnStoredOrder = (leads: Lead[]) => {
+    // Try to get previous sort order from localStorage
+    try {
+      const storedOrderString = localStorage.getItem(LEADS_STORAGE_KEY);
+      if (storedOrderString) {
+        const storedOrder = JSON.parse(storedOrderString) as string[];
+        
+        // If we have a valid stored order, use it to sort the leads
+        if (Array.isArray(storedOrder) && storedOrder.length > 0) {
+          console.log('Using stored lead order from localStorage');
+          
+          // Create a map for O(1) lookup of position
+          const orderMap = new Map<string, number>();
+          storedOrder.forEach((id, index) => {
+            orderMap.set(id, index);
+          });
+          
+          // Sort leads based on the stored order
+          return [...leads].sort((a, b) => {
+            const aIndex = a.id ? orderMap.get(a.id) : undefined;
+            const bIndex = b.id ? orderMap.get(b.id) : undefined;
+            
+            // If both have positions, sort by position
+            if (aIndex !== undefined && bIndex !== undefined) {
+              return aIndex - bIndex;
+            }
+            
+            // If only one has a position, prioritize it
+            if (aIndex !== undefined) return -1;
+            if (bIndex !== undefined) return 1;
+            
+            // If neither has a position, leave order unchanged
+            return 0;
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Error using stored lead order:', e);
+    }
+    
+    // If no stored order or error, return leads unchanged
+    return leads;
+  };
+
+  // New function to remember the current leads order
+  const rememberLeadsOrder = (leads: Lead[]) => {
+    // Store the IDs of the leads in their current order
+    try {
+      const leadIds = leads.map(lead => lead.id).filter(Boolean) as string[];
+      localStorage.setItem(LEADS_STORAGE_KEY, JSON.stringify(leadIds));
+      console.log('Stored lead order in localStorage');
+    } catch (e) {
+      console.error('Error storing lead order:', e);
+    }
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
       // Fetch only leads now, analytics might be less relevant without the chart
       const leadsData = await getLeads();
-      setLeads(leadsData);
-      // const [leadsData, analyticsData] = await Promise.all([
-      //   getLeads(),
-      //   getLeadAnalytics()
-      // ]);
-      // setLeads(leadsData);
-      // setAnalytics(analyticsData);
+      
+      // Sort leads based on stored order if available
+      const sortedLeads = sortLeadsBasedOnStoredOrder(leadsData);
+      setLeads(sortedLeads);
+      
+      // Remember the current lead order for future page loads
+      rememberLeadsOrder(sortedLeads);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error loading data');
     } finally {
@@ -66,11 +126,13 @@ const Dashboard = () => {
       
       // Now get fresh data
       const freshLeads = await getLeads();
-      setLeads(freshLeads);
       
-      // Also reload analytics if needed
-      // const analyticsData = await getLeadAnalytics();
-      // setAnalytics(analyticsData);
+      // Sort leads based on stored order if available
+      const sortedLeads = sortLeadsBasedOnStoredOrder(freshLeads);
+      setLeads(sortedLeads);
+      
+      // Remember the current lead order for future page loads
+      rememberLeadsOrder(sortedLeads);
       
       toast.success('Data refreshed successfully', {
         description: `${freshLeads.length} leads loaded from database`,

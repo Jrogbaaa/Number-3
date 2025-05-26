@@ -178,9 +178,9 @@ export default function Home() {
     useEffect(() => {
       // If user is already authenticated, redirect to dashboard, unless landing=true
       if (status === 'authenticated' && session?.user?.id && !isLandingPage) {
-        console.log('[Home] User is authenticated, redirecting to dashboard');
-        router.push('/dashboard');
-      }
+      console.log('[Home] User is authenticated, redirecting to dashboard');
+      router.push('/dashboard');
+    }
     }, [status, session, isLandingPage]);
   };
 
@@ -188,10 +188,11 @@ export default function Home() {
     try {
       setIsLoading(true);
       if (status === 'authenticated') {
+        // If already authenticated, check if they have uploaded leads
         router.push('/dashboard');
       } else {
-        // Redirect to sign-in page for non-authenticated users
-        router.push('/signin');
+        // For new users, start with onboarding to set up preferences first
+        router.push('/onboarding');
       }
     } catch (error) {
       console.log('[Home] Error navigating:', error);
@@ -305,7 +306,7 @@ export default function Home() {
 
   return (
     <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center bg-dark-navy text-white">
+    <div className="flex min-h-screen items-center justify-center bg-dark-navy text-white">
         <div className="animate-pulse">Loading...</div>
       </div>
     }>
@@ -529,27 +530,27 @@ export default function Home() {
                   </div>
                 </div>
               </footer>
-
-              {/* Debug info - only visible in development */}
-              {process.env.NODE_ENV !== 'production' && (
+          
+          {/* Debug info - only visible in development */}
+          {process.env.NODE_ENV !== 'production' && (
                 <div className="fixed bottom-4 right-4 p-3 bg-gray-800/80 rounded-md text-xs text-gray-300 max-w-xs">
                   <h3 className="font-medium text-amber-400 mb-1">Debug Info</h3>
-                  <p>Auth Status: {status}</p>
-                  <p>Has Session: {session ? 'Yes' : 'No'}</p>
+              <p>Auth Status: {status}</p>
+              <p>Has Session: {session ? 'Yes' : 'No'}</p>
                   <p>Landing Page: {isLandingPage ? 'Yes' : 'No'}</p>
                   {session?.user?.id && <p>User ID: {session.user.id}</p>}
-                  
-                  <div className="mt-2 pt-2 border-t border-gray-700/50">
+              
+              <div className="mt-2 pt-2 border-t border-gray-700/50">
                     <p className="font-medium text-white mb-1">Quick Links:</p>
-                    <div className="space-y-1">
-                      <a 
-                        href="/signin" 
+                <div className="space-y-1">
+                  <a 
+                    href="/signin" 
                         className="block p-1 text-blue-300 hover:underline"
-                      >
+                  >
                         Sign In Page
-                      </a>
-                      <a 
-                        href="/dashboard" 
+                  </a>
+                  <a 
+                    href="/dashboard" 
                         className="block p-1 text-blue-300 hover:underline"
                       >
                         Dashboard
@@ -560,11 +561,11 @@ export default function Home() {
                       >
                         Reset Session Data
                       </button>
-                    </div>
-                  </div>
                 </div>
-              )}
+              </div>
             </div>
+          )}
+        </div>
           );
         }}
       </SearchParamsWrapper>

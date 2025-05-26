@@ -14,7 +14,7 @@ const path = require('path');
 dotenv.config({ path: '.env' });
 dotenv.config({ path: '.env.local' });
 
-console.log('🛠️ PROPS User Preferences Migration Tool 🛠️');
+console.log('🛠️ OptiLeads User Preferences Migration Tool 🛠️');
 console.log('============================================\n');
 
 // Check Supabase environment variables

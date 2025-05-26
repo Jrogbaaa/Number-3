@@ -12,7 +12,7 @@ const Sidebar = () => {
   return (
     <div className="w-64 bg-[#0D1117] text-white p-6 flex flex-col border-r border-gray-800">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">PROPS</h1>
+        <h1 className="text-2xl font-bold text-white">OptiLeads</h1>
       </div>
       
       <nav className="flex-1">

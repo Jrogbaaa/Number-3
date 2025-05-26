@@ -14,7 +14,7 @@ const path = require('path');
 dotenv.config({ path: '.env' });
 dotenv.config({ path: '.env.local' });
 
-console.log('🔍 PROPS Supabase Database Check 🔍');
+console.log('🔍 OptiLeads Supabase Database Check 🔍');
 console.log('====================================\n');
 
 // Check Supabase environment variables

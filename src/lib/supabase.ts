@@ -61,179 +61,34 @@ export async function uploadLeads(leads: Lead[]) {
     throw new Error('No leads provided');
   }
 
-  console.log(`Uploading ${leads.length} leads to Supabase`);
+  console.log(`Uploading ${leads.length} leads via API`);
 
   try {
-    // Instead of checking if the table exists first, try a direct operation
-    // Process in batches to handle files of any size
-    const batchSize = 25; // Reduced batch size
-    const errors: any[] = [];
-    let processedCount = 0;
-    let successCount = 0;
-    let duplicateCount = 0;
-    
-    for (let i = 0; i < leads.length; i += batchSize) {
-      const batch = leads.slice(i, i + batchSize);
-      processedCount += batch.length;
-      console.log(`Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(leads.length/batchSize)} (${processedCount}/${leads.length})`);
-      
-      try {
-        // Prepare leads data with required fields and proper types
-        const preparedLeads = await Promise.all(batch.map(async (lead) => {
-          // --- Enrich Lead Data ---
-          let enrichedData: EnrichmentData | null = null;
-          try {
-              console.log(`Attempting enrichment for: ${lead.company} (${lead.title})`);
-              enrichedData = await enrichLead(lead.company, lead.title);
-              console.log(`Enrichment result for ${lead.company}:`, enrichedData);
-          } catch (enrichError) {
-              console.error(`Enrichment failed for company ${lead.company}:`, enrichError);
-              // Continue upload without enrichment data if enrichment fails
-          }
-          // --- End Enrichment ---
+    // Use the API endpoint instead of direct Supabase access
+    // This ensures proper authentication and user association
+    const response = await fetch('/api/upload-leads', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ leads }),
+    });
 
-          // Combine base lead data with enriched data
-          const leadToUpsert: Record<string, any> = {
-            ...lead,
-            id: lead.id || uuidv4(), // Use existing ID or generate new
-            // --- TRIM STRING FIELDS --- 
-            name: (lead.name || 'Unknown Contact').trim(),
-            email: (lead.email || `lead_${Date.now()}_${Math.random().toString(36).slice(2)}@placeholder.com`).trim().toLowerCase(), // Also ensure email is lowercase
-            company: (lead.company || '').trim(),
-            title: (lead.title || '').trim(),
-            source: (lead.source || 'Other').trim() as LeadSource,
-            status: (lead.status || 'New').trim() as LeadStatus,
-            // --- END TRIM --- 
-            created_at: lead.created_at || new Date().toISOString(),
-            score: typeof lead.score === 'number' ? lead.score : 0,
-            value: typeof lead.value === 'number' ? lead.value : 0,
-            insights: lead.insights ? (typeof lead.insights === 'string' ? lead.insights : JSON.stringify(lead.insights)) : null,
-            // Merge enriched data using snake_case keys
-            ...(enrichedData && {
-              // --- TRIM ENRICHED STRINGS --- 
-              location: (enrichedData.location ?? lead.location)?.trim(),
-              timezone: enrichedData.timezone?.trim(),
-              optimal_outreach_time: enrichedData.optimal_outreach_time?.trim(),
-              optimal_outreach_time_eastern: enrichedData.optimal_outreach_time_eastern?.trim(),
-              outreach_reason: enrichedData.outreach_reason?.trim(),
-              // --- END TRIM --- 
-            })
-          };
-
-          // --- TRIM linkedinUrl separately if it exists ---
-          if (lead.linkedinUrl) {
-            leadToUpsert.linkedinUrl = lead.linkedinUrl.trim();
-          }
-          // --- END TRIM ---
-
-          // Ensure required fields have defaults if somehow missing (safer)
-          // (Defaults are already applied above with trimming)
-          leadToUpsert.id = leadToUpsert.id || uuidv4(); // Ensure ID exists
-
-          // Remove potential undefined properties before upsert
-          Object.keys(leadToUpsert).forEach(key => {
-              if (leadToUpsert[key] === undefined) {
-                  delete leadToUpsert[key];
-              }
-          });
-
-          return leadToUpsert;
-        }));
-
-        // --- De-duplicate within the batch based on email (keep last occurrence) ---
-        const uniqueLeadsMap = new Map<string, Record<string, any>>();
-        preparedLeads.forEach(lead => {
-          const emailKey = lead.email?.toLowerCase(); // Use lowercase email as the key
-          if (emailKey) { // Only process leads with an email for deduplication
-              uniqueLeadsMap.set(emailKey, lead); 
-          } else {
-            // Handle leads without email? For now, let them pass through. 
-            // If they have unique IDs, they might be fine. If not, could cause other issues.
-            // Let's use a unique key for them based on ID or generate one.
-            const uniqueKey = lead.id || `no-email-${uuidv4()}`;
-            uniqueLeadsMap.set(uniqueKey, lead);
-          }
-        });
-        const uniquePreparedLeads = Array.from(uniqueLeadsMap.values());
-        const duplicatesRemovedInBatch = preparedLeads.length - uniquePreparedLeads.length;
-        if (duplicatesRemovedInBatch > 0) {
-           console.log(`Batch ${Math.floor(i/batchSize) + 1} pre-upsert: Removed ${duplicatesRemovedInBatch} duplicate emails within the batch.`);
-        }
-        // --- End De-duplication ---
-
-        // --- Log the exact data being sent for this batch --- 
-        console.log(`Batch ${Math.floor(i/batchSize) + 1} - Data prepared for upsert (${uniquePreparedLeads.length} unique leads):`);
-        try {
-          // Attempt to stringify, log specific objects if it fails on the whole array
-          console.log(JSON.stringify(uniquePreparedLeads, null, 2)); 
-        } catch (stringifyError) {
-          console.error("Failed to stringify the entire batch. Logging individual leads:");
-          uniquePreparedLeads.forEach((lead, index) => {
-            try {
-              console.log(`Lead ${index}:`, JSON.stringify(lead, null, 2));
-            } catch (leadStringifyError) {
-              console.error(`Lead ${index} could not be stringified:`, leadStringifyError, lead); 
-            }
-          });
-        }
-        // --- End Data Logging ---
-
-        // --- Upsert the de-duplicated batch --- 
-        const { data: upsertData, error: upsertError, count: upsertCount } = await supabase
-          .from('leads')
-          .upsert(uniquePreparedLeads, { // Use the de-duplicated array
-            onConflict: 'email', // Specify email as the conflict column
-            ignoreDuplicates: false, // Explicitly update conflicting rows (default)
-            count: 'exact' // Get the count of affected rows
-          })
-          .select('id, email'); // Select minimal columns to confirm
-
-        if (upsertError) {
-          // Handle specific errors like table not existing
-          if (upsertError.message && upsertError.message.includes('relation') && upsertError.message.includes('does not exist')) {
-            console.error('Leads table does not exist:', upsertError.message);
-            // Fallback to mock mode for this batch
-            return { 
-              success: true, 
-              count: leads.length,
-              message: 'Simulated upload (table does not exist)',
-              mockMode: true
-            };
-          }
-          // Log other upsert errors
-          console.error(`Error upserting batch ${Math.floor(i/batchSize) + 1}:`, upsertError.message || JSON.stringify(upsertError));
-          errors.push(upsertError);
-          // Assume all in batch failed if upsert fails critically
-          // Note: This might overestimate failures if some rows could have been processed.
-          // Supabase doesn't easily report partial success on batch upsert errors.
-          // We can't reliably calculate duplicateCount on critical batch failure.
-        } else {
-          // Calculate success/duplicates based on the upsert result AND pre-filtering
-          const upsertedCount = upsertData?.length || 0; // Rows actually inserted/updated by DB
-          // Duplicates relative to the DATABASE (rows in uniquePreparedLeads that already existed and were updated/ignored)
-          const dbConflictCount = uniquePreparedLeads.length - upsertedCount; 
-          
-          successCount += upsertedCount; // Increment by rows actually affected in DB
-          // Total duplicates are those removed within the batch + those conflicting with DB
-          duplicateCount += duplicatesRemovedInBatch + dbConflictCount; 
-          
-          console.log(`Batch ${Math.floor(i/batchSize) + 1} results: ${upsertedCount} rows upserted in DB. ${duplicatesRemovedInBatch} intra-batch duplicates ignored. ${dbConflictCount} conflicts with existing DB rows handled (updated/ignored).`);
-        }
-        // --- End Upsert Logic ---
-
-      } catch (batchError: any) {
-        console.error('Batch processing error:', batchError);
-        errors.push(batchError);
-      }
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `HTTP ${response.status}: Failed to upload leads`);
     }
 
-    // If there were errors, include them in the result but don't fail the entire operation
-    return { 
-      success: successCount > 0, 
-      count: leads.length,
-      successCount,
-      duplicateCount,
-      errors: errors.length > 0 ? errors : undefined
+    const result = await response.json();
+    console.log('API Upload result:', result);
+
+    return {
+      success: result.success,
+      count: result.count,
+      successCount: result.successCount,
+      duplicateCount: result.duplicateCount,
+      errors: result.errors,
+      mockMode: false
     };
   } catch (error) {
     console.error('Upload error:', error);
@@ -766,7 +621,7 @@ const calculateSpendAuthorityScore = (lead: Lead): number => {
   return Math.min(100, Math.max(0, Math.round(score)));
 };
 
-// Update getLeads to use the new scoring functions
+// Update getLeads to use the new scoring functions and filter by current user
 export async function getLeads() {
   // Always allow mock data as fallback when a network issue occurs
   const allowMockData = true; // process.env.NEXT_PUBLIC_ALLOW_MOCK_DATA === 'true';
@@ -774,11 +629,34 @@ export async function getLeads() {
   try {
     // Add logging to troubleshoot connection issues
     console.log('Attempting to fetch leads from Supabase...');
-    console.log('Using URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+    
+    // Get the current user's ID
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError) {
+      console.error('Error getting authenticated user:', userError.message);
+      if (allowMockData) {
+        console.log('Using mock data due to authentication error');
+        return generateMockLeads();
+      }
+      throw new Error(`Authentication error: ${userError.message}`);
+    }
+    
+    if (!user?.id) {
+      console.error('No authenticated user found - you must be logged in to view leads');
+      if (allowMockData) {
+        console.log('Using mock data because no authenticated user was found');
+        return generateMockLeads();
+      }
+      throw new Error('User not authenticated');
+    }
+    
+    console.log(`Fetching leads for user: ${user.id}`);
     
     const { data, error } = await supabase
       .from('leads')
       .select('*')
+      .eq('user_id', user.id) // Filter leads by user ID
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -794,7 +672,7 @@ export async function getLeads() {
     }
 
     if (!data || data.length === 0) {
-      console.log('No leads found in database');
+      console.log(`No leads found in database for user ${user.id}`);
       
       // If mock data is allowed and no real data exists, return mock data
       if (allowMockData) {
@@ -804,6 +682,8 @@ export async function getLeads() {
       
       return [];
     }
+    
+    console.log(`Successfully fetched ${data.length} leads for user ${user.id}`);
 
     return (data || []).map(lead => {
       const parsedInsights = lead.insights ? (
@@ -849,7 +729,7 @@ export async function getLeads() {
       return generateMockLeads();
     }
     
-    return [];
+    throw error; // Re-throw the error so the UI can handle it
   }
 }
 

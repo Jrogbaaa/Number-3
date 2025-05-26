@@ -32,40 +32,25 @@ export default function SignInPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const error = urlParams.get('error');
     if (error) {
-      // Changed from console.error to console.log to prevent NextAuth from re-throwing the error
+      // Log the error but don't show it prominently unless it's a critical configuration issue
       console.log('[SignIn] Auth callback error:', error);
       
-      // Map error codes to user-friendly messages
-      const errorMessages: Record<string, string> = {
-        'OAuthCallback': 'Failed to complete Google sign in. Please try again.',
-        'google': 'Authentication with Google failed. There might be an issue with your browser cookies or the OAuth configuration.',
-        'AccessDenied': 'You denied access to your Google account. Please try again.',
-        'Configuration': 'There is a configuration issue with the authentication service.',
-        'Default': 'An error occurred during sign in. Please try again.'
-      };
+      // Only show critical configuration errors to the user
+      // OAuth flow errors (like temporary failures or user cancellation) should not be prominently displayed
+      const criticalErrors = ['Configuration'];
       
-      setAuthError(errorMessages[error] || errorMessages['Default']);
-      
-      // If this is a Google error, manually clear any stale auth state that might be causing issues
-      if (error === 'google') {
-        // Clear any potential auth-related cookies or local storage items that might be interfering
-        try {
-          // Clear related cookies (session cookies are HTTPOnly but we can clear others)
-          document.cookie.split(';').forEach(cookie => {
-            const [name] = cookie.trim().split('=');
-            if (name.includes('next-auth')) {
-              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
-            }
-          });
-          
-          // Clear any local storage items that might be related
-          localStorage.removeItem('next-auth.callback-url');
-          localStorage.removeItem('next-auth.message');
-          
-          console.log('[SignIn] Cleared potential stale auth state');
-        } catch (e) {
-          console.log('[SignIn] Error clearing auth state:', e);
-        }
+      if (criticalErrors.includes(error)) {
+        const errorMessages: Record<string, string> = {
+          'Configuration': 'There is a configuration issue with the authentication service.',
+        };
+        setAuthError(errorMessages[error]);
+      } else {
+        // For other errors (OAuth flow errors), just log them but don't show prominent UI error
+        console.log('[SignIn] OAuth flow error (not showing to user):', error);
+        
+        // Clear the URL parameters to clean up the URL after handling the error
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
       }
     }
 
@@ -109,7 +94,12 @@ export default function SignInPage() {
       
       if (result?.error) {
         console.log('[SignIn] Sign-in error:', result.error);
-        setAuthError('Authentication failed. Please try again.');
+        // Only show critical errors, not OAuth flow errors
+        if (result.error === 'Configuration') {
+          setAuthError('Authentication configuration error. Please contact support.');
+        } else {
+          console.log('[SignIn] OAuth flow error (not showing to user):', result.error);
+        }
         setIsLoading(false);
       } else if (result?.url) {
         // If successful, redirect to the URL returned by NextAuth
@@ -126,10 +116,10 @@ export default function SignInPage() {
     <div className="flex min-h-screen items-center justify-center bg-dark-navy p-4">
       <div className="w-full max-w-md space-y-8 rounded-lg bg-navy p-8 shadow-lg text-center">
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-white mb-2">Welcome to PROPS</h2>
+          <h2 className="text-3xl font-bold text-white mb-2">Welcome to OptiLeads</h2>
           <p className="text-gray-400">Sign in to access your leads dashboard</p>
           
-          {/* Auth error message */}
+          {/* Only show critical configuration errors */}
           {authError && (
             <div className="mt-4 p-3 bg-red-900/30 border border-red-800/50 rounded text-red-300 text-sm">
               {authError}
@@ -146,20 +136,6 @@ export default function SignInPage() {
                       Go to Debug Page →
                     </Link>
                   </p>
-                </div>
-              )}
-              
-              {/* Additional troubleshooting for Google errors */}
-              {authError.includes('Google') && (
-                <div className="mt-2 pt-2 border-t border-red-800/30 text-xs text-left">
-                  <p className="font-medium mb-1">Troubleshooting:</p>
-                  <ul className="list-disc list-inside">
-                    <li>Try clearing your browser cookies</li>
-                    <li>Ensure third-party cookies are enabled</li>
-                    <li>Try using a different browser</li>
-                    <li>Check that the Google OAuth credentials are configured correctly</li>
-                    <li>Verify redirect URLs in both Google Console and Supabase settings</li>
-                  </ul>
                 </div>
               )}
             </div>
