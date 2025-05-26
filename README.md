@@ -100,6 +100,7 @@ A modern contact analysis and scoring platform built with Next.js 15, React, Typ
 - **🎤 Audio Message Recording**: Record, play, and download personalized audio messages.
 - **🤖 Heygen AI Video Integration**: Generate AI-powered podcast scripts and access Heygen tools directly.
 - **✨ AI Message Customization**: Personalize outreach messages with AI-powered prompts.
+- **📧 Follow-up Email System**: Comprehensive follow-up email generator with 5 strategic approaches.
 - **🔮 Welcome Onboarding Modal**: First-time visitors receive guidance to the upload page.
 - **🔐 Google Authentication**: Secure user authentication with Google OAuth.
 - 📥 Flexible CSV Data Import & Processing
@@ -125,6 +126,12 @@ A modern contact analysis and scoring platform built with Next.js 15, React, Typ
     - Apply pre-defined or custom prompts to transform messages
     - Support for different tones (conversational, professional, funny)
     - One-click message enhancement with intelligent transformations
+- **📧 Follow-up Email System**:
+    - 5 distinct follow-up strategies with timing guidance
+    - AI-powered message customization for follow-ups
+    - Personalized content based on lead and business information
+    - Easy access from dashboard and individual lead pages
+    - Professional, contextually appropriate follow-up templates
 - **🔮 Welcome Modal**: Guides new users to start by uploading leads for analysis.
 - **🧩 Personalized Onboarding**: Interactive setup to customize lead scoring based on company profile and target audience.
 - **🔐 Authentication**: Secure Google OAuth integration for user management
@@ -194,6 +201,43 @@ NEXTAUTH_SECRET=your_nextauth_secret
 ```bash
 npm run dev
 ```
+
+## Testing and Development
+
+The project includes comprehensive testing infrastructure:
+
+### Pre-push Validation
+Run the validation script before pushing code:
+```bash
+node scripts/pre-push-check.js
+```
+
+This script performs:
+- ESLint checks
+- TypeScript compilation validation
+- Jest unit tests
+- Playwright E2E tests (if configured)
+- Next.js build verification
+- Code quality checks (console.log detection, TODO comments)
+
+### Unit Testing with Jest
+```bash
+npm run test              # Run all tests
+npm run test:watch        # Run tests in watch mode
+npm run test:coverage     # Run tests with coverage report
+```
+
+### End-to-End Testing with Playwright
+```bash
+npm run test:e2e          # Run E2E tests
+npm run test:e2e:ui       # Run E2E tests with UI
+```
+
+### Available Scripts
+- `npm run lint` - Run ESLint
+- `npm run build` - Build the application
+- `npm run start` - Start production server
+- `npm run clean` - Clean build cache
 
 ### Deployment to Vercel
 

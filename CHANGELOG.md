@@ -5,6 +5,29 @@ All notable changes to this Contact Scoring Platform will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2024-12-26
+
+### Added
+- **Follow-up Email System**: Comprehensive follow-up email generator with strategic approaches
+  - 5 distinct follow-up strategies with timing guidance (First Follow-up, Second Follow-up, Final Follow-up, Value-Add, Event-Based)
+  - AI-powered message customization for follow-ups using existing `/api/generate-message` endpoint
+  - Personalized content based on lead and business information from user preferences
+  - Easy access from dashboard action buttons and individual lead pages
+  - Professional, contextually appropriate follow-up templates with proper signatures
+  - URL parameter support for direct navigation to follow-up tab (`?tab=follow-up`)
+- **Testing Infrastructure**: Comprehensive testing setup for development workflow
+  - Pre-push validation script (`scripts/pre-push-check.js`) with ESLint, TypeScript, Jest, and build checks
+  - Jest configuration for unit testing with proper TypeScript and Next.js support
+  - Playwright configuration for end-to-end testing
+  - Basic test suite for application validation
+  - Code quality checks (console.log detection, TODO comment scanning)
+- **Enhanced Lead Actions**: Added action buttons to leads table for quick access to outreach and follow-up functionality
+
+### Changed
+- **Outreach Page Enhancement**: Added tab navigation system with "Initial Outreach", "Audio Message", and "Follow-up Messages" tabs
+- **Dashboard UX**: Improved leads table with dedicated action buttons for outreach and follow-up workflows
+- **Testing Workflow**: Established proper testing pipeline for code quality assurance before deployment
+
 ## [Unreleased] - 2024-12-07
 
 ### Fixed
