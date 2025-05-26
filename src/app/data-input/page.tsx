@@ -124,14 +124,14 @@ export default function DataInputPage() {
 
         {/* Authentication status banner for unauthenticated users */}
         {!isAuthenticated && (
-          <div className="bg-gradient-to-r from-blue-900/20 to-indigo-900/10 border border-blue-700/30 rounded-xl p-5 flex items-start gap-4 backdrop-blur-sm shadow-lg">
+          <div className="bg-gradient-to-r from-blue-900/20 to-indigo-900/10 border border-blue-700/30 rounded-xl p-4 flex items-start gap-3 backdrop-blur-sm shadow-lg mb-6">
             <div className="p-2 bg-blue-600/20 rounded-lg flex-shrink-0">
-              <Info className="h-5 w-5 text-blue-400" />
+              <Info className="h-4 w-4 text-blue-400" />
             </div>
             <div className="flex-1">
-              <h3 className="text-blue-300 font-semibold mb-2">Ready to See Your Personalized Results</h3>
-              <p className="text-gray-300 text-sm leading-relaxed">
-                Upload your leads now to see our AI analyze them based on your preferences. You'll get personalized lead scores, insights, and recommendations tailored to your business.
+              <h3 className="text-blue-300 font-semibold mb-1 text-sm">Ready to See Your Personalized Results</h3>
+              <p className="text-gray-300 text-xs leading-relaxed">
+                Upload your leads now to see our AI analyze them based on your preferences.
               </p>
             </div>
           </div>
@@ -178,59 +178,107 @@ export default function DataInputPage() {
           </div>
         )}
 
-        <div className="bg-gradient-to-br from-gray-900/80 via-gray-900/60 to-gray-800/40 rounded-xl p-6 border border-gray-700/50 shadow-xl backdrop-blur-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">Upload CSV File</h2>
-            <div className="flex items-center gap-3">
-              <div className="text-xs text-gray-400 bg-gradient-to-r from-gray-800/60 to-gray-700/40 px-3 py-1.5 rounded-lg border border-gray-700/30">
-                {isAuthenticated ? 'Lead Import' : 'Lead Analysis'}
+        {/* Two-column layout: Upload on left, Info on right */}
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Left Column - Upload Box */}
+          <div className="bg-gradient-to-br from-gray-900/80 via-gray-900/60 to-gray-800/40 rounded-xl p-6 border border-gray-700/50 shadow-xl backdrop-blur-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">Upload CSV File</h2>
+              <div className="flex items-center gap-3">
+                <div className="text-xs text-gray-400 bg-gradient-to-r from-gray-800/60 to-gray-700/40 px-3 py-1.5 rounded-lg border border-gray-700/30">
+                  {isAuthenticated ? 'Lead Import' : 'Lead Analysis'}
+                </div>
+                <button
+                  onClick={() => router.refresh()}
+                  className="p-2 text-blue-400 hover:bg-blue-900/30 rounded-lg transition-all duration-200 hover:scale-105"
+                  aria-label="Refresh page"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </button>
               </div>
-              <button
-                onClick={() => router.refresh()}
-                className="p-2 text-blue-400 hover:bg-blue-900/30 rounded-lg transition-all duration-200 hover:scale-105"
-                aria-label="Refresh page"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </button>
             </div>
-          </div>
-          
-          <div className="bg-blue-900/10 p-4 rounded-lg mb-6 border border-blue-800/20 flex items-start gap-3">
-            <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-gray-400">
-              <p>Upload your leads in CSV format. The file should include the following columns:</p>
-              <ul className="list-disc list-inside mt-2 ml-1 space-y-1">
-                <li><span className="text-blue-400">name</span> - Full name of the lead</li>
-                <li><span className="text-blue-400">email</span> - Contact email address</li>
-                <li><span className="text-blue-400">company</span> - Company name (optional)</li>
-                <li><span className="text-blue-400">position</span> - Job title (optional)</li>
-              </ul>
-              {!isAuthenticated && (
-                <p className="mt-2 text-blue-300 text-xs">
-                  💡 Your leads will be analyzed but not saved until you sign in
-                </p>
-              )}
-            </div>
-          </div>
-          
-          <DataUpload 
-            onUploadComplete={handleUploadComplete}
-            allowUnauthenticated={!isAuthenticated}
-          />
-          
-          {isAuthenticated && (
-            <div className="mt-8 pt-6 border-t border-gray-800">
-              <div className="flex flex-col">
-                <h3 className="text-lg font-medium mb-3">Data Management</h3>
+            
+            <DataUpload 
+              onUploadComplete={handleUploadComplete}
+              allowUnauthenticated={!isAuthenticated}
+            />
+            
+            {isAuthenticated && (
+              <div className="mt-8 pt-6 border-t border-gray-800">
                 <div className="flex justify-between items-center">
-                  <p className="text-sm text-gray-400 max-w-lg">
-                    If you're experiencing issues with data not clearing properly, use this button to clear all leads from the database. This action cannot be undone.
-                  </p>
-                  <DataClear onClearComplete={handleClearComplete} />
+                  <div>
+                    <h3 className="text-lg font-medium mb-1">Clear All Leads</h3>
+                    <p className="text-sm text-gray-400">
+                      Remove all leads from your database
+                    </p>
+                  </div>
+                  <div className="bg-gradient-to-r from-red-600/20 to-red-700/10 p-3 rounded-lg border border-red-700/30">
+                    <DataClear onClearComplete={handleClearComplete} />
+                  </div>
                 </div>
               </div>
+            )}
+          </div>
+
+          {/* Right Column - CSV Format Guide */}
+          <div className="bg-blue-900/10 p-5 rounded-lg border border-blue-800/20">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-gray-400">
+                <p className="mb-4 font-medium text-gray-300">CSV Format Guide</p>
+                
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <h4 className="text-blue-400 font-medium mb-2 text-sm">Required Fields:</h4>
+                    <ul className="list-disc list-inside space-y-1 text-sm">
+                      <li><span className="text-blue-400">name</span> - Full name</li>
+                      <li><span className="text-blue-400">email</span> - Email address</li>
+                      <li><span className="text-blue-400">company</span> - Company name</li>
+                      <li><span className="text-blue-400">position</span> - Job title</li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-green-400 font-medium mb-2 text-sm">Optional (improves AI scoring):</h4>
+                    <ul className="list-disc list-inside space-y-1 text-sm">
+                      <li><span className="text-green-400">industry</span> - Company industry</li>
+                      <li><span className="text-green-400">company_size</span> - Employee count</li>
+                      <li><span className="text-green-400">location</span> - Geographic location</li>
+                      <li><span className="text-green-400">revenue</span> - Annual revenue</li>
+                      <li><span className="text-green-400">phone</span> - Contact number</li>
+                      <li><span className="text-green-400">linkedin_url</span> - LinkedIn profile</li>
+                    </ul>
+                  </div>
+                </div>
+                
+                {/* Download Template Button */}
+                <div className="mt-6 p-4 bg-gradient-to-r from-blue-900/30 to-indigo-900/20 rounded-lg border border-blue-700/30">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-blue-300 font-medium text-sm mb-1">Need the exact format?</p>
+                      <p className="text-gray-400 text-xs">Download our template with all the correct column headers</p>
+                    </div>
+                    <a
+                      href="/sample-leads.csv"
+                      download="sample-leads.csv"
+                      className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 text-sm font-medium"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Download Template
+                    </a>
+                  </div>
+                </div>
+                
+                {!isAuthenticated && (
+                  <p className="mt-4 text-blue-300 text-xs bg-blue-900/20 p-2 rounded border border-blue-800/30">
+                    💡 Your leads will be analyzed but not saved until you sign in
+                  </p>
+                )}
+              </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </DashboardLayout>
