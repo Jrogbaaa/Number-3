@@ -250,10 +250,52 @@ TRANSFORMED MESSAGE:`;
         // Clean up the response if needed
         transformedMessageBody = transformedMessageBody.trim();
         
+        // Remove common AI response prefixes (more comprehensive)
+        const prefixesToRemove = [
+          'Here is the transformed message:',
+          'Here\'s the transformed message:',
+          'Transformed message:',
+          'Here is the message:',
+          'Here\'s the message:',
+          'The transformed message is:',
+          'TRANSFORMED MESSAGE:',
+          'Here\'s your transformed message:',
+          'Here is your transformed message:',
+          'The message is:',
+          'Message:',
+          'Outreach message:',
+          'Here\'s the outreach message:',
+          'Here is the outreach message:'
+        ];
+        
+        // Try to remove prefixes multiple times in case there are nested ones
+        let previousLength = 0;
+        while (transformedMessageBody.length !== previousLength) {
+          previousLength = transformedMessageBody.length;
+          
+          for (const prefix of prefixesToRemove) {
+            if (transformedMessageBody.toLowerCase().startsWith(prefix.toLowerCase())) {
+              transformedMessageBody = transformedMessageBody.substring(prefix.length).trim();
+              break;
+            }
+          }
+          
+          // Also remove any leading newlines or extra whitespace
+          transformedMessageBody = transformedMessageBody.replace(/^\s*\n+\s*/, '').trim();
+        }
+        
+        // Add company signature if available
+        const userCompanyName = userBusinessInfo?.companyName;
+        const hasValidCompanyName = userCompanyName && 
+                                   userCompanyName.trim() !== '' && 
+                                   userCompanyName !== '[Your Company]';
+        
+        const finalSignature = hasValidCompanyName ? `\n\n${userCompanyName}` : '';
+        
         // Return the response with the AI-transformed message
         return NextResponse.json({ 
           success: true, 
-          message: transformedMessageBody + '\n\n' + signature,
+          message: transformedMessageBody + finalSignature,
           usedAI: true
         });
       } catch (replicateError) {

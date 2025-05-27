@@ -14,8 +14,8 @@ AI-powered insights and outreach automation for lead management.
 - Personalized lead scoring based on user preferences
 - Customizable table columns that adapt to business needs
 - "Best Overall" score that weights factors according to user priorities
-- **🌟 Interactive Animated Background**: Dynamic animated elements that visualize AI and data connections
-- **✨ Modern UI/UX**: Clean, floating text design with gradient accents for improved readability and visual appeal
+- **🌟 Subtle Animated Background**: Sophisticated animated elements with particles, neural networks, and geometric shapes that create a premium tech aesthetic
+- **✨ Modern UI/UX**: Clean, floating text design with gradient accents and subtle motion graphics for enhanced visual appeal
 
 ## Getting Started
 
@@ -338,7 +338,7 @@ The system automatically recognizes various common column names for core fields:
 
 ## Contact Scoring Model
 
-The platform utilizes a multi-dimensional scoring system (0-100 where applicable) to analyze contacts based on available CSV data:
+The platform utilizes a **deterministic, multi-dimensional scoring system** (0-100 where applicable) to analyze contacts based on available CSV data. The scoring system has been completely redesigned to ensure **consistent, reproducible results** across all user sessions.
 
 ### 1. Marketing Activity Score (0-100)
 - **Purpose**: Identifies contacts with a strong focus on marketing roles or activities.
@@ -355,6 +355,22 @@ The platform utilizes a multi-dimensional scoring system (0-100 where applicable
 - **Confidence**: Indicates the certainty of the classification based on the strength and consistency of the signals.
 
 The dashboard table displays these scores and classifications, allowing for sorting and filtering to prioritize contacts based on specific criteria.
+
+### 4. Best Overall Score (0-100)
+- **Purpose**: Provides a unified score that combines all dimensions based on user preferences from onboarding
+- **Factors**: Intelligently weights Marketing Activity, Budget Potential, Business Orientation, and Intent scores according to:
+  - Target roles and industries specified during onboarding
+  - Company size preferences
+  - Business focus (B2B vs B2C alignment)
+  - Budget sensitivity indicators
+- **Consistency**: Uses deterministic algorithms to ensure leads always appear in the same order
+- **Personalization**: Automatically adjusts scoring weights based on user's business profile and target customer definitions
+
+### Scoring System Reliability
+- **🔒 Deterministic Results**: All scoring calculations use consistent hash functions to eliminate randomness
+- **🎯 Preference-Aware**: Scoring adapts to user preferences while maintaining consistency
+- **⚡ Performance Optimized**: Single scoring pass with intelligent caching prevents duplicate calculations
+- **🔄 Stable Ordering**: Leads maintain their relative positions across page refreshes and navigation
 
 ## User Interface Highlights
 
@@ -413,7 +429,10 @@ The platform includes an advanced AI-powered message customization feature to he
 
 ### Technical Features
 
+- **Clean Message Generation**: Advanced prefix removal system eliminates AI response artifacts like "Here is the transformed message:"
 - **Context Preservation**: Properly formats messages and maintains signature placement
+- **Company Branding**: Automatically includes user's company name in message signatures
+- **Iterative Cleaning**: Multiple-pass cleaning to handle nested AI response prefixes
 - **Fallback Handling**: Multiple strategies to ensure prompts are properly applied
 - **Accessibility Support**: Full keyboard navigation and ARIA attributes
 - **Error Recovery**: Graceful handling of API failures with helpful error messages
@@ -429,6 +448,22 @@ The platform includes an advanced AI-powered message customization feature to he
 - Combining transformations (e.g., "make it longer and funnier")
 
 ## Recent Updates
+
+### Version 15.13.0 - 2025-01-XX
+- **Critical Fixes**:
+    - **🎯 Lead Scoring Consistency**: Fixed major issue where leads appeared in different orders after navigation
+    - **🔄 Deterministic Scoring**: Eliminated all randomness from lead scoring calculations
+    - **📧 Clean Outreach Messages**: Removed "Here is the transformed message:" prefixes from AI-generated messages
+    - **🏢 Company Signatures**: Ensured company names are properly included in outreach message signatures
+- **Technical Improvements**:
+    - Unified scoring system to prevent duplicate calculations
+    - Enhanced caching with preferences-aware cache keys
+    - Improved message generation with comprehensive prefix removal
+    - Added iterative cleaning for nested AI response prefixes
+- **Performance**:
+    - Reduced redundant scoring calculations
+    - Improved lead ordering stability across page refreshes
+    - Enhanced message generation reliability
 
 ### Version 15.12.0 - 2025-05-21
 - **Features**:
@@ -594,6 +629,24 @@ If you see stale data or need to refresh:
 5. Check that the upload success message indicates database storage, not localStorage
 
 **Technical Details**: Previous versions incorrectly used `allowUnauthenticated={true}` on the data-input page, causing all uploads to go to localStorage regardless of authentication status. This has been fixed to use `allowUnauthenticated={!isAuthenticated}`.
+
+#### Lead Scoring Consistency Issues (Fixed in v15.13.0)
+**Problem**: Leads appearing in different orders after navigation or page refresh
+**Solution**: This critical issue has been resolved. If you still experience inconsistent ordering:
+1. Clear browser cache and reload the page
+2. Ensure you're using the latest version of the application
+3. Check browser console for any JavaScript errors
+4. Try refreshing the data using the "Refresh Data" button
+
+**Technical Details**: The previous version had dual scoring systems that could run at different times with different preference states. This has been unified into a single, deterministic scoring system.
+
+#### Outreach Message Formatting Issues (Fixed in v15.13.0)
+**Problem**: Generated messages showing "Here is the transformed message:" or similar prefixes
+**Solution**: This has been automatically resolved with enhanced message cleaning:
+1. All AI-generated messages now have prefixes automatically removed
+2. Company signatures are properly included at the end of messages
+3. Multiple cleaning passes handle nested or complex AI responses
+4. No user action required - the fix is automatic
 
 #### Mobile Compatibility Issues
 - Clear browser cache and reload if CSS doesn't appear correct

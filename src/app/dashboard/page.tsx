@@ -235,9 +235,9 @@ export default function DashboardPage() {
 
   // Define fetchLeads outside the conditional block to avoid linter error
   const fetchLeads = async () => {
-    // Only fetch if we have confirmed authentication sync
-    if (!auth.isAuthenticated) {
-      console.log('Dashboard: Not authenticated or sync not complete, waiting before fetching leads');
+    // Check if we have a valid session first, don't wait for auth sync
+    if (status !== 'authenticated' || !session) {
+      console.log('Dashboard: Not authenticated, skipping lead fetch. Status:', status, 'Session:', !!session);
       return;
     }
     
@@ -277,11 +277,11 @@ export default function DashboardPage() {
       const fetchedLeads = data.leads || [];
       console.log('Dashboard: Fetched leads:', fetchedLeads.length);
       
-      // Apply scoring based on user preferences - key enhancement to make leads relevant
-      const scoredLeads = scoreLeadsBasedOnPreferences(fetchedLeads, preferences);
-      console.log('Dashboard: Scored leads:', scoredLeads.length);
+      // Don't apply scoring here - let LeadsTable handle all scoring for consistency
+      // This prevents double scoring and ensures consistent results
+      console.log('Dashboard: Fetched leads (scoring will be handled by LeadsTable):', fetchedLeads.length);
       
-      setLeads(scoredLeads);
+      setLeads(fetchedLeads);
       console.log('Dashboard: Leads set to state successfully');
     } catch (err) {
       console.error('Error fetching leads:', err);
@@ -421,20 +421,70 @@ export default function DashboardPage() {
       
       // Calculate base score without preferences if we don't have enough signals
       if (marketingScore === 0) {
-        marketingScore = lead.chromeScore || lead.propsScore || Math.floor(Math.random() * 40) + 40;
+        // Use a deterministic score based on lead properties (same logic as LeadsTable)
+        const getStableScore = (lead: any) => {
+          // Use the same approach as getStableHashFromLead for consistency
+          const idPart = lead.id || '';
+          const namePart = (lead.name || '').toLowerCase();
+          const emailPart = (lead.email || '').toLowerCase();
+          const companyPart = (lead.company || '').toLowerCase();
+          const titlePart = (lead.title || '').toLowerCase();
+          
+          // Create a string with fixed structure: id|name|email|company|title
+          const str = `${idPart}|${namePart}|${emailPart}|${companyPart}|${titlePart}`;
+          
+          // Create a deterministic hash from the string
+          let hash = 0;
+          for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash + char) | 0; // Convert to 32bit integer with bitwise OR
+          }
+          
+          // Convert to a score between 40-80 using absolute value and modulo
+          return 40 + Math.abs(hash % 41);
+        };
+        
+        marketingScore = lead.chromeScore || lead.propsScore || getStableScore(lead);
       }
       
-      // Ensure we have reasonable values for all scores
+      // Ensure we have reasonable values for all scores using deterministic calculations
       if (intentScore === 0) {
-        intentScore = Math.max(20, Math.min(marketingScore - 10, 90));
+        // Use a deterministic calculation based on lead properties
+        const getStableIntentScore = (lead: any) => {
+          const str = `intent_${lead.id || ''}${lead.name || ''}${lead.email || ''}`;
+          let hash = 0;
+          for (let i = 0; i < str.length; i++) {
+            hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+          }
+          return 20 + Math.abs(hash % 71); // 20-90 range
+        };
+        intentScore = getStableIntentScore(lead);
       }
       
       if (budgetPotential === 0) {
-        budgetPotential = Math.max(20, Math.min(marketingScore - 15, 85));
+        // Use a deterministic calculation based on lead properties
+        const getStableBudgetScore = (lead: any) => {
+          const str = `budget_${lead.id || ''}${lead.company || ''}${lead.title || ''}`;
+          let hash = 0;
+          for (let i = 0; i < str.length; i++) {
+            hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+          }
+          return 20 + Math.abs(hash % 66); // 20-85 range
+        };
+        budgetPotential = getStableBudgetScore(lead);
       }
       
       if (spendAuthorityScore === 0) {
-        spendAuthorityScore = Math.max(20, Math.min(marketingScore - 20, 80));
+        // Use a deterministic calculation based on lead properties
+        const getStableSpendScore = (lead: any) => {
+          const str = `spend_${lead.id || ''}${lead.title || ''}${lead.company || ''}`;
+          let hash = 0;
+          for (let i = 0; i < str.length; i++) {
+            hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+          }
+          return 20 + Math.abs(hash % 61); // 20-80 range
+        };
+        spendAuthorityScore = getStableSpendScore(lead);
       }
       
       // Apply final normalization to scores (0-100 range)
@@ -479,16 +529,31 @@ export default function DashboardPage() {
       if (marketingComparison !== 0) return marketingComparison;
       
       // 4. Budget Potential
-      return (b.budgetPotential ?? 0) - (a.budgetPotential ?? 0);
+      const budgetComparison = (b.budgetPotential ?? 0) - (a.budgetPotential ?? 0);
+      if (budgetComparison !== 0) return budgetComparison;
+      
+      // 5. Final tie-breaker: sort by email or name for consistent ordering
+      const aIdentifier = a.email || a.name || a.id || '';
+      const bIdentifier = b.email || b.name || b.id || '';
+      return aIdentifier.localeCompare(bIdentifier);
     });
   };
 
-  // Only load leads when authenticated and sync is complete
+  // Load leads when authenticated (don't wait for auth sync)
   useEffect(() => {
-    if (status === 'authenticated' && auth.isAuthenticated) {
+    console.log('Dashboard: useEffect triggered - status:', status, 'session:', session);
+    if (status === 'authenticated' && session) {
+      console.log('Dashboard: Conditions met, calling fetchLeads');
       fetchLeads();
+    } else if (status === 'unauthenticated') {
+      // If user is unauthenticated, stop loading
+      console.log('Dashboard: User unauthenticated, stopping loading');
+      setLoading(false);
+    } else {
+      console.log('Dashboard: Waiting for authentication - status:', status, 'hasSession:', !!session);
     }
-  }, [status, auth.isAuthenticated]); // Add auth.isAuthenticated as dependency
+    // Keep loading true while status is 'loading'
+  }, [status, session]); // Trigger when session is ready
 
   // Check for first visit when component mounts
   useEffect(() => {
@@ -701,12 +766,12 @@ export default function DashboardPage() {
               </div>
               <div className="flex-1">
                 <p className="font-medium text-red-100 mb-2">{error}</p>
-                <button 
-                  onClick={fetchLeads}
+            <button 
+              onClick={fetchLeads}
                   className="text-sm text-red-300 hover:text-red-100 underline hover:no-underline transition-all duration-200"
-                >
-                  Try Again
-                </button>
+            >
+              Try Again
+            </button>
               </div>
             </div>
           </div>
@@ -731,11 +796,11 @@ export default function DashboardPage() {
               </div>
               <p className="text-sm text-blue-300 font-medium">
                 Want to target different leads? Use "Reset Settings" to change your targeting criteria.
-              </p>
+                </p>
             </div>
           </div>
         )}
-
+        
         {/* Tabbed Interface */}
         <div className="mb-8">
           {/* Tab Navigation */}
@@ -787,11 +852,11 @@ export default function DashboardPage() {
                       specific targeting criteria. Higher scores indicate leads with stronger conversion potential based on research-backed 
                       predictive models used by leading SaaS platforms.
                     </p>
-                  </div>
-                </div>
-              </div>
+        </div>
+          </div>
+        </div>
 
-              {/* Leads Table */}
+        {/* Leads Table */}
               <div>
                 <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
                   <div className="p-2 bg-gradient-to-br from-blue-600/30 to-indigo-600/20 rounded-lg">
@@ -799,10 +864,11 @@ export default function DashboardPage() {
                   </div>
                   <span className="bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">Your Top Leads</span>
                 </h2>
-                <LeadsTable 
-                  leads={leads} 
-                  showChromeScore={true}
-                />
+          <LeadsTable 
+            leads={leads} 
+            showChromeScore={true}
+                  loading={loading}
+          />
               </div>
             </div>
           )}

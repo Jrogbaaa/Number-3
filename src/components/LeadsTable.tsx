@@ -13,6 +13,7 @@ import { useUserPreferences } from '@/providers/UserPreferencesProvider';
 interface LeadsTableProps {
   leads: Lead[];
   showChromeScore?: boolean;
+  loading?: boolean;
 }
 
 // Helper function to generate CSV content
@@ -163,7 +164,7 @@ const saveLeadOrderToLocalStorage = (leads: Lead[]) => {
   }
 };
 
-export default function LeadsTable({ leads, showChromeScore = false }: LeadsTableProps) {
+export default function LeadsTable({ leads, showChromeScore = false, loading = false }: LeadsTableProps) {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: keyof Lead | null; direction: 'ascending' | 'descending' }>({ key: null, direction: 'descending' });
@@ -323,47 +324,59 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
       matchFactors: [] as string[]
     } : null;
     
-    // If no preferences, use fixed scores to ensure consistency
+    // If no preferences, use completely deterministic scoring based on lead properties
     if (!preferences) {
-      // Use actual scores, defaulting to 65 for directors/VPs in entertainment/media 
-      const isDirectorOrVP = lead.title?.toLowerCase().includes('director') || 
-                            lead.title?.toLowerCase().includes('vp') ||
-                            lead.title?.toLowerCase().includes('chief');
-                            
-      const isEntertainmentMedia = lead.company?.toLowerCase().includes('entertainment') ||
-                                 lead.company?.toLowerCase().includes('warner') ||
-                                 lead.company?.toLowerCase().includes('sony') ||
-                                 lead.company?.toLowerCase().includes('universal') ||
-                                 lead.company?.toLowerCase().includes('disney') ||
-                                 lead.company?.toLowerCase().includes('netflix') ||
-                                 lead.company?.toLowerCase().includes('music');
+      // Use our global hash function for completely consistent results
+      const hash = getStableHashFromLead(lead);
       
-      // Use role and industry to determine base score
-      let baseScore = 59; // Default
+      // Base score from hash (40-70 range)
+      let baseScore = 40 + (hash % 31);
       
-      if (isDirectorOrVP && isEntertainmentMedia) {
-        baseScore = 84; // Higher score for directors in entertainment
-      } else if (isDirectorOrVP) {
-        baseScore = 76; // High score for directors in any industry
-      } else if (isEntertainmentMedia) {
-        baseScore = 71; // Good score for any role in entertainment
+      // Deterministic adjustments based on lead properties
+      if (lead.title) {
+        const titleLower = lead.title.toLowerCase();
+        
+        // Senior roles get consistent boost
+        if (titleLower.includes('ceo') || titleLower.includes('chief') || titleLower.includes('founder')) {
+          baseScore += 20;
+        } else if (titleLower.includes('vp') || titleLower.includes('vice president') || titleLower.includes('director')) {
+          baseScore += 15;
+        } else if (titleLower.includes('manager') || titleLower.includes('head')) {
+          baseScore += 10;
+        }
+        
+        // Marketing-related roles get boost
+        if (titleLower.includes('marketing') || titleLower.includes('content') || titleLower.includes('brand')) {
+          baseScore += 8;
+        }
+      }
+      
+      // Company-based adjustments
+      if (lead.company) {
+        const companyLower = lead.company.toLowerCase();
+        
+        // Well-known companies get boost
+        const knownCompanies = ['ticketmaster', 'sony', 'warner', 'disney', 'netflix', 'nike', 'adidas', 'amazon', 'microsoft', 'google', 'apple'];
+        if (knownCompanies.some(name => companyLower.includes(name))) {
+          baseScore += 5;
+        }
       }
       
       // Use existing scores if available, otherwise use calculated base
-      const score = lead.marketingScore || lead.intentScore || lead.spendAuthorityScore || baseScore;
+      const finalScore = Math.min(100, Math.max(20, lead.marketingScore || lead.intentScore || lead.spendAuthorityScore || baseScore));
       
       if (debugInfo) {
-        console.log(`Best Overall Score for ${lead.name}: ${score} (no preferences available)`);
+        console.log(`Best Overall Score for ${lead.name}: ${finalScore} (no preferences available, hash: ${hash})`);
       }
       
-      return score;
+      return finalScore;
     }
     
-    // Start with actual scores from the lead, using fixed fallbacks
+    // Start with actual scores from the lead, using deterministic fallbacks
     const baseScores = {
-      marketing: lead.marketingScore || 59,
+      marketing: lead.marketingScore || calculateMarketingScoreFallback(lead),
       intent: lead.intentScore || calculateIntentScore(lead),
-      budget: lead.budgetPotential || 59,
+      budget: lead.budgetPotential || calculateBudgetFallback(lead),
       spendAuthority: lead.spendAuthorityScore || calculateSpendAuthority(lead)
     };
     
@@ -520,6 +533,28 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
     return finalScore;
   };
 
+  // Calculate marketing score fallback when not explicitly provided
+  const calculateMarketingScoreFallback = (lead: Lead): number => {
+    // Use our global hash function for consistency
+    const str = `marketing_${lead.id || ''}${lead.name || ''}${lead.company || ''}`;
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+    }
+    return 45 + Math.abs(hash % 31); // 45-75 range
+  };
+
+  // Calculate budget fallback when not explicitly provided
+  const calculateBudgetFallback = (lead: Lead): number => {
+    // Use our global hash function for consistency
+    const str = `budget_${lead.id || ''}${lead.company || ''}${lead.title || ''}`;
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+    }
+    return 40 + Math.abs(hash % 36); // 40-75 range
+  };
+
   // Calculate intent score based on lead attributes when not explicitly provided
   const calculateIntentScore = (lead: Lead): number => {
     // Use our global hash function instead of a local one
@@ -608,7 +643,18 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
   };
 
   const processedLeads = useMemo(() => {
-    // Create a cache to store calculated scores, keyed by lead ID
+    // Create a stable cache key that includes preferences state to ensure consistency
+    const preferencesKey = preferences ? JSON.stringify({
+      targetRoles: preferences.targetRoles || [],
+      targetIndustries: preferences.targetIndustries || [],
+      companyProduct: preferences.companyProduct || '',
+      targetCompanySizes: preferences.targetCompanySizes || []
+    }) : 'no-preferences';
+    
+    const leadDataKey = leads.map(lead => `${lead.id}_${lead.name}_${lead.email}_${lead.company}_${lead.title}`).join('|');
+    const fullCacheKey = `${leadDataKey}_${preferencesKey}`;
+    
+    // Create a cache to store calculated scores, keyed by lead ID + preferences
     const scoreCache = new Map<string, {
       intentScore: number,
       spendAuthorityScore: number,
@@ -617,9 +663,12 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
     
     // Pre-calculate all scores for all leads first to ensure consistency
     const scoredLeads = leads.map(lead => {
+      // Create a unique cache key for this lead + preferences combination
+      const leadCacheKey = `${lead.id}_${preferencesKey}`;
+      
       // If we have a lead ID and it's in the cache, use the cached scores
-      if (lead.id && scoreCache.has(lead.id)) {
-        const cachedScores = scoreCache.get(lead.id)!;
+      if (lead.id && scoreCache.has(leadCacheKey)) {
+        const cachedScores = scoreCache.get(leadCacheKey)!;
         return {
           ...lead,
           intentScore: lead.intentScore ?? cachedScores.intentScore,
@@ -643,7 +692,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
       
       // Cache the scores if we have an ID
       if (lead.id) {
-        scoreCache.set(lead.id, {
+        scoreCache.set(leadCacheKey, {
           intentScore,
           spendAuthorityScore,
           calculatedOverallScore
@@ -733,7 +782,13 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
         // Secondary sort: Created date (newest first)
         const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
         const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-        return dateB - dateA; 
+        const dateDiff = dateB - dateA;
+        if (dateDiff !== 0) return dateDiff;
+        
+        // Final tie-breaker: sort by email or name for consistent ordering
+        const aIdentifier = a.email || a.name || a.id || '';
+        const bIdentifier = b.email || b.name || b.id || '';
+        return aIdentifier.localeCompare(bIdentifier);
       });
     }
     
@@ -749,7 +804,7 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
     });
 
     return sortedLeads;
-  }, [leads, searchTerm, sortConfig, statusFilter, marketingScoreFilter, budgetConfidenceFilter, orientationFilter]);
+  }, [leads, searchTerm, sortConfig, statusFilter, marketingScoreFilter, budgetConfidenceFilter, orientationFilter, preferences]);
 
   // Debug logging for desktop table rendering
   console.log('Desktop table rendering - Columns:', columns.length, 'Visible columns:', columns.filter(col => col.show).length, 'Leads:', processedLeads.length);
@@ -1241,19 +1296,19 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                 }
                 
                 return (
-                  <th 
-                    key={column.id} 
+                <th 
+                  key={column.id} 
                     className={`py-3 px-4 ${widthClass} cursor-pointer group hover:bg-gray-700/50 transition-colors duration-150`}
-                    onClick={() => column.key && requestSort(column.key)}
-                    onKeyDown={(e: React.KeyboardEvent<HTMLTableCellElement>) => column.key && (e.key === 'Enter' || e.key === ' ') && requestSort(column.key)}
-                    tabIndex={0}
-                    aria-sort={column.key && sortConfig?.key === column.key ? (sortConfig.direction === 'ascending' ? 'ascending' : 'descending') : 'none'}
-                    aria-label={`Sort by ${column.name}`}
-                  >
-                    <div className="flex items-center">
-                      {column.name} {column.key && renderSortIcon(column.key)}
-                    </div>
-                  </th>
+                  onClick={() => column.key && requestSort(column.key)}
+                  onKeyDown={(e: React.KeyboardEvent<HTMLTableCellElement>) => column.key && (e.key === 'Enter' || e.key === ' ') && requestSort(column.key)}
+                  tabIndex={0}
+                  aria-sort={column.key && sortConfig?.key === column.key ? (sortConfig.direction === 'ascending' ? 'ascending' : 'descending') : 'none'}
+                  aria-label={`Sort by ${column.name}`}
+                >
+                  <div className="flex items-center">
+                    {column.name} {column.key && renderSortIcon(column.key)}
+                  </div>
+              </th>
                 );
               })}
             </tr>
@@ -1465,15 +1520,23 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
                 <td colSpan={columns.filter(col => col.show).length} className="py-12">
                   <div className="flex flex-col items-center justify-center text-center">
                     <div className="p-4 bg-gradient-to-br from-gray-800/40 to-gray-700/20 rounded-xl mb-4">
-                      <Users className="w-8 h-8 text-gray-500" />
+                      {loading ? (
+                        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Users className="w-8 h-8 text-gray-500" />
+                      )}
                     </div>
                     <h3 className="text-lg font-medium text-gray-400 mb-2">
-                      {searchTerm || statusFilter !== 'all' || marketingScoreFilter !== 'all' || budgetConfidenceFilter !== 'all' || orientationFilter !== 'all' 
+                      {loading 
+                       ? 'Loading your leads...'
+                       : searchTerm || statusFilter !== 'all' || marketingScoreFilter !== 'all' || budgetConfidenceFilter !== 'all' || orientationFilter !== 'all' 
                        ? 'No matches found' 
                        : 'No leads yet'}
                     </h3>
                     <p className="text-gray-500 text-sm max-w-md">
-                      {searchTerm || statusFilter !== 'all' || marketingScoreFilter !== 'all' || budgetConfidenceFilter !== 'all' || orientationFilter !== 'all' 
+                      {loading 
+                       ? 'Please wait while we fetch your lead data.'
+                       : searchTerm || statusFilter !== 'all' || marketingScoreFilter !== 'all' || budgetConfidenceFilter !== 'all' || orientationFilter !== 'all' 
                        ? 'Try adjusting your search terms or filters to find what you\'re looking for.' 
                        : 'Upload your first CSV file to start analyzing and scoring your leads.'}
                     </p>
@@ -1630,15 +1693,23 @@ export default function LeadsTable({ leads, showChromeScore = false }: LeadsTabl
           <div className="py-12">
             <div className="flex flex-col items-center justify-center text-center">
               <div className="p-4 bg-gradient-to-br from-gray-800/40 to-gray-700/20 rounded-xl mb-4">
-                <Users className="w-8 h-8 text-gray-500" />
+                {loading ? (
+                  <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Users className="w-8 h-8 text-gray-500" />
+                )}
               </div>
               <h3 className="text-lg font-medium text-gray-400 mb-2">
-                {searchTerm || statusFilter !== 'all' || marketingScoreFilter !== 'all' || budgetConfidenceFilter !== 'all' || orientationFilter !== 'all' 
+                {loading 
+                 ? 'Loading your leads...'
+                 : searchTerm || statusFilter !== 'all' || marketingScoreFilter !== 'all' || budgetConfidenceFilter !== 'all' || orientationFilter !== 'all' 
                  ? 'No matches found' 
                  : 'No leads yet'}
               </h3>
               <p className="text-gray-500 text-sm max-w-md">
-                {searchTerm || statusFilter !== 'all' || marketingScoreFilter !== 'all' || budgetConfidenceFilter !== 'all' || orientationFilter !== 'all' 
+                {loading 
+                 ? 'Please wait while we fetch your lead data.'
+                 : searchTerm || statusFilter !== 'all' || marketingScoreFilter !== 'all' || budgetConfidenceFilter !== 'all' || orientationFilter !== 'all' 
                  ? 'Try adjusting your search terms or filters to find what you\'re looking for.' 
                  : 'Upload your first CSV file to start analyzing and scoring your leads.'}
               </p>

@@ -35,6 +35,7 @@ export async function GET() {
 
     const userId = session.user.id;
     console.log(`API: User authenticated with NextAuth, ID: ${userId}`);
+    console.log(`API: Session user object:`, JSON.stringify(session.user, null, 2));
     
     // Create Supabase client with service role to bypass RLS
     const supabase = createClient(supabaseUrl, serviceRoleKey);
@@ -45,6 +46,22 @@ export async function GET() {
       .select('*')
       .eq('user_id', userId) // Only get leads for the current user
       .order('created_at', { ascending: false });
+    
+    console.log(`API: Supabase query executed for user_id: ${userId}`);
+    
+    // Debug: Check total leads in database
+    const { data: allLeads, error: countError } = await supabase
+      .from('leads')
+      .select('user_id', { count: 'exact' });
+    
+    if (!countError) {
+      console.log(`API: Total leads in database: ${allLeads?.length || 0}`);
+      if (allLeads && allLeads.length > 0) {
+        const userIds = Array.from(new Set(allLeads.map(lead => lead.user_id)));
+        console.log(`API: Unique user_ids in database:`, userIds);
+        console.log(`API: Current user_id "${userId}" exists in database:`, userIds.includes(userId));
+      }
+    }
 
     if (error) {
       console.error('API: Error fetching leads from Supabase:', error);
