@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Calendar, Clock, TrendingUp, Info } from 'lucide-react';
 import type { Lead, CalendarEvent } from '@/types/lead';
 import Link from 'next/link';
+import { useUserPreferences } from '@/providers/UserPreferencesProvider';
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
@@ -76,8 +77,224 @@ const parseStartTimeToHour = (timeString: string | undefined): number => {
 
 // --- End New Helper Function ---
 
+// Stable hash function for consistent scoring
+const getStableHashFromLead = (lead: Lead): number => {
+  const str = `${lead.id || ''}${lead.name || ''}${lead.email || ''}${lead.company || ''}`;
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+};
+
+// Calculate intent score
+const calculateIntentScore = (lead: Lead): number => {
+  const hash = getStableHashFromLead(lead);
+  let baseScore = 50 + (hash % 31); // 50-80 range
+  
+  if (lead.title) {
+    const titleLower = lead.title.toLowerCase();
+    if (titleLower.includes('marketing') || titleLower.includes('content') || titleLower.includes('brand')) {
+      baseScore += 15;
+    }
+    if (titleLower.includes('ceo') || titleLower.includes('founder') || titleLower.includes('chief')) {
+      baseScore += 10;
+    }
+  }
+  
+  return Math.min(95, Math.max(30, baseScore));
+};
+
+// Calculate spend authority score
+const calculateSpendAuthority = (lead: Lead): number => {
+  const hash = getStableHashFromLead(lead);
+  let baseScore = 45 + (hash % 26); // 45-70 range
+  
+  if (lead.title) {
+    const titleLower = lead.title.toLowerCase();
+    if (titleLower.includes('ceo') || titleLower.includes('chief') || titleLower.includes('founder')) {
+      baseScore += 25;
+    } else if (titleLower.includes('vp') || titleLower.includes('vice president') || titleLower.includes('director')) {
+      baseScore += 20;
+    } else if (titleLower.includes('manager') || titleLower.includes('head')) {
+      baseScore += 15;
+    }
+  }
+  
+  return Math.min(95, Math.max(25, baseScore));
+};
+
 // Create real calendar events from leads data
-function generateCalendarEvents(leads: Lead[]): Record<string, CalendarEvent[]> {
+function generateCalendarEvents(leads: Lead[], preferences: any): Record<string, CalendarEvent[]> {
+  // Calculate Best Overall score based on user preferences (same as LeadsTable)
+  const calculateBestOverallScore = (lead: Lead) => {
+    // First, ensure intent and spend authority scores are available
+    if (lead.intentScore === undefined) {
+      lead.intentScore = calculateIntentScore(lead);
+    }
+    
+    if (lead.spendAuthorityScore === undefined) {
+      lead.spendAuthorityScore = calculateSpendAuthority(lead);
+    }
+    
+    // If no preferences, use completely deterministic scoring based on lead properties
+    if (!preferences) {
+      // Use our global hash function for completely consistent results
+      const hash = getStableHashFromLead(lead);
+      
+      // Base score from hash (40-70 range)
+      let baseScore = 40 + (hash % 31);
+      
+      // Deterministic adjustments based on lead properties
+      if (lead.title) {
+        const titleLower = lead.title.toLowerCase();
+        
+        // Senior roles get consistent boost
+        if (titleLower.includes('ceo') || titleLower.includes('chief') || titleLower.includes('founder')) {
+          baseScore += 20;
+        } else if (titleLower.includes('vp') || titleLower.includes('vice president') || titleLower.includes('director')) {
+          baseScore += 15;
+        } else if (titleLower.includes('manager') || titleLower.includes('head')) {
+          baseScore += 10;
+        }
+        
+        // Marketing-related roles get boost
+        if (titleLower.includes('marketing') || titleLower.includes('content') || titleLower.includes('brand')) {
+          baseScore += 8;
+        }
+      }
+      
+      // Company-based adjustments
+      if (lead.company) {
+        const companyLower = lead.company.toLowerCase();
+        
+        // Well-known companies get boost
+        const knownCompanies = ['ticketmaster', 'sony', 'warner', 'disney', 'netflix', 'nike', 'adidas', 'amazon', 'microsoft', 'google', 'apple'];
+        if (knownCompanies.some(name => companyLower.includes(name))) {
+          baseScore += 5;
+        }
+      }
+      
+      // Use existing scores if available, otherwise use calculated base
+      const finalScore = Math.min(100, Math.max(20, lead.marketingScore || lead.intentScore || lead.spendAuthorityScore || baseScore));
+      
+      return finalScore;
+    }
+    
+    // Helper functions for fallback scores
+    const calculateMarketingScoreFallback = (lead: Lead): number => {
+      const str = `marketing_${lead.id || ''}${lead.name || ''}${lead.company || ''}`;
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+      }
+      return 45 + Math.abs(hash % 31); // 45-75 range
+    };
+
+    const calculateBudgetFallback = (lead: Lead): number => {
+      const str = `budget_${lead.id || ''}${lead.company || ''}${lead.title || ''}`;
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+      }
+      return 40 + Math.abs(hash % 36); // 40-75 range
+    };
+
+    // Start with actual scores from the lead, using deterministic fallbacks
+    const baseScores = {
+      marketing: lead.marketingScore || calculateMarketingScoreFallback(lead),
+      intent: lead.intentScore || calculateIntentScore(lead),
+      budget: lead.budgetPotential || calculateBudgetFallback(lead),
+      spendAuthority: lead.spendAuthorityScore || calculateSpendAuthority(lead)
+    };
+    
+    // Base weights are fixed to create consistent results
+    const weights = {
+      marketing: 1.0,
+      intent: 1.1,
+      budget: 0.9,
+      spendAuthority: 0.8
+    };
+    
+    // ROLE MATCHING - Adjust weights based on target roles
+    if (preferences?.targetRoles && preferences.targetRoles.length > 0) {
+      // If they care about specific roles, intent becomes more important
+      weights.intent = 1.5;
+      weights.spendAuthority = 1.2;
+      
+      // Check if lead's title matches any target role
+      const leadTitle = lead.title?.toLowerCase() || '';
+      const roleMatches = preferences.targetRoles.filter(
+        (role: string) => leadTitle.includes(role.toLowerCase())
+      );
+      
+      if (roleMatches.length > 0) {
+        // This is a high-value match - boost scores proportionally to match count
+        const matchBoost = Math.min(1.5, 1 + (roleMatches.length * 0.2));
+        weights.intent *= matchBoost;
+        weights.marketing *= 1.2;
+        
+        // Also boost the base scores for a better match (with fixed values)
+        baseScores.intent += 15;
+        baseScores.marketing += 10;
+      }
+      
+      // Extra points for seniority if it matters to the user
+      const seniorityTerms = ['chief', 'ceo', 'cfo', 'cto', 'cmo', 'vp', 'vice president', 'director', 'head'];
+      if (lead.title && seniorityTerms.some(term => lead.title?.toLowerCase().includes(term))) {
+        weights.spendAuthority *= 1.3;
+        baseScores.spendAuthority += 20;
+      }
+    }
+    
+    // INDUSTRY MATCHING - Adjust based on industry preferences
+    if (preferences?.targetIndustries && preferences.targetIndustries.length > 0) {
+      // If they care about specific industries, marketing fit is more important
+      weights.marketing = 1.3;
+      
+      // Check if lead's company or industry field matches any target industry
+      const leadCompany = lead.company?.toLowerCase() || '';
+      const leadIndustry = (lead as any).industry?.toLowerCase() || '';
+      
+      const industryMatches = preferences.targetIndustries.filter(
+        (industry: string) => leadCompany.includes(industry.toLowerCase()) || 
+                   leadIndustry.includes(industry.toLowerCase())
+      );
+      
+      if (industryMatches.length > 0) {
+        // This is a high-value match - boost marketing and budget scores
+        const matchBoost = Math.min(1.6, 1 + (industryMatches.length * 0.2));
+        weights.marketing *= matchBoost;
+        weights.budget *= 1.2;
+        
+        // Also boost the base scores for a better match
+        baseScores.marketing += 15;
+        baseScores.budget += 10;
+      }
+    }
+    
+    // Calculate weighted scores
+    const scores = {
+      marketing: baseScores.marketing * weights.marketing,
+      intent: baseScores.intent * weights.intent,
+      budget: baseScores.budget * weights.budget,
+      spendAuthority: baseScores.spendAuthority * weights.spendAuthority
+    };
+    
+    // Sum of all weighted scores
+    const weightedSum = scores.marketing + scores.intent + scores.budget + scores.spendAuthority;
+    
+    // Sum of all weights
+    const weightSum = weights.marketing + weights.intent + weights.budget + weights.spendAuthority;
+    
+    // Calculate weighted average, no variation, and round to nearest integer
+    const weightedAverage = Math.round(weightedSum / weightSum);
+    
+    // Ensure the score is between 0 and 100 and return a value of at least 20
+    const finalScore = Math.min(100, Math.max(20, weightedAverage));
+    
+    return finalScore;
+  };
   // Create empty calendar with each weekday
   const calendar: Record<string, CalendarEvent[]> = {
     Monday: [],
@@ -87,32 +304,37 @@ function generateCalendarEvents(leads: Lead[]): Record<string, CalendarEvent[]> 
     Friday: []
   };
   
-  // Only use high-value leads (sorted by custom scoring priority)
+  // Only use high-value leads (sorted by Best Overall score - same as dashboard)
   const highValueLeads = [...leads]
+    .map(lead => ({
+      ...lead,
+      calculatedOverallScore: calculateBestOverallScore(lead)
+    }))
     .sort((a, b) => {
-      // Use the same multi-factor scoring as the dashboard
-      // 1. Intent Score (Highest priority)
-      const intentComparison = (b.intentScore ?? 0) - (a.intentScore ?? 0);
-      if (intentComparison !== 0) return intentComparison;
+      // Primary sort: Best Overall score (descending)
+      const scoreA = a.calculatedOverallScore;
+      const scoreB = b.calculatedOverallScore;
+      const scoreDiff = scoreB - scoreA;
+      if (scoreDiff !== 0) return scoreDiff;
+
+      // Secondary sort: Created date (newest first)
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      const dateDiff = dateB - dateA;
+      if (dateDiff !== 0) return dateDiff;
       
-      // 2. Spend Authority Score
-      const spendAuthorityComparison = (b.spendAuthorityScore ?? 0) - (a.spendAuthorityScore ?? 0);
-      if (spendAuthorityComparison !== 0) return spendAuthorityComparison;
-      
-      // 3. Marketing Score
-      const marketingComparison = (b.marketingScore ?? 0) - (a.marketingScore ?? 0);
-      if (marketingComparison !== 0) return marketingComparison;
-      
-      // 4. Budget Potential
-      const budgetComparison = (b.budgetPotential ?? 0) - (a.budgetPotential ?? 0);
-      if (budgetComparison !== 0) return budgetComparison;
-      
-      // 5. Fallback to legacy scores if new scores aren't available
-      const scoreA = a.chromeScore || a.score || 0;
-      const scoreB = b.chromeScore || b.score || 0;
-      return scoreB - scoreA;
+      // Final tie-breaker: sort by email or name for consistent ordering
+      const aIdentifier = a.email || a.name || a.id || '';
+      const bIdentifier = b.email || b.name || b.id || '';
+      return aIdentifier.localeCompare(bIdentifier);
     })
     .slice(0, 15); // Limit to top 15 for the weekly view
+  
+  // Debug: Log the top leads being used in the calendar
+  console.log('Dashboard Calendar - Top leads by Best Overall score:', highValueLeads.slice(0, 5).map(lead => ({ 
+    name: lead.name, 
+    score: (lead as any).calculatedOverallScore 
+  })));
   
   let timeSlotCounter = 0; // To alternate between morning/afternoon slots
 
@@ -163,7 +385,7 @@ function generateCalendarEvents(leads: Lead[]): Record<string, CalendarEvent[]> 
       startTime: startTime, // Keep original for potential internal use
       endTime: endTime,   // Keep original for potential internal use
       displayTime: displayTime, // Use the new formatted string for display
-      successRate: lead.marketingScore || lead.chromeScore || lead.score || 70,
+      successRate: (lead as any).calculatedOverallScore || 70,
       // Store the source time string for reliable sorting
       _sortTime: sourceTime 
     };
@@ -190,6 +412,7 @@ export default function ContentCalendar() {
   const [loading, setLoading] = useState<boolean>(true);
   const [activeDayMobile, setActiveDayMobile] = useState<string | null>(null);
   const router = useRouter();
+  const { preferences } = useUserPreferences();
   
   useEffect(() => {
     async function loadLeadsForCalendar() {
@@ -210,7 +433,7 @@ export default function ContentCalendar() {
         }
         
         const leads = data.leads || [];
-        const calendarEvents = generateCalendarEvents(leads);
+        const calendarEvents = generateCalendarEvents(leads, preferences);
         setEvents(calendarEvents);
         
         // Set initial active day for mobile view
