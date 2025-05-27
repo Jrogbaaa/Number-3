@@ -283,6 +283,14 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
       console.log('[DataUpload] Processed leads count:', processedLeads.length);
       toast.dismiss(loadingToast);
       
+      // Check if file is too large for Vercel's 60-second limit
+      if (processedLeads.length > 500) {
+        toast.error(`File too large (${processedLeads.length} leads). Please split into files of 500 leads or fewer.`);
+        setError(`File too large (${processedLeads.length} leads). Please split into files of 500 leads or fewer.`);
+        setIsProcessing(false);
+        return;
+      }
+      
       // Check for cancellation *after* parsing and *before* starting upload
       if (isCancelled) {
         toast.info("Upload cancelled after processing, before database upload.");
@@ -375,7 +383,7 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
         // --- Call uploadLeads ---
         // Replace direct uploadLeads call with API route using service role key
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minute timeout
+        const timeoutId = setTimeout(() => controller.abort(), 65000); // 65 second timeout (slightly longer than server)
         
         const response = await fetch('/api/upload-leads', {
           method: 'POST',

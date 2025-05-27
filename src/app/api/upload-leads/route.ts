@@ -5,8 +5,8 @@ import type { Lead, LeadStatus, LeadSource } from '@/types/lead';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
-// Configure timeout for large uploads (10 minutes)
-export const maxDuration = 600;
+// Configure timeout for large uploads (60 seconds max on Vercel hobby plan)
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   const startTime = Date.now();
@@ -66,18 +66,18 @@ export async function POST(request: Request) {
     
     console.log(`API: Uploading ${leads.length} leads to Supabase for user ${userId}`);
     
-    // Optimize batch size based on file size
-    const batchSize = leads.length > 500 ? 10 : 20; // Smaller batches for large files
+    // Optimize batch size for 60-second limit - much more aggressive batching
+    const batchSize = leads.length > 100 ? 50 : 100; // Larger batches for speed
     const errors: any[] = [];
     let processedCount = 0;
     let successCount = 0;
     let duplicateCount = 0;
     
-    // Add timeout check function
+    // Add timeout check function for 60-second limit
     const checkTimeout = () => {
       const elapsed = Date.now() - startTime;
-      if (elapsed > 580000) { // 9 minutes 40 seconds (leave buffer for response)
-        throw new Error('Upload timeout - file too large. Please split into smaller files.');
+      if (elapsed > 55000) { // 55 seconds (leave buffer for response)
+        throw new Error('Upload timeout - file too large. Please split into smaller files (max ~500 leads).');
       }
     };
     
