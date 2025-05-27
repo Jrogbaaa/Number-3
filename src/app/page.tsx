@@ -243,7 +243,24 @@ export default function Home() {
               OptiLeads.ai uses advanced AI to identify, score, and engage high-quality leads that are most likely to convert, saving you time and maximizing your ROI.
             </p>
             
-            {/* Interactive buttons will be rendered by ClientHomePage */}
+            {/* Static buttons that will be enhanced by ClientHomePage */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+              <Link
+                href="/onboarding"
+                className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white px-8 py-4 rounded-lg text-lg font-semibold transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl"
+              >
+                Get Started for Free
+                <ArrowRight className="h-5 w-5" />
+              </Link>
+              
+              <a 
+                href="#features" 
+                className="text-lg font-semibold text-white hover:text-blue-300 transition-colors flex items-center gap-2"
+              >
+                Learn more 
+                <span>→</span>
+              </a>
+            </div>
           </div>
         </section>
 
@@ -551,7 +568,13 @@ export default function Home() {
             <p className="text-xl text-gray-300 mb-12">
               Get started today and see the difference AI-powered lead management can make for your business.
             </p>
-            {/* Interactive button will be rendered by ClientHomePage */}
+            {/* Static button that will be enhanced by ClientHomePage */}
+            <Link
+              href="/onboarding"
+              className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white px-10 py-4 rounded-lg text-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl"
+            >
+              Start Your Free Trial
+            </Link>
           </div>
         </section>
 

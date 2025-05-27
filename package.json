@@ -1,6 +1,6 @@
 {
   "name": "props-lead-management",
-  "version": "15.13.1",
+  "version": "15.13.2",
   "private": true,
   "scripts": {
     "dev": "next dev",
