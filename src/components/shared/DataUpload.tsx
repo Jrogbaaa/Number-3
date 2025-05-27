@@ -592,10 +592,10 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
     // --- End Log ---
     return new Promise((resolve, reject) => {
       // Add timeout to prevent hanging on large files - scale timeout based on file size
-      const timeoutDuration = file.size > 10000000 ? 120000 : 60000; // 2 minutes for files > 10MB, 1 minute otherwise
+      const timeoutDuration = file.size > 50000000 ? 300000 : file.size > 10000000 ? 180000 : 90000; // 5 min for >50MB, 3 min for >10MB, 1.5 min otherwise
       const timeoutId = setTimeout(() => {
         console.error('[DataUpload.tsx] CSV processing timeout - file may be too large');
-        reject(new Error('File processing timeout - the file may be too large or complex. Please try a smaller file.'));
+        reject(new Error(`File processing timeout after ${Math.round(timeoutDuration/1000)} seconds. File size: ${Math.round(file.size/1000000)}MB. Please try splitting into smaller files.`));
       }, timeoutDuration);
       
       // First read the file as text to verify it has content
@@ -633,6 +633,10 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
         // Warn about large files but allow processing
         if (lineCount > 5000) {
           console.warn(`Large CSV file detected: ${lineCount} lines - processing may take 3-5 minutes`);
+          // Show a toast for large file processing
+          toast.info(`Large file detected (${lineCount} lines). Processing may take a few minutes...`, {
+            duration: 5000
+          });
         }
         
         // If file has content but only 1 line, it might be just headers
@@ -799,7 +803,7 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
           }
         };
         
-        // Now parse with PapaParse
+        // Now parse with PapaParse - use chunking for large files
         Papa.parse<CSVRow>(file, {
           header: true,
           skipEmptyLines: true,
@@ -812,10 +816,11 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
             console.log(`[DataUpload.tsx] PapaParse complete callback reached. Found ${results.data?.length || 0} data rows. Errors: ${results.errors?.length || 0}.`);
             // --- End Log ---
             
-            // Enhanced logging:
+            // Enhanced logging with safe array handling:
             console.log('Papa Parse Detailed Results:', {
-              dataPreview: results.data.slice(0, 5), // Log first 5 rows
-              rowCount: results.data.length,
+              dataPreview: Array.isArray(results.data) ? results.data.slice(0, 5) : 'Data is not an array',
+              dataType: typeof results.data,
+              rowCount: Array.isArray(results.data) ? results.data.length : 'N/A - not an array',
               errors: results.errors, // Log any parsing errors
               meta: results.meta      // Log metadata (delimiter, etc.)
             });
@@ -846,9 +851,16 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
               return;
             }
 
-            // Check for empty data (already present)
-            if (!Array.isArray(results.data) || results.data.length === 0) {
-              console.warn('Rejecting: No data array or empty data array returned by PapaParse.');
+            // Check for empty data with better error handling
+            if (!Array.isArray(results.data)) {
+              console.error('PapaParse returned non-array data:', typeof results.data, results.data);
+              clearTimeout(timeoutId);
+              reject(new Error('CSV parsing failed - invalid data format returned. Please check your file format.'));
+              return;
+            }
+            
+            if (results.data.length === 0) {
+              console.warn('Rejecting: Empty data array returned by PapaParse.');
               
               // Try alternative parsing approach with explicit comma delimiter
               console.log('Attempting alternative parsing with explicit comma delimiter...');
@@ -890,10 +902,25 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
           reject(new Error('Failed to parse CSV file: ' + error.message));
           },
           step: (results, parser) => {
-            if (isCancelled) {
-              parser.abort();
-              console.log("CSV parsing aborted due to cancellation.");
-              reject(new Error("Upload cancelled during parsing."));
+            try {
+              if (isCancelled) {
+                parser.abort();
+                console.log("CSV parsing aborted due to cancellation.");
+                clearTimeout(timeoutId);
+                reject(new Error("Upload cancelled during parsing."));
+                return;
+              }
+              
+              // Log progress for very large files
+              if (results.meta && results.meta.cursor) {
+                const progress = Math.round(results.meta.cursor / file.size * 100);
+                if (progress % 10 === 0 && progress > 0) { // Log every 10%
+                  console.log(`CSV parsing progress: ${progress}%`);
+                }
+              }
+            } catch (stepError) {
+              console.error('Error in step function:', stepError);
+              // Don't reject here, let parsing continue
             }
         }
       });
