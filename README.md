@@ -339,6 +339,95 @@ The system automatically recognizes various common column names for core fields:
 - Contact scores (Marketing, Budget, Orientation) are automatically calculated upon retrieval
 - **Automatic Enrichment**: Location, timezone, and optimal outreach times are determined during processing.
 
+## Lead Deletion System
+
+The platform features a revolutionary **auto-continue deletion system** that ensures 100% complete lead removal with a single confirmation.
+
+### 🎉 Key Features
+
+#### **Single-Click Complete Deletion**
+- **One Confirmation**: Click "Delete X Leads" once and the system automatically deletes ALL leads
+- **No Manual Intervention**: Runs continuously until database is completely empty
+- **Handles Any Size**: Successfully processes 3,000+ leads in one automated sequence
+- **Zero Interruption**: No need to click delete multiple times
+
+#### **Real-Time Progress Tracking**
+- **Live Progress Bar**: Shows deletion progress (e.g., "1,247/3,000 leads deleted")
+- **Batch Indicators**: Displays current batch progress (e.g., "Batch 15 of 60")
+- **Percentage Complete**: Real-time percentage updates during deletion
+- **Lead Count Display**: Shows exact number of leads before deletion confirmation
+
+#### **Prominent Success Notifications**
+- **Double Toast Messages**: 
+  - First: "🎉 DELETION COMPLETE!" (10 seconds)
+  - Second: "🗑️ Database Cleared!" (6 seconds)
+- **Visual Button Feedback**: Button turns green with "✅ Leads Cleared!" and pulse animation
+- **Console Celebrations**: Multiple emoji-rich success messages for confirmation
+- **State Persistence**: Success state visible for 5 seconds before reset
+
+### 🔧 Technical Excellence
+
+#### **Multi-Phase Deletion Process**
+1. **Direct Delete**: Attempts to delete all leads in one operation
+2. **Batch Deletion**: Falls back to iterative batch processing if needed
+3. **Verification**: Checks for any remaining leads after completion
+4. **Additional Cleanup**: Runs extra cleanup phases if any leads remain
+
+#### **Robust Error Handling**
+- **Continues on Failure**: Deletion continues even if individual batches fail
+- **Multiple Fallback Methods**: Several strategies ensure complete deletion
+- **Safety Mechanisms**: Prevents infinite loops with built-in safety checks
+- **Rate Limiting**: Optimized for Supabase constraints with proper delays
+
+#### **Performance Optimizations**
+- **Efficient Batching**: 50 leads per batch for optimal performance
+- **Fast Processing**: 100ms delays between batches for speed
+- **Memory Management**: Improved handling of large datasets
+- **Progress Accuracy**: Real-time updates without performance impact
+
+### 🎯 User Experience
+
+#### **Clear Feedback System**
+- **Before Deletion**: Shows exact lead count (e.g., "1,000 leads will be deleted")
+- **During Deletion**: Real-time progress with batch indicators
+- **After Completion**: Multiple confirmation methods ensure clarity
+- **Ready State**: Clear indication when database is ready for new uploads
+
+#### **Visual States**
+- **Confirmation Dialog**: Shows lead count and deletion warnings
+- **Progress Display**: Animated progress bar with batch information
+- **Success State**: Green button with checkmark and celebration messages
+- **Reset State**: Returns to normal after 5 seconds
+
+### 🛠️ Usage Instructions
+
+1. **Navigate** to the Data Input page
+2. **Click** "Clear All Leads" button
+3. **Review** the confirmation dialog showing lead count
+4. **Click** "Delete X Leads" to confirm
+5. **Watch** real-time progress as deletion proceeds automatically
+6. **Receive** prominent success notifications when complete
+
+### 🔍 Troubleshooting
+
+#### **If Deletion Appears Incomplete**
+- Check browser console for detailed progress logs
+- Look for success messages: "🎉 DELETION COMPLETE!"
+- Verify lead count shows 0 in dashboard
+- Refresh page to confirm database is empty
+
+#### **Performance Considerations**
+- Large datasets (3,000+ leads) may take 2-3 minutes
+- Progress bar provides accurate time estimates
+- Browser may appear busy during processing - this is normal
+- Do not close browser tab during deletion process
+
+#### **Error Recovery**
+- System automatically retries failed batches
+- Multiple cleanup phases ensure complete deletion
+- If process stops unexpectedly, simply run deletion again
+- Partial deletions are handled gracefully with progress tracking
+
 ## Contact Scoring Model
 
 The platform utilizes a **deterministic, multi-dimensional scoring system** (0-100 where applicable) to analyze contacts based on available CSV data. The scoring system has been completely redesigned to ensure **consistent, reproducible results** across all user sessions.
