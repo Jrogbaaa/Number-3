@@ -283,12 +283,32 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
       console.log('[DataUpload] Processed leads count:', processedLeads.length);
       toast.dismiss(loadingToast);
       
-      // Check if file is too large for Vercel's 60-second limit
-      if (processedLeads.length > 500) {
-        toast.error(`File too large (${processedLeads.length} leads). Please split into files of 500 leads or fewer.`);
-        setError(`File too large (${processedLeads.length} leads). Please split into files of 500 leads or fewer.`);
+      // Check if file is extremely large
+      if (processedLeads.length > 8000) {
+        toast.error(`File extremely large (${processedLeads.length} leads). Please split into files of 8000 leads or fewer for best performance.`);
+        setError(`File extremely large (${processedLeads.length} leads). Please split into files of 8000 leads or fewer for best performance.`);
         setIsProcessing(false);
         return;
+      }
+      
+      // Show warning for large files but allow processing
+      if (processedLeads.length > 4000) {
+        const shouldContinue = window.confirm(
+          `Large file detected (${processedLeads.length} leads).\n\n` +
+          `This upload may take 3-5 minutes and could timeout if your file is too large.\n\n` +
+          `For best results, consider splitting files larger than 5000 leads.\n\n` +
+          `Do you want to continue with this upload?`
+        );
+        
+        if (!shouldContinue) {
+          toast.info('Upload cancelled by user');
+          setIsProcessing(false);
+          return;
+        }
+        
+        toast.warning(`Processing large file (${processedLeads.length} leads). Please be patient - this may take 3-5 minutes.`, {
+          duration: 10000
+        });
       }
       
       // Check for cancellation *after* parsing and *before* starting upload
@@ -571,11 +591,12 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
     console.log('[DataUpload.tsx] Entered processCSV function.');
     // --- End Log ---
     return new Promise((resolve, reject) => {
-      // Add timeout to prevent hanging on large files
+      // Add timeout to prevent hanging on large files - scale timeout based on file size
+      const timeoutDuration = file.size > 10000000 ? 120000 : 60000; // 2 minutes for files > 10MB, 1 minute otherwise
       const timeoutId = setTimeout(() => {
         console.error('[DataUpload.tsx] CSV processing timeout - file may be too large');
         reject(new Error('File processing timeout - the file may be too large or complex. Please try a smaller file.'));
-      }, 30000); // 30 second timeout
+      }, timeoutDuration);
       
       // First read the file as text to verify it has content
       const reader = new FileReader();
@@ -601,12 +622,17 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
         const lineCount = text.split('\n').filter(line => line.trim() !== '').length;
         console.log(`CSV contains ${lineCount} non-empty lines`);
         
-        // Early check for very large files
-        if (lineCount > 1000) {
+        // Early check for very large files - warn but allow with user confirmation
+        if (lineCount > 10000) {
           clearTimeout(timeoutId);
-          console.error(`CSV file too large: ${lineCount} lines`);
-          reject(new Error(`File too large (${lineCount} lines). Please split into smaller files of 500 leads or fewer.`));
+          console.error(`CSV file extremely large: ${lineCount} lines`);
+          reject(new Error(`File extremely large (${lineCount} lines). This may cause browser issues. Please split into smaller files of 8000 leads or fewer for best performance.`));
           return;
+        }
+        
+        // Warn about large files but allow processing
+        if (lineCount > 5000) {
+          console.warn(`Large CSV file detected: ${lineCount} lines - processing may take 3-5 minutes`);
         }
         
         // If file has content but only 1 line, it might be just headers
@@ -968,8 +994,15 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
                         <p className="text-xs text-gray-400">
                           {progress.currentBatch && progress.totalBatches && 
                             `Batch ${progress.currentBatch}/${progress.totalBatches}`}
-                      </p>
+                        </p>
                       </div>
+                      
+                      {/* Show estimated time for large files */}
+                      {progress.total > 4000 && (
+                        <div className="text-xs text-yellow-400 mb-2">
+                          ⏱️ Large file detected - estimated time: 3-5 minutes
+                        </div>
+                      )}
                       
                       {/* Main progress bar */}
                       <div className="w-full bg-gray-700 rounded-full h-3 mb-2">
@@ -1036,7 +1069,11 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
         {!isProcessing && !results && (
           <div className="mt-4 text-center text-gray-400 text-xs">
             <p>The CSV file should contain columns for name, email, company, title, etc.</p>
-            <p className="mt-1">Files of any size can be processed - large files will be handled in batches automatically.</p>
+            <p className="mt-1">
+              <span className="text-green-400">✓ Small files (under 1000 leads):</span> Process in seconds<br/>
+              <span className="text-yellow-400">⚠ Large files (1000-8000 leads):</span> May take 3-5 minutes<br/>
+              <span className="text-red-400">⚠ Very large files (8000+ leads):</span> Please split for best performance
+            </p>
             <p className="mt-1">
               Need a sample? <a href="/sample-leads.csv" className="text-blue-400 hover:underline">Download template</a>
             </p>

@@ -66,8 +66,8 @@ export async function POST(request: Request) {
     
     console.log(`API: Uploading ${leads.length} leads to Supabase for user ${userId}`);
     
-    // Optimize batch size for 60-second limit - much more aggressive batching
-    const batchSize = leads.length > 100 ? 50 : 100; // Larger batches for speed
+    // Optimize batch size for 60-second limit - scale based on file size
+    const batchSize = leads.length > 5000 ? 150 : leads.length > 2000 ? 100 : leads.length > 500 ? 75 : 50; // Larger batches for bigger files
     const errors: any[] = [];
     let processedCount = 0;
     let successCount = 0;
@@ -77,7 +77,8 @@ export async function POST(request: Request) {
     const checkTimeout = () => {
       const elapsed = Date.now() - startTime;
       if (elapsed > 55000) { // 55 seconds (leave buffer for response)
-        throw new Error('Upload timeout - file too large. Please split into smaller files (max ~500 leads).');
+        console.log(`Upload timeout reached after ${elapsed}ms. Processed ${successCount} of ${leads.length} leads so far.`);
+        throw new Error(`Upload timeout reached. Successfully uploaded ${successCount} leads. Remaining ${leads.length - successCount} leads were not processed. Please upload the remaining leads separately.`);
       }
     };
     
