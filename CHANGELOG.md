@@ -5,6 +5,44 @@ All notable changes to the PROPS Lead Management Platform will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [15.13.6] - 2025-01-XX
+
+### 🐛 Critical Bug Fixes
+
+#### CSV Upload Reliability
+- **Fixed**: PapaParse hanging indefinitely on large CSV files (500+ leads)
+- **Added**: 30-second timeout mechanism to prevent browser freezing
+- **Enhanced**: Early file size validation (1000+ lines) before processing begins
+- **Improved**: Comprehensive error handling throughout CSV processing pipeline
+- **Resolved**: File size validation logic now properly triggers for oversized uploads
+
+#### Test Infrastructure Improvements
+- **Fixed**: Playwright test race conditions for fast CSV processing scenarios
+- **Resolved**: Firefox file upload errors due to missing file existence checks
+- **Updated**: Test selectors to avoid strict mode violations with multiple elements
+- **Enhanced**: File creation verification and debugging output for better troubleshooting
+- **Improved**: Test reliability across all browsers (Chrome, Firefox, Safari)
+
+### 🔧 Technical Improvements
+
+#### Error Handling & Performance
+- **Added**: Timeout clearance in all CSV processing error paths
+- **Enhanced**: Better error messages for different failure scenarios
+- **Improved**: Memory management during large file processing
+- **Optimized**: Processing pipeline to handle edge cases gracefully
+
+#### Developer Experience
+- **Added**: Comprehensive debugging output for CSV processing steps
+- **Enhanced**: Error logging with specific failure points
+- **Improved**: Test debugging with file path verification
+- **Added**: Better console output for troubleshooting upload issues
+
+### 📈 Reliability Improvements
+- **Increased**: Upload success rate for files of all sizes
+- **Reduced**: Browser crashes and hanging during large file uploads
+- **Enhanced**: User feedback during processing with proper error states
+- **Improved**: Overall application stability during CSV operations
+
 ## [15.13.1] - 2025-01-XX
 
 ### ✨ New Features

@@ -325,13 +325,16 @@ The system automatically recognizes various common column names for core fields:
 
 - CSV file must have headers (column names in the first row)
 - File should be UTF-8 encoded
-- No file size limit - large files are automatically processed in batches
+- **Recommended file size**: Under 1000 lines for optimal performance
+- **Large file handling**: Files over 1000 lines are automatically validated before processing
 
 ### Data Processing
 
-- All data rows will be processed
-- Data is processed in batches for handling files of any size
-- **Robust Parsing**: Improved error handling and delimiter detection for CSV uploads.
+- All data rows will be processed with comprehensive error handling
+- **Timeout Protection**: 30-second timeout prevents browser hanging on large files
+- **Early Validation**: File size and format validation before processing begins
+- **Robust Parsing**: Advanced error handling and delimiter detection for CSV uploads
+- **Batch Processing**: Large files are automatically processed in batches for reliability
 - Duplicate records are handled based on email uniqueness
 - Contact scores (Marketing, Budget, Orientation) are automatically calculated upon retrieval
 - **Automatic Enrichment**: Location, timezone, and optimal outreach times are determined during processing.
@@ -448,6 +451,23 @@ The platform includes an advanced AI-powered message customization feature to he
 - Combining transformations (e.g., "make it longer and funnier")
 
 ## Recent Updates
+
+### Version 15.13.6 - 2025-01-XX
+- **Critical Bug Fixes**:
+    - **🔧 CSV Upload Reliability**: Fixed PapaParse hanging indefinitely on large CSV files (500+ leads)
+    - **⏱️ Timeout Protection**: Added 30-second timeout mechanism to prevent browser freezing
+    - **📏 Early Validation**: File size validation (1000+ lines) before processing begins
+    - **🛡️ Error Handling**: Comprehensive error handling throughout CSV processing pipeline
+    - **🧪 Test Improvements**: Fixed Playwright test race conditions and Firefox upload errors
+- **Technical Improvements**:
+    - Enhanced memory management during large file processing
+    - Better error messages for different failure scenarios
+    - Improved test reliability across all browsers (Chrome, Firefox, Safari)
+    - Added comprehensive debugging output for troubleshooting
+- **Reliability Enhancements**:
+    - Increased upload success rate for files of all sizes
+    - Reduced browser crashes and hanging during large file uploads
+    - Enhanced user feedback during processing with proper error states
 
 ### Version 15.13.1 - 2025-01-XX
 - **New Features**:
@@ -611,10 +631,13 @@ If you see stale data or need to refresh:
 ### Common Issues and Solutions
 
 #### CSV Upload Failures
-- Ensure your CSV file is properly formatted with headers
-- Check that your file is UTF-8 encoded
-- Try uploading smaller batches if experiencing timeout issues
-- Try the sample CSV template available at `/sample-leads.csv`
+- **File Format**: Ensure your CSV file is properly formatted with headers
+- **Encoding**: Check that your file is UTF-8 encoded
+- **File Size**: For files over 1000 lines, consider splitting into smaller batches
+- **Timeout Issues**: Large files now have 30-second timeout protection to prevent browser hanging
+- **Processing Errors**: Early validation catches format issues before processing begins
+- **Template**: Try the sample CSV template available at `/sample-leads.csv`
+- **Browser Compatibility**: All major browsers (Chrome, Firefox, Safari) are fully supported
 
 #### Database Connection Issues
 - Verify your Supabase URL and anon key are correct in the environment variables
