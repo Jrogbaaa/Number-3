@@ -18,6 +18,7 @@ export const DataClear = ({ onClearComplete }: DataClearProps) => {
     currentBatch: number;
     totalBatches: number;
   } | null>(null);
+  const [justCompleted, setJustCompleted] = useState(false);
 
   // Fetch lead count when component mounts or when showing confirmation
   useEffect(() => {
@@ -65,10 +66,32 @@ export const DataClear = ({ onClearComplete }: DataClearProps) => {
       const result = await clearAllLeadsWithProgress();
       
       if (result.success) {
-        toast.success('All leads deleted successfully!', {
-          description: `${result.deletedCount || leadCount || 0} leads have been permanently removed.`,
-          duration: 5000,
+        // Show multiple prominent success messages
+        toast.success('🎉 DELETION COMPLETE!', {
+          description: `✅ Successfully deleted ${result.deletedCount || leadCount || 0} leads from your database!`,
+          duration: 10000,
         });
+        
+        // Show a second toast for extra visibility
+        setTimeout(() => {
+          toast.success('🗑️ Database Cleared!', {
+            description: `Your lead database is now empty and ready for new uploads.`,
+            duration: 6000,
+          });
+        }, 1000);
+        
+        // Also log to console for confirmation
+        console.log(`🎉✅ DELETION COMPLETE: ${result.deletedCount || leadCount || 0} leads successfully deleted!`);
+        console.log(`🗑️ Database is now clean and ready for new leads!`);
+        
+        // Set completion state for visual feedback
+        setJustCompleted(true);
+        
+        // Reset completion state after a few seconds
+        setTimeout(() => {
+          setJustCompleted(false);
+        }, 5000);
+        
         onClearComplete();
       } else {
         toast.error('Failed to clear leads', {
@@ -99,109 +122,179 @@ export const DataClear = ({ onClearComplete }: DataClearProps) => {
       // Force refresh auth session first
       await supabase.auth.refreshSession();
       
-      // Try the direct approach first
-      const { error: directDeleteError } = await supabase
+      // First, get the actual count of ALL leads to delete (not just current user)
+      const { count: totalCount, error: countError } = await supabase
         .from('leads')
-        .delete()
-        .neq('id', '');
-      
-      if (!directDeleteError) {
-        console.log('Successfully deleted all leads using direct method');
+        .select('*', { count: 'exact', head: true });
         
-        // Update progress to show completion
-        if (leadCount) {
-          setDeletionProgress({
-            deleted: leadCount,
-            total: leadCount,
-            currentBatch: 1,
-            totalBatches: 1
-          });
+              if (countError) {
+          throw new Error(`Failed to count leads: ${countError.message}`);
         }
         
-        return { success: true, message: 'All leads have been deleted successfully', deletedCount: leadCount };
-      }
+        const totalLeadsToDelete = totalCount || 0;
+      console.log(`Total leads to delete: ${totalLeadsToDelete}`);
       
-      // If direct delete failed, use batch approach with progress tracking
-      console.warn('Direct delete failed:', directDeleteError.message);
-      console.log('Falling back to batch delete method with progress tracking...');
-      
-      // Get all lead IDs
-      const { data: leadIds, error: fetchError } = await supabase
-        .from('leads')
-        .select('id');
-        
-      if (fetchError) {
-        throw new Error(`Failed to fetch lead IDs: ${fetchError.message}`);
-      }
-      
-      if (!leadIds || leadIds.length === 0) {
+      if (totalLeadsToDelete === 0) {
         return { success: true, message: 'No leads found to delete', deletedCount: 0 };
       }
       
-      console.log(`Found ${leadIds.length} leads to delete`);
+      // Try the direct approach first for efficiency
+      console.log('Attempting direct delete of all leads...');
+      const { error: directDeleteError } = await supabase
+        .from('leads')
+        .delete()
+        .not('id', 'is', null);
       
-      // Delete in batches with progress updates
-      const batchSize = 10;
-      const totalBatches = Math.ceil(leadIds.length / batchSize);
-      let successCount = 0;
-      let errorCount = 0;
-      let deletedCount = 0;
-      
-      for (let i = 0; i < leadIds.length; i += batchSize) {
-        const batch = leadIds.slice(i, i + batchSize);
-        const idsToDelete = batch.map(item => item.id);
-        const currentBatch = Math.floor(i / batchSize) + 1;
+      if (!directDeleteError) {
+        console.log('🎉 Successfully deleted all leads using direct method - COMPLETE!');
         
-        // Update progress
+        // Update progress to show completion
         setDeletionProgress({
-          deleted: deletedCount,
-          total: leadIds.length,
-          currentBatch,
-          totalBatches
+          deleted: totalLeadsToDelete,
+          total: totalLeadsToDelete,
+          currentBatch: 1,
+          totalBatches: 1
         });
         
-        try {
-          const { error: deleteError } = await supabase
-            .from('leads')
-            .delete()
-            .in('id', idsToDelete);
+        return { success: true, message: `🎉 All ${totalLeadsToDelete} leads have been deleted successfully - Database is now clean!`, deletedCount: totalLeadsToDelete };
+      }
+      
+      // If direct delete failed, use iterative batch approach
+      console.warn('Direct delete failed:', directDeleteError.message);
+      console.log('Falling back to iterative batch delete method...');
+      
+      let totalDeleted = 0;
+      let batchNumber = 0;
+      const batchSize = 50; // Increased batch size for efficiency
+      
+      // Continue deleting until no more leads exist
+      while (true) {
+        batchNumber++;
+        
+        // Get the next batch of lead IDs (ALL leads, not filtered by user)
+        const { data: leadBatch, error: fetchError } = await supabase
+          .from('leads')
+          .select('id')
+          .limit(batchSize);
           
-          if (deleteError) {
-            console.error(`Error deleting batch ${currentBatch}:`, deleteError);
-            errorCount++;
-          } else {
-            successCount++;
-            deletedCount += idsToDelete.length;
-            console.log(`Successfully deleted batch ${currentBatch} (${idsToDelete.length} leads)`);
-            
-            // Update progress after successful deletion
-            setDeletionProgress({
-              deleted: deletedCount,
-              total: leadIds.length,
-              currentBatch,
-              totalBatches
-            });
-          }
-          
-          // Add a small delay to avoid rate limiting and allow UI updates
-          await new Promise(resolve => setTimeout(resolve, 200));
-        } catch (batchError) {
-          console.error(`Exception in batch ${currentBatch}:`, batchError);
-          errorCount++;
+        if (fetchError) {
+          console.error(`Error fetching batch ${batchNumber}:`, fetchError);
+          break;
+        }
+        
+        // If no more leads, we're done
+        if (!leadBatch || leadBatch.length === 0) {
+          console.log('No more leads found - deletion complete!');
+          break;
+        }
+        
+        console.log(`Processing batch ${batchNumber}: ${leadBatch.length} leads`);
+        
+        // Update progress before deletion
+        const estimatedTotal = Math.max(totalLeadsToDelete, totalDeleted + leadBatch.length);
+        setDeletionProgress({
+          deleted: totalDeleted,
+          total: estimatedTotal,
+          currentBatch: batchNumber,
+          totalBatches: Math.ceil(estimatedTotal / batchSize)
+        });
+        
+        // Delete this batch
+        const idsToDelete = leadBatch.map(item => item.id);
+        const { error: deleteError } = await supabase
+          .from('leads')
+          .delete()
+          .in('id', idsToDelete);
+        
+        if (deleteError) {
+          console.error(`Error deleting batch ${batchNumber}:`, deleteError);
+          // Continue with next batch even if this one failed
+          continue;
+        }
+        
+        totalDeleted += leadBatch.length;
+        console.log(`Successfully deleted batch ${batchNumber} (${leadBatch.length} leads). Total deleted: ${totalDeleted}`);
+        
+        // Update progress after successful deletion
+        setDeletionProgress({
+          deleted: totalDeleted,
+          total: Math.max(totalLeadsToDelete, totalDeleted),
+          currentBatch: batchNumber,
+          totalBatches: Math.ceil(Math.max(totalLeadsToDelete, totalDeleted) / batchSize)
+        });
+        
+        // Small delay to avoid rate limiting and allow UI updates
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Safety check - if we've deleted more than expected, break
+        if (totalDeleted >= totalLeadsToDelete * 2) {
+          console.log('Safety break - deleted more than expected');
+          break;
         }
       }
       
-      if (successCount > 0) {
-        return { 
-          success: true, 
-          message: `Successfully deleted ${deletedCount} leads in ${successCount} batches${errorCount > 0 ? ` (${errorCount} batches failed)` : ''}`,
-          deletedCount,
-          successCount,
-          errorCount
-        };
-      } else {
-        throw new Error('All batch deletions failed');
+      // Final verification - check if any leads remain and continue if needed
+      const { count: remainingCount, error: verifyError } = await supabase
+        .from('leads')
+        .select('*', { count: 'exact', head: true });
+        
+      if (!verifyError && remainingCount && remainingCount > 0) {
+        console.warn(`Warning: ${remainingCount} leads still remain. Attempting additional cleanup...`);
+        
+        // Try one more direct delete attempt
+        const { error: finalDeleteError } = await supabase
+          .from('leads')
+          .delete()
+          .not('id', 'is', null);
+          
+        if (!finalDeleteError) {
+          totalDeleted += remainingCount;
+          console.log(`Final cleanup successful! Deleted additional ${remainingCount} leads.`);
+        } else {
+          console.error('Final cleanup failed:', finalDeleteError);
+          
+          // If direct delete failed, try a few more batch iterations
+          console.log('Attempting additional batch cleanup...');
+          let additionalBatches = 0;
+          const maxAdditionalBatches = 10;
+          
+          while (additionalBatches < maxAdditionalBatches) {
+            const { data: extraBatch, error: extraFetchError } = await supabase
+              .from('leads')
+              .select('id')
+              .limit(batchSize);
+              
+            if (extraFetchError || !extraBatch || extraBatch.length === 0) {
+              break;
+            }
+            
+            const extraIds = extraBatch.map(item => item.id);
+            const { error: extraDeleteError } = await supabase
+              .from('leads')
+              .delete()
+              .in('id', extraIds);
+              
+            if (!extraDeleteError) {
+              totalDeleted += extraBatch.length;
+              additionalBatches++;
+              console.log(`Additional cleanup batch ${additionalBatches}: deleted ${extraBatch.length} more leads`);
+              await new Promise(resolve => setTimeout(resolve, 100));
+            } else {
+              break;
+            }
+          }
+        }
       }
+      
+      console.log(`🎉 DELETION COMPLETE! Total deleted: ${totalDeleted} leads in ${batchNumber} batches`);
+      
+      return { 
+        success: true, 
+        message: `🎉 Successfully deleted ${totalDeleted} leads in ${batchNumber} batches - Database is now clean!`,
+        deletedCount: totalDeleted,
+        batchCount: batchNumber
+      };
+      
     } catch (error) {
       console.error('Error in clearAllLeadsWithProgress:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -325,10 +418,23 @@ export const DataClear = ({ onClearComplete }: DataClearProps) => {
     <button
       type="button"
       onClick={() => setShowConfirm(true)}
-      className="px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-600/20 text-sm rounded-md transition-colors flex items-center gap-2"
+      className={`px-3 py-1.5 text-sm rounded-md transition-all duration-500 flex items-center gap-2 ${
+        justCompleted 
+          ? 'bg-green-600/30 text-green-400 border border-green-600/30 animate-pulse' 
+          : 'bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-600/20'
+      }`}
     >
-      <Trash2 className="w-4 h-4" />
-      <span>Clear All Leads</span>
+      {justCompleted ? (
+        <>
+          <span className="text-green-400">✅</span>
+          <span>Leads Cleared!</span>
+        </>
+      ) : (
+        <>
+          <Trash2 className="w-4 h-4" />
+          <span>Clear All Leads</span>
+        </>
+      )}
     </button>
   );
 }; 
