@@ -5,6 +5,28 @@ All notable changes to the PROPS Lead Management Platform will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [15.13.13] - 2025-01-27
+
+### 🎯 Enhanced Lead Deletion Experience
+
+#### Auto-Continue Lead Deletion with Progress Tracking
+- **Added**: Real-time progress tracking during lead deletion process
+- **Added**: Visual progress bar showing deletion progress (X/Y leads deleted)
+- **Added**: Batch progress indicator (Batch X of Y)
+- **Added**: Lead count display before deletion confirmation
+- **Enhanced**: Auto-continue deletion until all leads are removed
+- **Enhanced**: Better user feedback with detailed progress information
+- **Enhanced**: Improved error handling and timeout management
+- **Fixed**: Users no longer need to manually click delete multiple times
+- **UI**: Enhanced confirmation dialog with lead count and progress visualization
+
+#### Technical Improvements
+- Integrated real-time progress updates during batch deletion
+- Added lead count fetching before deletion confirmation
+- Enhanced deletion logic with progress callbacks
+- Improved batch processing with visual feedback
+- Added proper state management for deletion progress
+
 ## [15.13.10] - 2025-01-27
 
 ### 🎯 Critical Fixes
