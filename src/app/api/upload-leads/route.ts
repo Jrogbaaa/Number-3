@@ -5,7 +5,12 @@ import type { Lead, LeadStatus, LeadSource } from '@/types/lead';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
+// Configure timeout for large uploads (10 minutes)
+export const maxDuration = 600;
+
 export async function POST(request: Request) {
+  const startTime = Date.now();
+  
   try {
     console.log('API: Processing upload-leads request');
     
@@ -61,14 +66,25 @@ export async function POST(request: Request) {
     
     console.log(`API: Uploading ${leads.length} leads to Supabase for user ${userId}`);
     
-    // Process in batches to handle files of any size
-    const batchSize = 20;
+    // Optimize batch size based on file size
+    const batchSize = leads.length > 500 ? 10 : 20; // Smaller batches for large files
     const errors: any[] = [];
     let processedCount = 0;
     let successCount = 0;
     let duplicateCount = 0;
     
+    // Add timeout check function
+    const checkTimeout = () => {
+      const elapsed = Date.now() - startTime;
+      if (elapsed > 580000) { // 9 minutes 40 seconds (leave buffer for response)
+        throw new Error('Upload timeout - file too large. Please split into smaller files.');
+      }
+    };
+    
     for (let i = 0; i < leads.length; i += batchSize) {
+      // Check for timeout before each batch
+      checkTimeout();
+      
       const batch = leads.slice(i, i + batchSize);
       processedCount += batch.length;
       console.log(`API: Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(leads.length/batchSize)} (${processedCount}/${leads.length})`);
@@ -176,8 +192,16 @@ export async function POST(request: Request) {
       } catch (batchError: any) {
         console.error('API: Batch processing error:', batchError);
         errors.push(batchError);
+        
+        // If we hit a timeout, break early
+        if (batchError.message?.includes('timeout')) {
+          break;
+        }
       }
     }
+
+    const elapsed = Date.now() - startTime;
+    console.log(`API: Upload completed in ${elapsed}ms`);
 
     // Return the results
     return NextResponse.json({
@@ -186,15 +210,18 @@ export async function POST(request: Request) {
       successCount,
       duplicateCount,
       errorsCount: errors.length,
+      processingTime: elapsed,
       errors: errors.length > 0 ? errors.map(e => e.message || String(e)).slice(0, 5) : undefined
     });
   } catch (error) {
+    const elapsed = Date.now() - startTime;
     console.error('API: Upload error:', error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     
     return NextResponse.json({
       success: false,
       error: `Failed to upload leads: ${errorMessage}`,
+      processingTime: elapsed,
       details: error instanceof Error ? error.stack : undefined
     }, { status: 500 });
   }

@@ -374,18 +374,38 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
       try {
         // --- Call uploadLeads ---
         // Replace direct uploadLeads call with API route using service role key
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minute timeout
+        
         const response = await fetch('/api/upload-leads', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ leads: processedLeads }),
+          signal: controller.signal
         });
         
+        clearTimeout(timeoutId);
+        
         if (!response.ok) {
-          const errorData = await response.json();
+          let errorData;
+          try {
+            errorData = await response.json();
+          } catch {
+            // If response isn't JSON, create a generic error
+            errorData = { error: `Server error: ${response.status} ${response.statusText}` };
+          }
           console.error('[DataUpload] API response error:', errorData);
-          throw new Error(errorData.error || `Server error: ${response.status}`);
+          
+          // Handle specific error types
+          if (response.status === 504) {
+            throw new Error('Upload timeout - your file is too large. Please split it into smaller files (under 500 leads) and try again.');
+          } else if (response.status === 413) {
+            throw new Error('File too large - please reduce the file size and try again.');
+          } else {
+            throw new Error(errorData.error || `Server error: ${response.status}`);
+          }
         }
         
         uploadResult = await response.json();
@@ -394,8 +414,18 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
       } catch (uploadError: any) {
         console.error('Upload error:', uploadError);
         toast.dismiss(uploadingToast);
-        toast.error(`Upload failed: ${uploadError.message || 'Unknown database error'}`);
-        setError(uploadError.message || 'Unknown database error');
+        
+        // Handle different error types with specific messages
+        if (uploadError.name === 'AbortError') {
+          toast.error('Upload timeout - file too large. Please split into smaller files.');
+          setError('Upload timeout - file too large. Please split into smaller files.');
+        } else if (uploadError.message?.includes('timeout')) {
+          toast.error('Upload timeout - please try with a smaller file.');
+          setError('Upload timeout - please try with a smaller file.');
+        } else {
+          toast.error(`Upload failed: ${uploadError.message || 'Unknown database error'}`);
+          setError(uploadError.message || 'Unknown database error');
+        }
       } finally {
         // --- Restore console.log ---
         console.log = originalConsoleLog;
