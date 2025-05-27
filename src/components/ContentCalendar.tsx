@@ -87,9 +87,13 @@ function generateCalendarEvents(leads: Lead[]): Record<string, CalendarEvent[]> 
     Friday: []
   };
   
-  // Only use high-value leads (sorted by Chrome score)
+  // Only use high-value leads (sorted by best available score)
   const highValueLeads = [...leads]
-    .sort((a, b) => (b.chromeScore || 0) - (a.chromeScore || 0))
+    .sort((a, b) => {
+      const scoreA = a.chromeScore || a.score || 0;
+      const scoreB = b.chromeScore || b.score || 0;
+      return scoreB - scoreA;
+    })
     .slice(0, 15); // Limit to top 15 for the weekly view
   
   let timeSlotCounter = 0; // To alternate between morning/afternoon slots

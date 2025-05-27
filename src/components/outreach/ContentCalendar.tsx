@@ -63,9 +63,13 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
       Friday: []
     };
     
-    // Only use high-value leads (sorted by Chrome score)
+    // Only use high-value leads (sorted by best available score)
     const highValueLeads = [...leads]
-      .sort((a, b) => (b.chromeScore || 0) - (a.chromeScore || 0))
+      .sort((a, b) => {
+        const scoreA = a.chromeScore || a.score || 0;
+        const scoreB = b.chromeScore || b.score || 0;
+        return scoreB - scoreA;
+      })
       .slice(0, 15);
     
     // Distribute leads across weekdays
@@ -75,7 +79,8 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
       const day = WEEKDAYS[dayIndex];
       
       // Generate a time slot based on lead score
-      const scoreBasedHour = 9 + (Math.floor((100 - (lead.chromeScore || 0)) / 25) * 2);
+      const leadScore = lead.chromeScore || lead.score || 0;
+      const scoreBasedHour = 9 + (Math.floor((100 - leadScore) / 25) * 2);
       const startHour = Math.min(Math.max(scoreBasedHour, 9), 15); // Keep between 9am and 3pm
       const startHourFormatted = startHour % 12 === 0 ? 12 : startHour % 12;
       const endHourFormatted = (startHour + 2) % 12 === 0 ? 12 : (startHour + 2) % 12;
@@ -87,7 +92,7 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
         lead: lead.name,
         company: lead.company,
         time: `${startHourFormatted}:00 ${startHour < 12 ? 'AM' : 'PM'} - ${endHourFormatted}:00 ${(startHour + 2) < 12 ? 'AM' : 'PM'}`,
-        probability: lead.chromeScore || lead.score || 70,
+        probability: leadScore || 70,
       };
       
       // Add to the appropriate day
