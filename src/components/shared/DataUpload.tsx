@@ -571,6 +571,12 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
     console.log('[DataUpload.tsx] Entered processCSV function.');
     // --- End Log ---
     return new Promise((resolve, reject) => {
+      // Add timeout to prevent hanging on large files
+      const timeoutId = setTimeout(() => {
+        console.error('[DataUpload.tsx] CSV processing timeout - file may be too large');
+        reject(new Error('File processing timeout - the file may be too large or complex. Please try a smaller file.'));
+      }, 30000); // 30 second timeout
+      
       // First read the file as text to verify it has content
       const reader = new FileReader();
       
@@ -582,6 +588,7 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
 
         // Check if the file has any content
         if (!text || text.trim() === '') {
+          clearTimeout(timeoutId);
           console.error('CSV file is empty');
           reject(new Error('The CSV file is empty - please check your file'));
             return;
@@ -593,6 +600,14 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
         // Count lines in file
         const lineCount = text.split('\n').filter(line => line.trim() !== '').length;
         console.log(`CSV contains ${lineCount} non-empty lines`);
+        
+        // Early check for very large files
+        if (lineCount > 1000) {
+          clearTimeout(timeoutId);
+          console.error(`CSV file too large: ${lineCount} lines`);
+          reject(new Error(`File too large (${lineCount} lines). Please split into smaller files of 500 leads or fewer.`));
+          return;
+        }
         
         // If file has content but only 1 line, it might be just headers
         if (lineCount <= 1) {
@@ -606,6 +621,8 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
           console.log('[DataUpload.tsx] Entered processParsedData. Processing rows...');
           // --- End Log ---
           try {
+            clearTimeout(timeoutId); // Clear timeout since we got results
+            
             const processedData = results.data
               .filter(row => {
                 // Keep any row that has at least one non-empty value
@@ -742,6 +759,7 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
               });
 
             if (processedData.length === 0) {
+              clearTimeout(timeoutId);
               reject(new Error('No valid data found in CSV file after processing'));
               return;
             }
@@ -749,6 +767,7 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
             console.log(`Successfully processed ${processedData.length} leads with insights`);
             resolve(processedData);
           } catch (error) {
+            clearTimeout(timeoutId);
             console.error('Error processing CSV data:', error);
             reject(new Error('Error processing CSV data: ' + (error as Error).message));
           }
@@ -786,6 +805,7 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
 
             // Check for delimiter issues first
             if (results.meta && results.meta.delimiter === '') {
+              clearTimeout(timeoutId);
               console.error('CSV delimiter could not be detected');
               reject(new Error('Could not detect CSV delimiter - please check your file format'));
               return;
@@ -794,6 +814,7 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
             // Check for critical errors
             const criticalErrors = results.errors.filter(err => err.type === 'Delimiter' || err.type === 'FieldMismatch');
             if (criticalErrors.length > 0) {
+              clearTimeout(timeoutId);
               console.error('Critical CSV parsing errors:', criticalErrors);
               reject(new Error('Invalid CSV format. Please check your file format and try again.'));
               return;
@@ -819,10 +840,12 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
                     });
                     processParsedData(retryResults);
                   } else {
+                    clearTimeout(timeoutId);
                     reject(new Error('No data found in CSV file despite multiple parsing attempts.'));
                   }
                 },
                 error: (error: Error) => {
+                  clearTimeout(timeoutId);
                   console.error('Alternative CSV parsing error:', error);
                   reject(new Error('Failed to parse CSV file: ' + error.message));
                 }
@@ -836,6 +859,7 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
           // --- Log PapaParse Error ---
           console.error('[DataUpload.tsx] PapaParse encountered an error:', error);
           // --- End Log ---
+          clearTimeout(timeoutId);
           console.error('CSV parsing error:', error);
           reject(new Error('Failed to parse CSV file: ' + error.message));
           },
@@ -850,6 +874,7 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
       };
       
       reader.onerror = (error) => {
+        clearTimeout(timeoutId);
         console.error('Error reading file:', error);
         reject(new Error('Could not read the file. Please try again.'));
       };
