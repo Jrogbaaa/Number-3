@@ -87,9 +87,27 @@ function generateCalendarEvents(leads: Lead[]): Record<string, CalendarEvent[]> 
     Friday: []
   };
   
-  // Only use high-value leads (sorted by best available score)
+  // Only use high-value leads (sorted by custom scoring priority)
   const highValueLeads = [...leads]
     .sort((a, b) => {
+      // Use the same multi-factor scoring as the dashboard
+      // 1. Intent Score (Highest priority)
+      const intentComparison = (b.intentScore ?? 0) - (a.intentScore ?? 0);
+      if (intentComparison !== 0) return intentComparison;
+      
+      // 2. Spend Authority Score
+      const spendAuthorityComparison = (b.spendAuthorityScore ?? 0) - (a.spendAuthorityScore ?? 0);
+      if (spendAuthorityComparison !== 0) return spendAuthorityComparison;
+      
+      // 3. Marketing Score
+      const marketingComparison = (b.marketingScore ?? 0) - (a.marketingScore ?? 0);
+      if (marketingComparison !== 0) return marketingComparison;
+      
+      // 4. Budget Potential
+      const budgetComparison = (b.budgetPotential ?? 0) - (a.budgetPotential ?? 0);
+      if (budgetComparison !== 0) return budgetComparison;
+      
+      // 5. Fallback to legacy scores if new scores aren't available
       const scoreA = a.chromeScore || a.score || 0;
       const scoreB = b.chromeScore || b.score || 0;
       return scoreB - scoreA;
@@ -145,7 +163,7 @@ function generateCalendarEvents(leads: Lead[]): Record<string, CalendarEvent[]> 
       startTime: startTime, // Keep original for potential internal use
       endTime: endTime,   // Keep original for potential internal use
       displayTime: displayTime, // Use the new formatted string for display
-      successRate: lead.chromeScore || lead.score || 70,
+      successRate: lead.marketingScore || lead.chromeScore || lead.score || 70,
       // Store the source time string for reliable sorting
       _sortTime: sourceTime 
     };

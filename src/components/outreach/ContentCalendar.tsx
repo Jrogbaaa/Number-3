@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Lead } from '@/types/lead';
-import { getLeads } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { CalendarDays, Clock, TrendingUp, Info } from 'lucide-react';
 
@@ -32,7 +31,21 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
     async function loadLeadsForCalendar() {
       try {
         setLoading(true);
-        const leads = await getLeads();
+        
+        // Use the same API endpoint as the dashboard to get consistently scored leads
+        const response = await fetch('/api/fetch-leads');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Server error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to load leads data');
+        }
+        
+        const leads = data.leads || [];
         
         // Generate calendar data from real leads
         const generatedCalendarData = generateCalendarData(leads);
@@ -63,9 +76,27 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
       Friday: []
     };
     
-    // Only use high-value leads (sorted by best available score)
+    // Only use high-value leads (sorted by custom scoring priority)
     const highValueLeads = [...leads]
       .sort((a, b) => {
+        // Use the same multi-factor scoring as the dashboard
+        // 1. Intent Score (Highest priority)
+        const intentComparison = (b.intentScore ?? 0) - (a.intentScore ?? 0);
+        if (intentComparison !== 0) return intentComparison;
+        
+        // 2. Spend Authority Score
+        const spendAuthorityComparison = (b.spendAuthorityScore ?? 0) - (a.spendAuthorityScore ?? 0);
+        if (spendAuthorityComparison !== 0) return spendAuthorityComparison;
+        
+        // 3. Marketing Score
+        const marketingComparison = (b.marketingScore ?? 0) - (a.marketingScore ?? 0);
+        if (marketingComparison !== 0) return marketingComparison;
+        
+        // 4. Budget Potential
+        const budgetComparison = (b.budgetPotential ?? 0) - (a.budgetPotential ?? 0);
+        if (budgetComparison !== 0) return budgetComparison;
+        
+        // 5. Fallback to legacy scores if new scores aren't available
         const scoreA = a.chromeScore || a.score || 0;
         const scoreB = b.chromeScore || b.score || 0;
         return scoreB - scoreA;
@@ -78,8 +109,8 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
       const dayIndex = Math.min(Math.floor(index / 3), 4); // 0-4 for Monday-Friday
       const day = WEEKDAYS[dayIndex];
       
-      // Generate a time slot based on lead score
-      const leadScore = lead.chromeScore || lead.score || 0;
+      // Generate a time slot based on lead score (use marketing score as primary)
+      const leadScore = lead.marketingScore || lead.chromeScore || lead.score || 0;
       const scoreBasedHour = 9 + (Math.floor((100 - leadScore) / 25) * 2);
       const startHour = Math.min(Math.max(scoreBasedHour, 9), 15); // Keep between 9am and 3pm
       const startHourFormatted = startHour % 12 === 0 ? 12 : startHour % 12;

@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import ScriptGenerator from '@/components/outreach/ScriptGenerator';
 import ContentCalendar from '@/components/outreach/ContentCalendar';
-import { getLeads } from '@/lib/supabase';
 import { Lead } from '@/types/lead';
 
 // Client component that uses useSearchParams
@@ -24,7 +23,21 @@ function OutreachContent() {
     const fetchLeads = async () => {
       try {
         setLoading(true);
-        const fetchedLeads = await getLeads();
+        
+        // Use the same API endpoint as the dashboard to get consistently scored leads
+        const response = await fetch('/api/fetch-leads');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Server error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to load leads data');
+        }
+        
+        const fetchedLeads = data.leads || [];
         setLeads(fetchedLeads);
         
         // Handle lead selection from URL parameter
@@ -50,13 +63,52 @@ function OutreachContent() {
   
   // Filter leads by day if a day is selected
   const leadsByDay = selectedDay ? 
-    leads.filter(lead => {
-      // Determine which day the lead belongs to (using a simple algorithm)
-      const index = leads.indexOf(lead);
-      const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-      const dayIndex = Math.min(Math.floor(index / 3), 4);
-      return weekdays[dayIndex] === selectedDay;
-    }) : [];
+    leads
+      .sort((a, b) => {
+        // Use the same multi-factor scoring as the dashboard and calendar
+        // 1. Intent Score (Highest priority)
+        const intentComparison = (b.intentScore ?? 0) - (a.intentScore ?? 0);
+        if (intentComparison !== 0) return intentComparison;
+        
+        // 2. Spend Authority Score
+        const spendAuthorityComparison = (b.spendAuthorityScore ?? 0) - (a.spendAuthorityScore ?? 0);
+        if (spendAuthorityComparison !== 0) return spendAuthorityComparison;
+        
+        // 3. Marketing Score
+        const marketingComparison = (b.marketingScore ?? 0) - (a.marketingScore ?? 0);
+        if (marketingComparison !== 0) return marketingComparison;
+        
+        // 4. Budget Potential
+        const budgetComparison = (b.budgetPotential ?? 0) - (a.budgetPotential ?? 0);
+        if (budgetComparison !== 0) return budgetComparison;
+        
+        // 5. Fallback to legacy scores if new scores aren't available
+        const scoreA = a.chromeScore || a.score || 0;
+        const scoreB = b.chromeScore || b.score || 0;
+        return scoreB - scoreA;
+      })
+      .filter(lead => {
+        // Determine which day the lead belongs to (using the same algorithm as calendar)
+        const sortedLeads = [...leads].sort((a, b) => {
+          // Same sorting logic as above
+          const intentComparison = (b.intentScore ?? 0) - (a.intentScore ?? 0);
+          if (intentComparison !== 0) return intentComparison;
+          const spendAuthorityComparison = (b.spendAuthorityScore ?? 0) - (a.spendAuthorityScore ?? 0);
+          if (spendAuthorityComparison !== 0) return spendAuthorityComparison;
+          const marketingComparison = (b.marketingScore ?? 0) - (a.marketingScore ?? 0);
+          if (marketingComparison !== 0) return marketingComparison;
+          const budgetComparison = (b.budgetPotential ?? 0) - (a.budgetPotential ?? 0);
+          if (budgetComparison !== 0) return budgetComparison;
+          const scoreA = a.chromeScore || a.score || 0;
+          const scoreB = b.chromeScore || b.score || 0;
+          return scoreB - scoreA;
+        });
+        
+        const index = sortedLeads.findIndex(l => l.id === lead.id);
+        const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        const dayIndex = Math.min(Math.floor(index / 3), 4);
+        return weekdays[dayIndex] === selectedDay;
+      }) : [];
     
   const handleLeadSelect = (leadId: string) => {
     // Navigate directly to the lead detail page
@@ -98,7 +150,7 @@ function OutreachContent() {
                       <p className="text-gray-400 text-sm">{lead.company} • {lead.title}</p>
                     </div>
                     <div className="text-green-400 font-medium">
-                      {lead.chromeScore || lead.score || 0}%
+                      {lead.marketingScore || lead.chromeScore || lead.score || 0}%
                     </div>
                   </div>
                 </div>

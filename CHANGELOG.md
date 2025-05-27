@@ -5,6 +5,49 @@ All notable changes to the PROPS Lead Management Platform will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [15.13.10] - 2025-01-27
+
+### 🎯 Critical Fixes
+
+#### Outreach Calendar Data Consistency
+- **Fixed**: Major issue where outreach calendar showed different leads than dashboard top leads
+- **Root Cause**: Calendar was using direct Supabase calls while dashboard used API with custom scoring
+- **Solution**: Unified both components to use the same `/api/fetch-leads` endpoint
+- **Enhanced**: Calendar now uses multi-factor scoring (Intent → Spend Authority → Marketing → Budget)
+- **Improved**: Consistent lead prioritization across all application views
+
+#### Custom Scoring System Implementation
+- **Replaced**: Legacy `chromeScore` system with user-customizable scoring
+- **Added**: Multi-dimensional scoring: `marketingScore`, `intentScore`, `spendAuthorityScore`, `budgetPotential`
+- **Enhanced**: Scoring priority hierarchy for better lead qualification
+- **Future-Ready**: Foundation for user-specific scoring preferences and goals
+
+### 🔧 Technical Improvements
+
+#### Data Source Unification
+- **Updated**: `ContentCalendar.tsx` to use `/api/fetch-leads` instead of direct Supabase
+- **Updated**: `outreach/ContentCalendar.tsx` to use consistent API endpoint
+- **Updated**: `outreach/page.tsx` to use same scoring logic
+- **Removed**: Redundant `getLeads()` imports and direct database calls
+
+#### Scoring Algorithm Enhancement
+- **Implemented**: Deterministic multi-factor sorting across all components
+- **Added**: Fallback scoring for leads without new score fields
+- **Enhanced**: Time slot generation based on primary marketing scores
+- **Improved**: Lead distribution algorithm for optimal calendar scheduling
+
+### 📈 User Experience Improvements
+- **Consistent**: Top-scoring leads now appear in both dashboard and outreach calendar
+- **Reliable**: Lead ordering remains stable across different application sections
+- **Intuitive**: Calendar reflects actual lead priorities from dashboard scoring
+- **Seamless**: Navigation between dashboard and outreach maintains lead context
+
+### 🧪 Code Quality
+- **Refactored**: Calendar components for better maintainability
+- **Enhanced**: Type safety with proper Lead interface usage
+- **Improved**: Error handling consistency across components
+- **Optimized**: Reduced code duplication between calendar implementations
+
 ## [15.13.6] - 2025-01-XX
 
 ### 🐛 Critical Bug Fixes
