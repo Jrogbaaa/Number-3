@@ -5,6 +5,43 @@ All notable changes to the PROPS Lead Management Platform will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [15.13.15] - 2025-01-27
+
+### 🌐 Website Context Scraping Integration
+
+#### Firecrawl API Integration for Enhanced Lead Scoring
+- **Added**: Website content scraping during onboarding using Firecrawl API
+- **Added**: New onboarding step "Website Context" between company-info and target-roles
+- **Added**: Automated website analysis to extract business context and messaging
+- **Added**: LinkedIn company page information collection (manual input due to platform restrictions)
+- **Enhanced**: Lead scoring algorithm now uses website content for better accuracy
+- **Added**: Database schema migration with new columns: `website_url`, `linkedin_url`, `scraped_website_content`, `scraped_linkedin_content`
+
+#### User Experience Improvements
+- **Added**: Interactive website scraping with real-time progress indicators
+- **Added**: 60-second timeout protection for scraping operations
+- **Added**: Comprehensive error handling for failed scraping attempts
+- **Added**: Success indicators showing content length and extraction status
+- **Added**: Educational content explaining benefits of website context analysis
+- **Enhanced**: Modal layout with scrollable content and fixed navigation buttons
+- **Improved**: Loading states with descriptive progress messages
+
+#### Technical Implementation
+- **Added**: `/api/scrape-website` endpoint with robust error handling
+- **Added**: Firecrawl API integration with proper authentication
+- **Added**: Content length limiting (10,000 characters) to prevent database issues
+- **Added**: URL validation and LinkedIn-specific handling
+- **Added**: Database migration script with environment variable support
+- **Enhanced**: OnboardingModal component with new website-context step
+- **Added**: FIRECRAWL_API_KEY environment variable configuration
+
+#### Security & Performance
+- **Implemented**: Server-side API calls to protect API keys
+- **Added**: Request timeout management and abort controllers
+- **Enhanced**: Error handling for various failure scenarios (timeouts, rate limits, service unavailable)
+- **Optimized**: Content processing with character limits and validation
+- **Added**: Graceful fallbacks for LinkedIn scraping limitations
+
 ## [15.13.14] - 2025-01-27
 
 ### 🎉 Complete Lead Deletion System Overhaul

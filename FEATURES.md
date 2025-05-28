@@ -56,6 +56,7 @@
 ### User Onboarding Flow
 - Interactive onboarding wizard for new users
 - Company profile and target audience collection
+- Website and LinkedIn context scraping for enhanced lead scoring
 - Customized lead scoring based on user preferences:
   - Industry focus (e.g., tech, healthcare, education)
   - Target customer role prioritization (e.g., marketing executives, founders)
@@ -64,6 +65,14 @@
 - Empty dashboard state with guided setup process
 - Persistent user preferences that influence lead scoring algorithm
 - Ability to modify preferences after initial setup
+
+### Website Context Analysis
+- Automated website content scraping using Firecrawl API
+- LinkedIn company page information collection (manual input due to platform restrictions)
+- Business context extraction for improved lead scoring accuracy
+- Company messaging and positioning analysis
+- Enhanced lead scoring based on website content and business model
+- Optional step in onboarding process with significant scoring benefits
 
 ## Upcoming Features
 
@@ -81,6 +90,7 @@
 
 ### Environment Setup
 - Configure Replicate API integration by adding `REPLICATE_API_KEY` to `.env.local` file
+- Configure Firecrawl API integration by adding `FIRECRAWL_API_KEY` to `.env.local` file
 - Ensure API keys are properly secured and never committed to version control
 - Verify Supabase URL format (must contain "bog" not "boq" in the subdomain)
 

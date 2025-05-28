@@ -13,6 +13,10 @@ export interface UserPreferences {
   companyIndustry?: string;
   companySize?: string;
   companyProduct?: string;
+  websiteUrl?: string;
+  linkedinUrl?: string;
+  scrapedWebsiteContent?: string;
+  scrapedLinkedinContent?: string;
   targetRoles?: string[];
   targetDemographics?: {
     gender?: 'male' | 'female' | 'all';
@@ -37,6 +41,7 @@ export interface UserPreferences {
 export type OnboardingStep = 
   | 'welcome'
   | 'company-info'
+  | 'website-context'
   | 'target-roles'
   | 'target-demographics'
   | 'target-companies'
@@ -46,11 +51,12 @@ export type OnboardingStep =
 export const OnboardingSteps: { [key: string]: number } = {
   'welcome': 1,
   'company-info': 2,
-  'target-roles': 3,
-  'target-demographics': 4,
-  'target-companies': 5,
-  'confirmation': 6,
-  'complete': 7
+  'website-context': 3,
+  'target-roles': 4,
+  'target-demographics': 5,
+  'target-companies': 6,
+  'confirmation': 7,
+  'complete': 8
 };
 
 export interface CompanyInfo {

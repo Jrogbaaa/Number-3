@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, ChevronRight, ChevronLeft, Check, Building, Users, Briefcase, Target, Settings, AlertCircle } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Check, Building, Users, Briefcase, Target, Settings, AlertCircle, Globe, Loader2 } from 'lucide-react';
 import { useUserPreferences } from '@/providers/UserPreferencesProvider';
 import { OnboardingStep, OnboardingSteps } from '@/types/user';
 import { useSession } from 'next-auth/react';
@@ -96,6 +96,13 @@ export default function OnboardingModal() {
   const [companySize, setCompanySize] = useState(preferences?.companySize || '');
   const [companyProduct, setCompanyProduct] = useState(preferences?.companyProduct || '');
   
+  // Website context form state
+  const [websiteUrl, setWebsiteUrl] = useState(preferences?.websiteUrl || '');
+  const [linkedinUrl, setLinkedinUrl] = useState(preferences?.linkedinUrl || '');
+  const [isScrapingWebsite, setIsScrapingWebsite] = useState(false);
+  const [scrapedWebsiteContent, setScrapedWebsiteContent] = useState(preferences?.scrapedWebsiteContent || '');
+  const [scrapedLinkedinContent, setScrapedLinkedinContent] = useState(preferences?.scrapedLinkedinContent || '');
+  
   const [selectedRoles, setSelectedRoles] = useState<string[]>(preferences?.targetRoles || []);
   
   const [gender, setGender] = useState<'male' | 'female' | 'all'>(
@@ -138,6 +145,16 @@ export default function OnboardingModal() {
             companyIndustry,
             companySize,
             companyProduct
+          });
+          nextStep = 'website-context';
+          break;
+        case 'website-context':
+          // Website context is optional, but save any provided URLs and scraped content
+          await updatePreferences({
+            websiteUrl: websiteUrl.trim() || undefined,
+            linkedinUrl: linkedinUrl.trim() || undefined,
+            scrapedWebsiteContent: scrapedWebsiteContent || undefined,
+            scrapedLinkedinContent: scrapedLinkedinContent || undefined
           });
           nextStep = 'target-roles';
           break;
@@ -223,8 +240,11 @@ export default function OnboardingModal() {
       case 'company-info':
         prevStep = 'welcome';
         break;
-      case 'target-roles':
+      case 'website-context':
         prevStep = 'company-info';
+        break;
+      case 'target-roles':
+        prevStep = 'website-context';
         break;
       case 'target-demographics':
         prevStep = 'target-roles';
@@ -279,10 +299,76 @@ export default function OnboardingModal() {
     }
   };
   
+  // Handle website scraping
+  const handleScrapeWebsite = async () => {
+    if (!websiteUrl.trim()) {
+      setErrorMessage('Please enter a website URL');
+      return;
+    }
+
+    setIsScrapingWebsite(true);
+    setErrorMessage('');
+
+    try {
+      // Add a timeout to the fetch request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+      const response = await fetch('/api/scrape-website', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url: websiteUrl.trim(),
+          type: 'website'
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Handle specific error status codes
+        if (response.status === 408) {
+          throw new Error('The website took too long to load. Please try a different URL or try again later.');
+        } else if (response.status === 429) {
+          throw new Error('Too many requests. Please wait a moment and try again.');
+        } else if (response.status === 503) {
+          throw new Error('Scraping service is temporarily unavailable. Please try again later.');
+        }
+        throw new Error(data.error || 'Failed to scrape website content');
+      }
+
+      if (data.success && data.data?.content) {
+        setScrapedWebsiteContent(data.data.content);
+        setErrorMessage('');
+      } else {
+        throw new Error('No content could be extracted from the website');
+      }
+    } catch (error) {
+      console.error('Website scraping error:', error);
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          setErrorMessage('Request timed out. Please try again with a different URL.');
+        } else {
+          setErrorMessage(error.message);
+        }
+      } else {
+        setErrorMessage('Failed to scrape website content. Please try again.');
+      }
+    } finally {
+      setIsScrapingWebsite(false);
+    }
+  };
+
   // Step indicators
   const steps = [
     { name: 'Welcome', icon: <Settings className="h-5 w-5" />, step: 'welcome' },
     { name: 'Company', icon: <Building className="h-5 w-5" />, step: 'company-info' },
+    { name: 'Website', icon: <Globe className="h-5 w-5" />, step: 'website-context' },
     { name: 'Roles', icon: <Briefcase className="h-5 w-5" />, step: 'target-roles' },
     { name: 'Demographics', icon: <Users className="h-5 w-5" />, step: 'target-demographics' },
     { name: 'Target Companies', icon: <Target className="h-5 w-5" />, step: 'target-companies' },
@@ -383,6 +469,131 @@ export default function OnboardingModal() {
                   placeholder="Describe your main product or service"
                   rows={3}
                 />
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'website-context':
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-center h-24 w-24 rounded-full bg-green-600/20 mx-auto mb-4">
+              <Globe className="h-12 w-12 text-green-400" />
+            </div>
+            <h2 className="text-2xl font-semibold text-center">Website & LinkedIn Context</h2>
+            <p className="text-gray-300 text-center">
+              Help us understand your business better by providing your website and LinkedIn profile. 
+              We'll analyze this content to improve lead scoring accuracy.
+            </p>
+            
+            <div className="space-y-6">
+              {/* Website URL Section */}
+              <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                <h3 className="text-lg font-medium text-white mb-3">Company Website</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label htmlFor="websiteUrl" className="block mb-1 text-sm font-medium text-gray-300">
+                      Website URL
+                    </label>
+                    <input
+                      type="url"
+                      id="websiteUrl"
+                      value={websiteUrl}
+                      onChange={(e) => setWebsiteUrl(e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white"
+                      placeholder="https://yourcompany.com"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleScrapeWebsite}
+                    disabled={!websiteUrl.trim() || isScrapingWebsite}
+                    className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-md font-medium flex items-center justify-center space-x-2"
+                  >
+                    {isScrapingWebsite ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Analyzing Website... (this may take up to 60 seconds)</span>
+                      </>
+                    ) : (
+                      <>
+                        <Globe className="h-4 w-4" />
+                        <span>Analyze Website</span>
+                      </>
+                    )}
+                  </button>
+                  {scrapedWebsiteContent && (
+                    <div className="mt-2 p-3 bg-green-900/20 border border-green-800/30 rounded-md">
+                      <p className="text-sm text-green-400 font-medium">✓ Website content analyzed successfully</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {scrapedWebsiteContent.length} characters of content extracted
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* LinkedIn URL Section */}
+              <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                <h3 className="text-lg font-medium text-white mb-3">LinkedIn Business Profile</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label htmlFor="linkedinUrl" className="block mb-1 text-sm font-medium text-gray-300">
+                      LinkedIn Company Page URL
+                    </label>
+                    <input
+                      type="url"
+                      id="linkedinUrl"
+                      value={linkedinUrl}
+                      onChange={(e) => setLinkedinUrl(e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white"
+                      placeholder="https://linkedin.com/company/yourcompany"
+                    />
+                  </div>
+                  
+                  {/* LinkedIn limitation notice */}
+                  <div className="bg-yellow-900/20 border border-yellow-800/30 rounded-md p-3">
+                    <p className="text-sm text-yellow-400 font-medium mb-1">⚠️ LinkedIn Limitation</p>
+                    <p className="text-xs text-gray-300">
+                      LinkedIn actively blocks automated scraping. Instead, you can manually copy key information 
+                      from your LinkedIn company page and paste it in the text area below.
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="linkedinContent" className="block mb-1 text-sm font-medium text-gray-300">
+                      LinkedIn Company Information (Optional)
+                    </label>
+                    <textarea
+                      id="linkedinContent"
+                      value={scrapedLinkedinContent}
+                      onChange={(e) => setScrapedLinkedinContent(e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white text-sm"
+                      placeholder="Paste your company description, mission, key services, or other relevant information from your LinkedIn page..."
+                      rows={4}
+                    />
+                  </div>
+                  
+                  {scrapedLinkedinContent && (
+                    <div className="mt-2 p-3 bg-green-900/20 border border-green-800/30 rounded-md">
+                      <p className="text-sm text-green-400 font-medium">✓ LinkedIn content added successfully</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {scrapedLinkedinContent.length} characters of content provided
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-blue-900/20 border border-blue-800/30 rounded-lg p-4 text-sm text-gray-300">
+                <p className="font-medium text-blue-400 mb-2">Why do we analyze your content?</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Better understand your business model and value proposition</li>
+                  <li>Identify key messaging and positioning themes</li>
+                  <li>Improve lead scoring based on company context</li>
+                  <li>Provide more relevant insights and recommendations</li>
+                </ul>
+                <p className="mt-2 text-blue-400 text-xs">This step is optional but highly recommended for better results.</p>
               </div>
             </div>
           </div>
@@ -705,10 +916,10 @@ export default function OnboardingModal() {
   }
   
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80">
-      <div className="bg-gray-900 border border-gray-800 rounded-lg shadow-xl p-6 sm:p-8 w-full max-w-2xl mx-4 animate-in fade-in-0 slide-in-from-bottom-5 duration-300">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 p-4">
+      <div className="bg-gray-900 border border-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in fade-in-0 slide-in-from-bottom-5 duration-300">
         {/* Modal header with progress bar */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center p-6 pb-4 border-b border-gray-800">
           <div className="flex items-center space-x-1">
             {steps.map((step, index) => (
               <div 
@@ -746,16 +957,19 @@ export default function OnboardingModal() {
           </div>
         </div>
         
-        {/* Error banner */}
-        <ErrorBanner />
-        
-        {/* Modal content */}
-        <div className="py-2">
-          {renderStepContent()}
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {/* Error banner */}
+          <ErrorBanner />
+          
+          {/* Modal content */}
+          <div className="py-2">
+            {renderStepContent()}
+          </div>
         </div>
         
-        {/* Modal footer with navigation buttons */}
-        <div className="flex justify-between mt-8">
+        {/* Fixed footer with navigation buttons */}
+        <div className="flex justify-between p-6 pt-4 border-t border-gray-800 bg-gray-900">
           <button
             onClick={handlePreviousStep}
             className={`
