@@ -29,51 +29,108 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
   const router = useRouter();
   const { preferences } = useUserPreferences();
 
-  // Stable hash function for consistent scoring
+  // Stable hash function for consistent scoring (same as LeadsTable)
   const getStableHashFromLead = (lead: Lead): number => {
-    const str = `${lead.id || ''}${lead.name || ''}${lead.email || ''}${lead.company || ''}`;
+    const idPart = lead.id || '';
+    const namePart = (lead.name || '').toLowerCase();
+    const emailPart = (lead.email || '').toLowerCase();
+    const companyPart = (lead.company || '').toLowerCase();
+    const titlePart = (lead.title || '').toLowerCase();
+    
+    // Create a string with fixed structure: id|name|email|company|title
+    const str = `${idPart}|${namePart}|${emailPart}|${companyPart}|${titlePart}`;
+    
+    // Create a deterministic hash from the string
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
-      hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash + char) | 0; // Convert to 32bit integer with bitwise OR
     }
+    
     return Math.abs(hash);
   };
 
-  // Calculate intent score
+  // Calculate intent score (same as LeadsTable)
   const calculateIntentScore = (lead: Lead): number => {
-    const hash = getStableHashFromLead(lead);
-    let baseScore = 50 + (hash % 31); // 50-80 range
+    // Base score between 55-65
+    let baseScore = 55 + getStableHashFromLead(lead) % 11;
     
+    // Adjust based on title/role relevance
     if (lead.title) {
       const titleLower = lead.title.toLowerCase();
+      
+      // Marketing roles generally have higher intent for marketing tools
       if (titleLower.includes('marketing') || titleLower.includes('content') || titleLower.includes('brand')) {
-        baseScore += 15;
+        baseScore += 10;
       }
-      if (titleLower.includes('ceo') || titleLower.includes('founder') || titleLower.includes('chief')) {
+      
+      // Director+ roles have decision-making authority
+      if (titleLower.includes('director') || titleLower.includes('chief') || 
+          titleLower.includes('vp') || titleLower.includes('head')) {
+        baseScore += 8;
+      }
+    }
+    
+    // Adjust based on company
+    if (lead.company) {
+      const companyLower = lead.company.toLowerCase();
+      
+      // Well-known companies might have more complex needs
+      if (['ticketmaster', 'sony', 'warner', 'disney', 'netflix', 'nike', 'adidas', 
+           'amazon', 'microsoft', 'google', 'apple'].some(name => companyLower.includes(name))) {
+        baseScore += 7;
+      }
+      
+      // B2B companies often need content marketing solutions
+      if (lead.businessOrientation === 'B2B') {
+        baseScore += 5;
+      }
+    }
+    
+    // Normalize the score to be between 40-80
+    return Math.min(80, Math.max(40, baseScore));
+  };
+
+  // Calculate spend authority score (same as LeadsTable)
+  const calculateSpendAuthority = (lead: Lead): number => {
+    // Base score between 45-55
+    let baseScore = 45 + getStableHashFromLead(lead) % 11;
+    
+    // Adjust based on title/role seniority
+    if (lead.title) {
+      const titleLower = lead.title.toLowerCase();
+      
+      // C-level and VP roles have highest spend authority
+      if (titleLower.includes('ceo') || titleLower.includes('chief') || 
+          titleLower.includes('founder') || titleLower.includes('president')) {
+        baseScore += 25;
+      } else if (titleLower.includes('vp') || titleLower.includes('vice president')) {
+        baseScore += 20;
+      } else if (titleLower.includes('director') || titleLower.includes('head')) {
+        baseScore += 15;
+      } else if (titleLower.includes('manager') || titleLower.includes('lead')) {
         baseScore += 10;
       }
     }
     
-    return Math.min(95, Math.max(30, baseScore));
-  };
-
-  // Calculate spend authority score
-  const calculateSpendAuthority = (lead: Lead): number => {
-    const hash = getStableHashFromLead(lead);
-    let baseScore = 45 + (hash % 26); // 45-70 range
-    
-    if (lead.title) {
-      const titleLower = lead.title.toLowerCase();
-      if (titleLower.includes('ceo') || titleLower.includes('chief') || titleLower.includes('founder')) {
-        baseScore += 25;
-      } else if (titleLower.includes('vp') || titleLower.includes('vice president') || titleLower.includes('director')) {
-        baseScore += 20;
-      } else if (titleLower.includes('manager') || titleLower.includes('head')) {
-        baseScore += 15;
+    // Adjust based on company size indicators
+    if (lead.company) {
+      const companyLower = lead.company.toLowerCase();
+      
+      // Large companies typically have higher budgets
+      if (['enterprise', 'corporation', 'corp', 'inc', 'llc', 'ltd'].some(term => companyLower.includes(term))) {
+        baseScore += 5;
+      }
+      
+      // Well-known companies have established budgets
+      if (['ticketmaster', 'sony', 'warner', 'disney', 'netflix', 'nike', 'adidas', 
+           'amazon', 'microsoft', 'google', 'apple'].some(name => companyLower.includes(name))) {
+        baseScore += 10;
       }
     }
     
-    return Math.min(95, Math.max(25, baseScore));
+    // Normalize the score to be between 25-85
+    return Math.min(85, Math.max(25, baseScore));
   };
 
   // Calculate Best Overall score based on user preferences (same as LeadsTable)
@@ -284,7 +341,7 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
     loadLeadsForCalendar();
   }, []);
   
-  // Transform leads into calendar slots
+  // Transform leads into calendar slots using the same scoring logic as LeadsTable
   function generateCalendarData(leads: Lead[]): Record<string, CalendarSlot[]> {
     // Initialize empty calendar with each weekday
     const calendar: Record<string, CalendarSlot[]> = {
@@ -295,34 +352,54 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
       Friday: []
     };
     
-    // Only use high-value leads (sorted by Best Overall score - same as dashboard)
-    const highValueLeads = [...leads]
-      .map(lead => ({
+    // Process leads with the same scoring logic as LeadsTable
+    const processedLeads = leads.map(lead => {
+      // Calculate scores if not present
+      const intentScore = lead.intentScore ?? calculateIntentScore(lead);
+      const spendAuthorityScore = lead.spendAuthorityScore ?? calculateSpendAuthority(lead);
+      
+      // Create a lead with assigned scores for consistent Best Overall calculation
+      const leadWithScores = {
         ...lead,
-        calculatedOverallScore: calculateBestOverallScore(lead)
-      }))
-      .sort((a, b) => {
-        // Primary sort: Best Overall score (descending)
-        const scoreA = a.calculatedOverallScore;
-        const scoreB = b.calculatedOverallScore;
-        const scoreDiff = scoreB - scoreA;
-        if (scoreDiff !== 0) return scoreDiff;
+        intentScore,
+        spendAuthorityScore
+      };
+      
+      const calculatedOverallScore = calculateBestOverallScore(leadWithScores);
+      
+      return {
+        ...lead,
+        intentScore,
+        spendAuthorityScore,
+        calculatedOverallScore
+      };
+    });
 
-        // Secondary sort: Created date (newest first)
-        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-        const dateDiff = dateB - dateA;
-        if (dateDiff !== 0) return dateDiff;
-        
-        // Final tie-breaker: sort by email or name for consistent ordering
-        const aIdentifier = a.email || a.name || a.id || '';
-        const bIdentifier = b.email || b.name || b.id || '';
-        return aIdentifier.localeCompare(bIdentifier);
-      })
-      .slice(0, 15);
+    // Sort using the exact same logic as LeadsTable
+    const sortedLeads = processedLeads.sort((a, b) => {
+      // Primary sort: Best Overall score (descending)
+      const scoreA = a.calculatedOverallScore;
+      const scoreB = b.calculatedOverallScore;
+      const scoreDiff = scoreB - scoreA;
+      if (scoreDiff !== 0) return scoreDiff;
+
+      // Secondary sort: Created date (newest first)
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      const dateDiff = dateB - dateA;
+      if (dateDiff !== 0) return dateDiff;
+      
+      // Final tie-breaker: sort by email or name for consistent ordering
+      const aIdentifier = a.email || a.name || a.id || '';
+      const bIdentifier = b.email || b.name || b.id || '';
+      return aIdentifier.localeCompare(bIdentifier);
+    });
+
+    // Only use top 15 leads for the weekly view (same as LeadsTable)
+    const highValueLeads = sortedLeads.slice(0, 15);
     
     // Debug: Log the top leads being used in the calendar
-    console.log('Calendar - Top leads by Best Overall score:', highValueLeads.slice(0, 5).map(lead => ({ 
+    console.log('Outreach Calendar - Top leads by Best Overall score:', highValueLeads.slice(0, 5).map(lead => ({ 
       name: lead.name, 
       score: (lead as any).calculatedOverallScore 
     })));
@@ -357,6 +434,19 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
     return calendar;
   }
 
+  const getCurrentDay = () => {
+    const today = new Date();
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const currentDay = dayNames[today.getDay()];
+    
+    // If it's weekend, default to Monday
+    if (currentDay === 'Saturday' || currentDay === 'Sunday') {
+      return 'Monday';
+    }
+    
+    return currentDay;
+  };
+
   const getSlotsByDay = (day: string) => {
     return calendarData[day] || [];
   };
@@ -382,159 +472,160 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
     }
   };
 
-  const handleViewAll = (day: string) => {
+  const handleDayClick = (day: string) => {
     // Navigate to outreach page with the day as a query parameter
     router.push(`/outreach?day=${day}`);
   };
 
-  const getCurrentDay = () => {
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const today = days[new Date().getDay()];
-    return WEEKDAYS.includes(today) ? today : WEEKDAYS[0];
-  };
-
-  const handleDaySelect = (day: string) => {
-    setActiveDayMobile(day);
-  };
-
-  const currentDay = getCurrentDay();
-
-  // Mobile tab selection component
-  const MobileDayTabs = () => (
-    <div className="flex overflow-x-auto pb-3 md:hidden space-x-2 no-scrollbar touch-auto mb-4">
-      {WEEKDAYS.map((day) => (
-        <button
-          key={`mobile-tab-${day}`}
-          className={`px-4 py-2 whitespace-nowrap rounded-md text-sm font-medium min-w-[95px] border transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-blue-500 ${activeDayMobile === day 
-              ? 'bg-gray-700 text-white border-gray-600 shadow-sm'
-              : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700/80 hover:text-gray-200'
-          }`}
-          onClick={() => handleDaySelect(day)}
-          aria-label={`View ${day} schedule${day === currentDay ? ' (Today)' : ''}`}
-          aria-selected={activeDayMobile === day}
-          role="tab"
-        >
-          {day} {day === currentDay && '•'}
-        </button>
-      ))}
-    </div>
-  );
-
-  return (
-    <div className="bg-gray-800/50 border border-gray-700/80 rounded-lg p-4 md:p-6 shadow-sm">
-      <div className="flex items-center gap-3 mb-5">
-        <CalendarDays className="w-5 h-5 text-gray-400" />
-        <h2 className="text-xl font-semibold text-gray-100">Outreach Calendar</h2>
-      </div>
-      
-      {loading ? (
-        <div className="flex items-center justify-center py-16 text-gray-500">
-           <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-           </svg>
-          Loading schedule...
-        </div>
-      ) : (
-        <>
-          <MobileDayTabs />
-
-          <div className="hidden md:grid md:grid-cols-5 gap-5">
+  if (loading) {
+    return (
+      <div className="bg-gray-900/40 rounded-lg p-6 border border-gray-700/60">
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-700 rounded mb-4 w-1/3"></div>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {WEEKDAYS.map((day) => (
-              <div key={`desktop-${day}`} className="space-y-3 bg-gray-900/40 p-3 rounded-md border border-gray-700/60">
-                <h3 
-                  className={`text-center font-semibold text-sm py-2 border-b border-gray-700 mb-3 ${day === currentDay ? 'text-blue-400' : 'text-gray-300'}
-                    hover:bg-gray-800/50 rounded-t-md transition-colors cursor-pointer`}
-                  onClick={() => handleViewAll(day)}
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === 'Enter' && handleViewAll(day)}
-                  aria-label={`View all leads for ${day}`}
-                >
-                  {day} {day === currentDay && '(Today)'}
-                </h3>
-                <div className="space-y-3 min-h-[100px]">
-                  {getSlotsByDay(day).slice(0, 3).map((slot) => (
-                    <div 
-                      key={`desktop-slot-${slot.id}`} 
-                      className="group p-3 bg-gray-800 border border-gray-700 rounded-md hover:border-blue-600/70 hover:bg-gray-700/60 transition-all duration-150 ease-in-out cursor-pointer shadow-sm"
-                      onClick={() => handleSlotClick(slot.id)}
-                      tabIndex={0}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSlotClick(slot.id)}
-                      aria-label={`View outreach details for ${slot.lead}`}
-                    >
-                      <div className="font-medium text-gray-100 group-hover:text-white text-sm truncate">{slot.lead}</div>
-                      <div className="text-xs text-gray-400 truncate mt-0.5">{slot.company}</div>
-                      <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-1.5">
-                         <Clock className="w-3 h-3 flex-shrink-0" /> 
-                         <span>{slot.time}</span>
-                      </div>
-                      <div className={`flex items-center gap-1 text-xs font-medium mt-2 ${getProbabilityClasses(slot.probability)}`}>
-                         <TrendingUp className="w-3 h-3 flex-shrink-0" /> 
-                         <span>{slot.probability}% relevance</span>
-                      </div>
-                    </div>
+              <div key={day} className="space-y-3">
+                <div className="h-4 bg-gray-700 rounded w-2/3"></div>
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-16 bg-gray-800 rounded"></div>
                   ))}
-                  
-                  {getSlotsByDay(day).length === 0 && (
-                    <div className="text-center text-sm text-gray-500 pt-6 pb-4">
-                      No contacts scheduled.
-                    </div>
-                  )}
-                  
-                  {getMoreCount(day) > 0 && (
-                    <button
-                      className="w-full text-center text-xs text-blue-400 hover:text-blue-300 hover:underline pt-2 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded"
-                      onClick={() => handleViewAll(day)}
-                      aria-label={`View all ${getMoreCount(day)} more leads for ${day}`}
-                    >
-                      +{getMoreCount(day)} more
-                    </button>
-                  )}
                 </div>
               </div>
             ))}
           </div>
+        </div>
+      </div>
+    );
+  }
 
-          <div className="md:hidden space-y-3">
-            {activeDayMobile && getSlotsByDay(activeDayMobile).length > 0 && (
-                getSlotsByDay(activeDayMobile).map((slot) => (
+  return (
+    <div className="bg-gray-900/40 rounded-lg p-6 border border-gray-700/60">
+      {/* Desktop View */}
+      <div className="hidden md:block">
+        <div className="grid grid-cols-5 gap-4">
+          {WEEKDAYS.map((day) => (
+            <div key={`desktop-${day}`} className="space-y-3 bg-gray-900/40 p-3 rounded-md border border-gray-700/60">
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium text-gray-200 text-sm">{day}</h3>
+                <div className="text-xs text-gray-500">
+                  {getSlotsByDay(day).length} contact{getSlotsByDay(day).length !== 1 ? 's' : ''}
+                </div>
+              </div>
+
+              <div className="space-y-3 min-h-[100px]">
+                {getSlotsByDay(day).slice(0, 3).map((slot) => (
                   <div 
-                    key={`mobile-slot-${slot.id}`} 
-                    className="group p-4 bg-gray-800 border border-gray-700 rounded-lg hover:border-blue-600/70 hover:bg-gray-700/60 transition-all duration-150 ease-in-out cursor-pointer active:bg-gray-700 shadow-sm"
+                    key={`desktop-slot-${slot.id}`} 
+                    className="group p-3 bg-gray-800 border border-gray-700 rounded-md hover:border-blue-600/70 hover:bg-gray-700/60 transition-all duration-150 ease-in-out cursor-pointer shadow-sm"
                     onClick={() => handleSlotClick(slot.id)}
                     tabIndex={0}
                     onKeyDown={(e) => e.key === 'Enter' && handleSlotClick(slot.id)}
                     aria-label={`View outreach details for ${slot.lead}`}
-                    role="button"
                   >
-                    <div className="font-medium text-gray-100 group-hover:text-white text-base truncate">{slot.lead}</div>
-                    <div className="text-sm text-gray-400 truncate mt-0.5">{slot.company}</div>
-                    <div className="flex items-center gap-1.5 text-sm text-gray-400 mt-1.5">
-                       <Clock className="w-3.5 h-3.5 flex-shrink-0" /> 
+                    <div className="font-medium text-gray-100 group-hover:text-white text-sm truncate">{slot.lead}</div>
+                    <div className="text-xs text-gray-400 truncate mt-0.5">{slot.company}</div>
+                    <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-1.5">
+                       <Clock className="w-3 h-3 flex-shrink-0" /> 
                        <span>{slot.time}</span>
                     </div>
-                    <div className={`flex items-center gap-1 text-sm font-medium mt-2 ${getProbabilityClasses(slot.probability)}`}>
-                       <TrendingUp className="w-3.5 h-3.5 flex-shrink-0" /> 
+                    <div className={`flex items-center gap-1 text-xs font-medium mt-2 ${getProbabilityClasses(slot.probability)}`}>
+                       <TrendingUp className="w-3 h-3 flex-shrink-0" /> 
                        <span>{slot.probability}% relevance</span>
                     </div>
                   </div>
-                ))
-            )}
-            {activeDayMobile && getSlotsByDay(activeDayMobile).length === 0 && (
-                 <div className="text-center text-sm text-gray-500 py-10">
-                   No contacts scheduled for {activeDayMobile}.
-                 </div>
-            )}
-          </div>
+                ))}
+                
+                {getSlotsByDay(day).length === 0 && (
+                  <div className="text-center text-sm text-gray-500 pt-6 pb-4">
+                    No contacts scheduled.
+                  </div>
+                )}
+                
+                {getMoreCount(day) > 0 && (
+                  <button 
+                    onClick={() => handleDayClick(day)}
+                    className="w-full text-center text-xs text-blue-400 hover:text-blue-300 py-2 border border-gray-700 rounded-md hover:border-blue-600/50 transition-colors"
+                  >
+                    +{getMoreCount(day)} more contact{getMoreCount(day) !== 1 ? 's' : ''}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
-          <div className="mt-6 text-center md:text-left">
-             <p className="text-xs text-gray-500 flex items-center justify-center md:justify-start gap-1.5">
-               <Info className="w-3 h-3 flex-shrink-0" /> 
-               Contacts are prioritized based on OptiLeads.ai relevance score.
-             </p>
+      {/* Mobile View */}
+      <div className="md:hidden">
+        {/* Day selector */}
+        <div className="flex overflow-x-auto gap-2 mb-4 pb-2">
+          {WEEKDAYS.map((day) => (
+            <button
+              key={`mobile-${day}`}
+              onClick={() => setActiveDayMobile(day)}
+              className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeDayMobile === day
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              {day}
+              <span className="ml-1 text-xs opacity-75">
+                ({getSlotsByDay(day).length})
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Active day content */}
+        {activeDayMobile && (
+          <div className="space-y-3">
+            <h3 className="font-medium text-gray-200 mb-3">{activeDayMobile}</h3>
+            
+            {getSlotsByDay(activeDayMobile).length === 0 ? (
+              <div className="text-center text-sm text-gray-500 py-8">
+                No contacts scheduled for {activeDayMobile}.
+              </div>
+            ) : (
+              <>
+                {getSlotsByDay(activeDayMobile).map((slot) => (
+                  <div 
+                    key={`mobile-slot-${slot.id}`}
+                    className="p-4 bg-gray-800 border border-gray-700 rounded-lg hover:border-blue-600/70 transition-colors cursor-pointer"
+                    onClick={() => handleSlotClick(slot.id)}
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSlotClick(slot.id)}
+                    aria-label={`View outreach details for ${slot.lead}`}
+                  >
+                    <div className="font-medium text-gray-100 mb-1">{slot.lead}</div>
+                    <div className="text-sm text-gray-400 mb-2">{slot.company}</div>
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5 text-gray-400">
+                        <Clock className="w-3 h-3" />
+                        <span>{slot.time}</span>
+                      </div>
+                      <div className={`flex items-center gap-1 font-medium ${getProbabilityClasses(slot.probability)}`}>
+                        <TrendingUp className="w-3 h-3" />
+                        <span>{slot.probability}%</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                {getMoreCount(activeDayMobile) > 0 && (
+                  <button 
+                    onClick={() => handleDayClick(activeDayMobile)}
+                    className="w-full text-center text-sm text-blue-400 hover:text-blue-300 py-3 border border-gray-700 rounded-lg hover:border-blue-600/50 transition-colors"
+                  >
+                    View all {getSlotsByDay(activeDayMobile).length} contacts for {activeDayMobile}
+                  </button>
+                )}
+              </>
+            )}
           </div>
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 };

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Lead } from '@/types/lead';
-import ContentCalendar from '@/components/ContentCalendar';
+import ContentCalendar from '@/components/outreach/ContentCalendar';
 import LeadsTable from '@/components/LeadsTable';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import LeadScoreDistribution from '@/components/dashboard/LeadScoreDistribution';

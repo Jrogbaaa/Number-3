@@ -884,3 +884,23 @@ The user interface has been carefully crafted to balance aesthetics with usabili
 - **Responsive Adaptations**: The UI automatically adjusts to provide optimal experiences across all device sizes
 
 These enhancements work together to create a memorable, professional impression while ensuring the platform remains highly functional and accessible. 
+
+## ✨ Key Features
+
+### 🎯 **Unified AI-Powered Lead Scoring**
+- **Consistent Scoring**: Same algorithm across dashboard and outreach calendar
+- **Multi-dimensional analysis**: Intent, spend authority, marketing fit, and budget potential
+- **User preference integration**: Scores adapt to your target criteria
+- **Deterministic results**: Stable, reproducible lead prioritization
+
+### 📊 **Smart Dashboard & Analytics**
+- **Dual-view interface**: Leads table and outreach calendar with identical top leads
+- **Real-time scoring**: AI-powered lead evaluation with multiple factors
+- **Visual insights**: Score distributions and lead analytics
+- **Preference-based filtering**: Customized lead ranking based on your criteria
+
+### 📅 **Intelligent Outreach Calendar**
+- **Weekly scheduling**: Top leads distributed across weekdays
+- **Priority-based timing**: Higher-scoring leads scheduled earlier
+- **Consistent lead selection**: Same top 15 leads as dashboard view
+- **Click-to-contact**: Direct navigation to lead details and outreach tools 

@@ -5,6 +5,24 @@ All notable changes to the PROPS Lead Management Platform will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2024-12-19
+
+### 🔧 Fixed
+- **CRITICAL**: Fixed disconnect between outreach calendar and leads list scoring
+  - Both dashboard and outreach calendar now use identical scoring algorithms
+  - Unified `ContentCalendar` component from `@/components/outreach/ContentCalendar`
+  - Removed duplicate `@/components/ContentCalendar.tsx` component
+  - Same top 15 leads now appear consistently across both views
+  - Added debug logging to verify lead consistency
+
+### 🔄 Changed
+- **Dashboard**: Now imports unified `ContentCalendar` from outreach folder
+- **Scoring Logic**: All components use identical `calculateBestOverallScore()` function
+- **Lead Processing**: Consistent sorting and filtering across all views
+
+### 🗑️ Removed
+- **Deprecated**: Old `@/components/ContentCalendar.tsx` component
+
 ## [15.13.15] - 2025-01-27
 
 ### 🌐 Website Context Scraping Integration

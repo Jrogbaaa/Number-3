@@ -98,4 +98,24 @@
 - All API calls to AI services are made server-side
 - Sensitive information is never exposed to client-side code
 - Environment variables are used for all credentials and API keys
-- Database tables secured with proper Row Level Security policies 
+- Database tables secured with proper Row Level Security policies
+
+# OptiLeads.ai Features
+
+## 🎯 **Lead Scoring & Analytics**
+
+### **Unified AI-Powered Scoring System**
+- **Best Overall Score**: Comprehensive lead evaluation using multiple factors
+  - Intent signals (40-80 range)
+  - Spend authority assessment (25-85 range)  
+  - Marketing fit analysis
+  - Budget potential evaluation
+- **Consistent Scoring**: Same algorithm used across dashboard and outreach calendar
+- **User Preference Integration**: Scores adapt based on target roles, industries, and company sizes
+- **Deterministic Results**: Stable, reproducible scoring for reliable lead prioritization
+
+### **Multi-Dimensional Analysis**
+- **Intent Score**: Evaluates likelihood of purchase intent
+- **Spend Authority**: Assesses decision-making power and budget control
+- **Marketing Score**: Measures fit with marketing tools and solutions
+- **Budget Potential**: Estimates available budget for solutions 
