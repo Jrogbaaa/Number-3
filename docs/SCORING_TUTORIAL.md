@@ -12,10 +12,11 @@ The OptiLeads Scoring Tutorial is an intelligent, personalized educational syste
 - Pro tips are customized based on the user's business model and preferences
 
 ### ⏰ **Smart Timing**
-- Appears after successful lead uploads for first-time users
-- Triggers after settings resets once new onboarding is complete
-- **Never appears during onboarding processes** - critical UX requirement
-- Uses intelligent delays to ensure pages have fully loaded
+- **Dashboard-First Experience**: Tutorial appears when first-time users enter the dashboard after uploading leads
+- **Never During Upload**: Tutorial never interrupts the upload process itself
+- **Post-Reset Learning**: Triggers after settings resets once new onboarding is complete
+- **Never During Onboarding**: Never interferes with the onboarding process (critical UX requirement)
+- **Intelligent Delays**: Waits for pages to fully load before appearing (1.5 second delays)
 
 ### 📚 **Three-Dimensional Education**
 The tutorial explains our comprehensive scoring system:
@@ -224,14 +225,15 @@ const getPersonalizedProTips = () => [
 
 ## User Experience Flow
 
-### Scenario 1: First-Time User Upload
-1. User completes onboarding and sets preferences
+### Scenario 1: New User First Upload and Dashboard Visit
+1. User completes onboarding with preferences
 2. User uploads leads via Data Input page
 3. Upload succeeds and leads are processed
-4. **Wait 1 second** for page to update
-5. Tutorial triggers automatically
-6. User learns about scoring methodology
-7. Tutorial completion state saved to localStorage
+4. **Flag is set** for tutorial to show on dashboard visit
+5. User clicks "Go to Dashboard" or navigates to dashboard
+6. Tutorial automatically appears after 1.5 seconds
+7. User learns about personalized scoring methodology
+8. Completion state saved for future sessions
 
 ### Scenario 2: Settings Reset
 1. Existing user clicks "Reset Settings"
@@ -413,4 +415,12 @@ console.log('[Dashboard] Leads loaded, checking tutorial conditions');
 console.log('[Tutorial] Showing tutorial after settings reset');
 ```
 
-Filter console by `[ScoringTutorial]`, `[Dashboard]`, or `[Tutorial]` to debug specific issues. 
+Filter console by `[ScoringTutorial]`, `[Dashboard]`, or `[Tutorial]` to debug specific issues.
+
+#### Intelligent Triggering
+- **Upload Success**: Sets flag (`tutorial-trigger-on-dashboard`) when leads are uploaded
+- **Dashboard Visit**: Checks flag and triggers tutorial on first dashboard visit after upload
+- **Settings Reset**: Triggers 2.5 seconds after dashboard loads following reset
+- **Condition Checking**: Verifies authentication, onboarding completion, and preference loading
+- **Reset Detection**: 60-second window to detect recent settings resets
+- **Flag Management**: Clears trigger flag after tutorial is shown to prevent repeat displays 

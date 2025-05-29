@@ -99,6 +99,7 @@ export default function DashboardPage() {
     showTutorial,
     triggerTutorialAfterUpload,
     triggerTutorialAfterReset,
+    checkForDashboardTrigger,
     completeTutorial,
     closeTutorial
   } = useScoringTutorial();
@@ -337,9 +338,9 @@ export default function DashboardPage() {
       setLeads(fetchedLeads);
       console.log('Dashboard: Leads set to state successfully');
       
-      // Trigger tutorial for first-time users if leads exist
+      // Check if tutorial should show for first-time users who just uploaded leads
       if (fetchedLeads.length > 0) {
-        console.log('[Dashboard] Leads loaded, checking tutorial trigger conditions:', {
+        console.log('[Dashboard] Leads loaded, checking if tutorial should show:', {
           leadsCount: fetchedLeads.length,
           hasCompletedOnboarding,
           preferences: !!preferences
@@ -347,8 +348,8 @@ export default function DashboardPage() {
         
         // Small delay to let the leads render first
         setTimeout(() => {
-          console.log('[Dashboard] Executing triggerTutorialAfterUpload');
-          triggerTutorialAfterUpload(fetchedLeads.length);
+          console.log('[Dashboard] Checking for dashboard tutorial trigger');
+          checkForDashboardTrigger();
         }, 1500);
       }
     } catch (err) {
