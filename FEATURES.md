@@ -7,6 +7,16 @@
 - Organize leads by campaign and status
 - Track lead interactions and communication history
 
+### Scoring Tutorial System
+- **Interactive Learning Experience**: Comprehensive tutorial explaining AI-powered lead scoring methodology
+- **Company-Specific Personalization**: Content adapts to user's company name and targeting preferences
+- **Smart Timing**: Appears after first uploads or settings resets, never during onboarding
+- **Multi-Dimensional Education**: Explains Intent Score, Company Focus, and Engagement Potential
+- **Actionable Pro Tips**: Personalized recommendations based on user's business model
+- **Mobile-Responsive Design**: Optimized experience across all devices
+- **Persistent State Management**: Tutorial completion tracked across sessions
+- **Test Functions**: Built-in utilities for development testing
+
 ### Data Upload
 - Upload CSV files with lead information
 - Map CSV columns to database fields

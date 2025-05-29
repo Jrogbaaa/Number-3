@@ -12,6 +12,7 @@ AI-powered insights and outreach automation for lead management.
 - NextJS 15 with App Router
 - Robust database connectivity with retry logic
 - Personalized lead scoring based on user preferences
+- **🎓 Interactive Scoring Tutorial**: Comprehensive onboarding tutorial that explains AI-powered lead scoring with company-specific personalization
 - Customizable table columns that adapt to business needs
 - "Best Overall" score that weights factors according to user priorities
 - **🌟 Subtle Animated Background**: Sophisticated animated elements with particles, neural networks, and geometric shapes that create a premium tech aesthetic
@@ -904,3 +905,28 @@ These enhancements work together to create a memorable, professional impression 
 - **Priority-based timing**: Higher-scoring leads scheduled earlier
 - **Consistent lead selection**: Same top 15 leads as dashboard view
 - **Click-to-contact**: Direct navigation to lead details and outreach tools 
+
+## 🎓 Scoring Tutorial System
+
+### Overview
+The OptiLeads scoring tutorial is an intelligent onboarding system that educates users about our AI-powered lead scoring methodology. It appears at strategic moments to maximize user understanding without interrupting critical workflows.
+
+### Key Features
+- **Company-Specific Personalization**: Tutorial content adapts to use the user's actual company name and targeting preferences
+- **Smart Timing**: Appears after first lead uploads or settings resets, but never during onboarding processes
+- **Three-Dimensional Scoring Explanation**:
+  - **Intent Score (40-80)**: Purchase likelihood based on role, industry, and growth indicators
+  - **Company Focus (0-100)**: ICP alignment based on size, vertical, and location
+  - **Engagement Potential (25-85)**: Decision-making power and budget authority assessment
+- **Pro Tips Section**: Actionable advice personalized to the user's business model and target market
+- **Mobile-Optimized**: Sticky headers and responsive design for all device types
+
+### Technical Implementation
+- **Hook-Based State Management**: `useScoringTutorial()` hook for consistent state across components
+- **localStorage Persistence**: Tutorial completion state persists across sessions
+- **Intelligent Triggering**: 
+  - Triggers 1.5s after successful authenticated uploads for new users
+  - Triggers 1.5s after leads load following settings resets
+  - Never interferes with onboarding or reset processes
+- **Reset Detection**: 60-second window to detect recent settings resets
+- **Test Functions**: Built-in testing utilities for development and QA 

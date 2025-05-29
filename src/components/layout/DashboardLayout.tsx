@@ -23,12 +23,17 @@ const navItems = [
     icon: <BarChart2 className="w-5 h-5" />,
   },
   {
+    name: 'Outreach Calendar',
+    href: '/outreach',
+    icon: <Mail className="w-5 h-5" />,
+  },
+  {
     name: 'Upload Leads',
     href: '/data-input',
     icon: <Database className="w-5 h-5" />,
   },
   {
-    name: 'Heygen Integration',
+    name: 'Create Media',
     href: '/heygen',
     icon: <Video className="w-5 h-5" />,
   },

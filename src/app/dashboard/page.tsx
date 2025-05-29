@@ -10,8 +10,10 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import LeadScoreDistribution from '@/components/dashboard/LeadScoreDistribution';
 import WelcomeModal from '@/components/ui/WelcomeModal';
 import OnboardingModal from '@/components/ui/OnboardingModal';
+import ScoringTutorialModal from '@/components/ui/ScoringTutorialModal';
 import { useUserPreferences } from '@/providers/UserPreferencesProvider';
 import { useAuth } from '@/providers/AuthProvider';
+import { useScoringTutorial } from '@/hooks/useScoringTutorial';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 import ResetSettingsButton from '@/components/ui/ResetSettingsButton';
@@ -92,6 +94,15 @@ export default function DashboardPage() {
   const [isResetting, setIsResetting] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'leads' | 'outreach'>('leads');
   
+  // Scoring tutorial integration
+  const {
+    showTutorial,
+    triggerTutorialAfterUpload,
+    triggerTutorialAfterReset,
+    completeTutorial,
+    closeTutorial
+  } = useScoringTutorial();
+  
   // Check for reset state on mount and periodically
   useEffect(() => {
     const checkResetState = () => {
@@ -154,6 +165,48 @@ export default function DashboardPage() {
       return () => clearTimeout(timer);
     }
   }, [hasCompletedOnboarding]);
+
+  // Check for recent settings reset and trigger tutorial if needed
+  useEffect(() => {
+    console.log('[Dashboard] Reset detection effect triggered:', {
+      hasCompletedOnboarding,
+      preferences: !!preferences,
+      status
+    });
+    
+    if (!hasCompletedOnboarding || !preferences || status !== 'authenticated') {
+      console.log('[Dashboard] Not ready for reset detection yet');
+      return;
+    }
+    
+    const lastResetTime = localStorage.getItem('lastSettingsReset');
+    console.log('[Dashboard] Checking for recent reset, lastResetTime:', lastResetTime);
+    
+    if (lastResetTime) {
+      const resetTime = parseInt(lastResetTime);
+      const timeSinceReset = Date.now() - resetTime;
+      
+      console.log('[Dashboard] Reset detected:', {
+        resetTime: new Date(resetTime).toISOString(),
+        timeSinceReset: `${Math.round(timeSinceReset / 1000)}s ago`,
+        withinWindow: timeSinceReset < 60000
+      });
+      
+      // Extend the window to 60 seconds to catch cases where onboarding takes time
+      if (timeSinceReset < 60000 && hasCompletedOnboarding && preferences) {
+        console.log('[Dashboard] Triggering tutorial after settings reset');
+        // Trigger tutorial after a brief delay to ensure leads are loaded
+        setTimeout(() => {
+          console.log('[Dashboard] Executing triggerTutorialAfterReset');
+          triggerTutorialAfterReset();
+        }, 2500); // Slightly longer delay
+        
+        // Clear the reset timestamp so we don't trigger again
+        localStorage.removeItem('lastSettingsReset');
+        console.log('[Dashboard] Cleared reset timestamp');
+      }
+    }
+  }, [hasCompletedOnboarding, preferences, status, triggerTutorialAfterReset]);
 
   // Debug onboarding state
   console.log('[Dashboard] Onboarding state check:', {
@@ -283,6 +336,21 @@ export default function DashboardPage() {
       
       setLeads(fetchedLeads);
       console.log('Dashboard: Leads set to state successfully');
+      
+      // Trigger tutorial for first-time users if leads exist
+      if (fetchedLeads.length > 0) {
+        console.log('[Dashboard] Leads loaded, checking tutorial trigger conditions:', {
+          leadsCount: fetchedLeads.length,
+          hasCompletedOnboarding,
+          preferences: !!preferences
+        });
+        
+        // Small delay to let the leads render first
+        setTimeout(() => {
+          console.log('[Dashboard] Executing triggerTutorialAfterUpload');
+          triggerTutorialAfterUpload(fetchedLeads.length);
+        }, 1500);
+      }
     } catch (err) {
       console.error('Error fetching leads:', err);
       
@@ -933,6 +1001,14 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+      
+      {/* Scoring Tutorial Modal */}
+      <ScoringTutorialModal
+        isOpen={showTutorial}
+        onClose={closeTutorial}
+        onComplete={completeTutorial}
+        userPreferences={preferences}
+      />
     </DashboardLayout>
   );
 } 

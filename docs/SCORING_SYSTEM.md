@@ -4,6 +4,187 @@
 
 The PROPS Lead Management Platform uses a sophisticated, deterministic scoring system to evaluate and rank leads based on multiple dimensions. This document provides technical details about how the scoring system works, recent improvements, and implementation details.
 
+## Scoring Tutorial System
+
+### Overview
+The scoring tutorial is an intelligent onboarding system that educates users about our AI-powered lead scoring methodology. It provides company-specific explanations and appears at strategic moments to maximize user understanding without interrupting critical workflows.
+
+### Architecture
+
+#### Components
+- **ScoringTutorialModal**: React component providing the interactive tutorial interface
+- **useScoringTutorial Hook**: State management for tutorial visibility and completion tracking
+- **Integration Points**: Dashboard and Data Input pages with intelligent triggering
+
+#### State Management
+```typescript
+interface ScoringTutorialState {
+  hasSeenTutorial: boolean;
+  showTutorial: boolean;
+  isLoading: boolean;
+}
+
+const TUTORIAL_STORAGE_KEY = 'scoring-tutorial-completed';
+```
+
+### Personalization Engine
+
+#### Company-Specific Content
+The tutorial dynamically personalizes content based on user preferences:
+
+```typescript
+const getPersonalizedIntro = (userPreferences) => {
+  const companyName = userPreferences?.companyInfo?.name || 'your company';
+  const targetRoles = userPreferences?.targetRoles || [];
+  const targetIndustries = userPreferences?.targetIndustries || [];
+  
+  return `OptiLeads uses advanced algorithms to analyze your leads specifically for ${companyName}...`;
+};
+```
+
+#### Dynamic Messaging Examples
+- **Intent Score**: "For [CompanyName], we prioritize [TargetRole]s who are most likely to need your services"
+- **Company Focus**: "Based on [CompanyName]'s focus on [CompanySize] companies in [Industry]..."
+- **Pro Tips**: "Better for [CompanyName] to engage 10 high-scoring [TargetRole]s than 50 low ones"
+
+### Trigger Logic
+
+#### Smart Timing System
+The tutorial uses intelligent timing to appear at optimal moments:
+
+1. **After First Upload** (Data Input Page):
+   ```typescript
+   if (uploadedLeads && uploadedLeads.length > 0) {
+     setTimeout(() => {
+       triggerTutorialAfterUpload(uploadedLeads.length);
+     }, 1000);
+   }
+   ```
+
+2. **After Settings Reset** (Dashboard):
+   ```typescript
+   const lastResetTime = localStorage.getItem('lastSettingsReset');
+   if (lastResetTime && (Date.now() - parseInt(lastResetTime)) < 60000) {
+     setTimeout(() => {
+       triggerTutorialAfterReset();
+     }, 2500);
+   }
+   ```
+
+#### Conditions That Prevent Tutorial
+- Onboarding process is active
+- User is in reset state (first 45 seconds after reset)
+- Preferences are not yet loaded
+- User is not authenticated
+- Tutorial was already completed (unless reset occurred)
+
+### Tutorial Content Structure
+
+#### Three-Dimensional Scoring Explanation
+
+1. **Intent Score (40-80 range)**
+   - Purchase likelihood based on role, industry, growth indicators
+   - Factors: Job title relevance, industry alignment, company growth, technology stack signals
+
+2. **Company Focus (0-100 range)**
+   - ICP alignment based on size, vertical, location
+   - Factors: Company size/structure, industry vertical, business model, geographic location
+
+3. **Engagement Potential (25-85 range)**
+   - Decision-making power and budget authority
+   - Factors: Seniority level, budget authority, engagement history, response likelihood
+
+#### Pro Tips Section
+Personalized recommendations based on user's business model:
+- Focus on high intent leads first (60+ scores)
+- Quality over quantity approach
+- Optimal timing for outreach
+- Industry-specific personalization strategies
+
+### Implementation Details
+
+#### Hook API
+```typescript
+const {
+  hasSeenTutorial,
+  showTutorial,
+  isLoading,
+  triggerTutorialAfterUpload,
+  triggerTutorialAfterReset,
+  completeTutorial,
+  closeTutorial,
+  resetTutorial
+} = useScoringTutorial();
+```
+
+#### Modal Component Props
+```typescript
+interface ScoringTutorialModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onComplete: () => void;
+  userPreferences?: UserPreferences;
+}
+```
+
+#### Testing Utilities
+```typescript
+// Available in browser console for testing
+window.testScoringTutorial(); // Reset and trigger tutorial
+window.testScoringTutorialAfterReset(); // Test reset scenario
+```
+
+### Mobile Optimization
+
+#### Responsive Design Features
+- **Sticky Header/Footer**: Important controls remain visible during scrolling
+- **Optimized Content Spacing**: Readable on small screens
+- **Touch-Friendly Controls**: Appropriate button sizes and spacing
+- **Backdrop Blur**: Enhanced visual hierarchy on mobile devices
+
+#### CSS Implementation
+```css
+.tutorial-modal {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.tutorial-header {
+  position: sticky;
+  top: 0;
+  background: rgba(17, 24, 39, 0.95);
+  backdrop-filter: blur(8px);
+}
+```
+
+### Performance Considerations
+
+#### Lazy Loading
+- Tutorial content only loads when triggered
+- Images and heavy content deferred until modal opens
+- Minimal impact on initial page load
+
+#### State Persistence
+- Tutorial completion state persists across sessions
+- Efficient localStorage management
+- Cleanup of temporary state flags
+
+### Analytics and Tracking
+
+#### User Interaction Metrics
+- Tutorial completion rates
+- Time spent in tutorial
+- Skip vs complete actions
+- Reset scenario effectiveness
+
+#### Implementation Hooks
+```typescript
+const trackTutorialEvent = (event: string, metadata?: object) => {
+  // Analytics implementation
+  console.log(`[Tutorial] ${event}`, metadata);
+};
+```
+
 ## Scoring Architecture
 
 ### Core Principles

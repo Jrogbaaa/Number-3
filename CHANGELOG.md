@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2024-12-19
 
+### 🎓 Interactive Scoring Tutorial System
+
+#### Personalized Educational Experience
+- **Added**: Comprehensive scoring tutorial modal explaining AI-powered lead scoring methodology
+- **Added**: Company-specific personalization using user's actual company name and targeting preferences
+- **Added**: Three-dimensional scoring education (Intent Score, Company Focus, Engagement Potential)
+- **Added**: Contextual pro tips personalized to user's business model and target market
+- **Added**: Mobile-optimized design with sticky header/footer for optimal UX
+
+#### Smart Timing & Integration
+- **Added**: Intelligent tutorial triggering after first lead uploads for new users
+- **Added**: Tutorial appears after settings resets once new onboarding is complete
+- **Critical**: Tutorial never appears during onboarding processes (UX requirement)
+- **Added**: 60-second reset detection window with intelligent delays for page loading
+- **Added**: Integration with Dashboard and Data Input pages
+
+#### Technical Implementation
+- **Added**: `ScoringTutorialModal.tsx` component with personalized content generation
+- **Added**: `useScoringTutorial.ts` hook for state management and triggers
+- **Added**: localStorage persistence for tutorial completion state
+- **Added**: Reset detection logic with timestamp management
+- **Added**: Comprehensive console logging for debugging and QA
+- **Added**: Built-in testing utilities: `window.testScoringTutorial()` and `window.testScoringTutorialAfterReset()`
+
+#### Personalization Engine
+- **Added**: Dynamic content adaptation based on user preferences
+- **Added**: Company name integration throughout tutorial content
+- **Added**: Target role and industry-specific examples and recommendations
+- **Added**: Business model-aware pro tips and strategies
+- **Added**: Contextual scoring explanations adapted to user's ICP
+
+#### Quality Assurance & Performance
+- **Added**: Lazy loading for optimal performance impact
+- **Added**: Efficient state management with condition checking
+- **Added**: Memory management and cleanup for tutorial timeouts
+- **Added**: Comprehensive test scenarios and QA checklist
+- **Added**: Analytics hooks for tracking tutorial engagement
+
 ### 🔧 Fixed
 - **CRITICAL**: Fixed disconnect between outreach calendar and leads list scoring
   - Both dashboard and outreach calendar now use identical scoring algorithms

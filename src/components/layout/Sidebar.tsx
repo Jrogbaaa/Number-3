@@ -21,9 +21,14 @@ interface SidebarProps {
 // Default nav items as fallback
 const defaultNavItems = [
   {
-    name: 'Dashboard',
+    name: 'Your Leads',
     href: '/dashboard',
     icon: <BarChart2 className="w-5 h-5" />,
+  },
+  {
+    name: 'Outreach Calendar',
+    href: '/outreach',
+    icon: <Mail className="w-5 h-5" />,
   },
   {
     name: 'Upload Leads',
@@ -31,17 +36,7 @@ const defaultNavItems = [
     icon: <Database className="w-5 h-5" />,
   },
   {
-    name: 'Outreach',
-    href: '/outreach',
-    icon: <Mail className="w-5 h-5" />,
-  },
-  {
-    name: 'AI Messages',
-    href: '/leads/outreach',
-    icon: <Sparkles className="w-5 h-5" />,
-  },
-  {
-    name: 'Heygen Integration',
+    name: 'Create Media',
     href: '/heygen',
     icon: <Video className="w-5 h-5" />,
   },

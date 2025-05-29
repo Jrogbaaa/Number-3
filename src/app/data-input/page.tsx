@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { DataUpload } from '@/components/shared/DataUpload';
 import { DataClear } from '@/components/shared/DataClear';
+import ScoringTutorialModal from '@/components/ui/ScoringTutorialModal';
+import { useScoringTutorial } from '@/hooks/useScoringTutorial';
+import { useUserPreferences } from '@/providers/UserPreferencesProvider';
 import { Upload, Database, Info, RefreshCw, Trash2, User, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -28,6 +31,17 @@ export default function DataInputPage() {
   const [showSignInPrompt, setShowSignInPrompt] = useState(false);
   const router = useRouter();
   const { data: session, status } = useSession();
+  
+  // Scoring tutorial integration
+  const {
+    showTutorial,
+    triggerTutorialAfterUpload,
+    completeTutorial,
+    closeTutorial
+  } = useScoringTutorial();
+
+  // Get user preferences for tutorial personalization
+  const userPreferences = useUserPreferences();
 
   // Load temporary leads from localStorage on mount
   useEffect(() => {
@@ -61,6 +75,14 @@ export default function DataInputPage() {
       // Authenticated user - normal flow
       router.refresh();
       toast.success('Leads uploaded successfully!');
+      
+      // Trigger tutorial for first-time users with successful upload
+      if (uploadedLeads && uploadedLeads.length > 0) {
+        // Small delay to let the page update first
+        setTimeout(() => {
+          triggerTutorialAfterUpload(uploadedLeads.length);
+        }, 1000);
+      }
     } else {
       console.log('[DataInput] Processing unauthenticated user upload');
       // Unauthenticated user - save temporarily and show sign-in prompt
@@ -281,6 +303,14 @@ export default function DataInputPage() {
           </div>
         </div>
       </div>
+      
+      {/* Scoring Tutorial Modal */}
+      <ScoringTutorialModal
+        isOpen={showTutorial}
+        onClose={closeTutorial}
+        onComplete={completeTutorial}
+        userPreferences={userPreferences.preferences}
+      />
     </DashboardLayout>
   );
 } 

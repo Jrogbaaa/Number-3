@@ -5,8 +5,8 @@ const Sidebar = () => {
   const navItems = [
     { icon: '📊', label: 'Dashboard', href: '/' },
     { icon: '📥', label: 'Upload Leads', href: '/data-input' },
-    { icon: '📨', label: 'Outreach', href: '/outreach' },
-    { icon: '🎥', label: 'Heygen Integration', href: '/heygen' },
+    { icon: '📅', label: 'Outreach Calendar', href: '/outreach' },
+    { icon: '🎬', label: 'Create Media', href: '/heygen' },
   ];
 
   return (
