@@ -1,0 +1,37 @@
+# Use the official Node.js runtime as the base image
+FROM node:18-alpine
+
+# Set the working directory
+WORKDIR /app
+
+# Create a non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Copy package files
+COPY package*.json ./
+
+# Install only production dependencies
+RUN npm ci --only=production --ignore-scripts
+
+# Copy the built application
+COPY .next ./.next
+COPY public ./public
+COPY next.config.js ./
+
+# Set ownership to nextjs user
+RUN chown -R nextjs:nodejs /app
+
+# Switch to non-root user
+USER nextjs
+
+# Expose the port the app runs on
+EXPOSE 8080
+
+# Set environment variables
+ENV PORT=8080
+ENV NODE_ENV=production
+ENV HOSTNAME="0.0.0.0"
+
+# Start the application
+CMD ["npm", "start"] 

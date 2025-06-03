@@ -1,22 +1,55 @@
 # PROPS - Lead Management Platform
 
-AI-powered insights and outreach automation for lead management.
+AI-powered insights and outreach automation for lead management with website intelligence and scalable Cloud Run deployment.
 
 <!-- Deployment trigger: 2024-12-07 Force rebuild -->
 
 ## Features
 
-- Google Authentication
-- Lead management and scoring
-- Supabase database integration
-- NextJS 15 with App Router
-- Robust database connectivity with retry logic
-- Personalized lead scoring based on user preferences
+- **🌐 Website & LinkedIn Scraping**: Extract company context and insights during onboarding using Firecrawl API
+- **☁️ Cloud Run Deployment**: Production-ready Google Cloud deployment with automatic scaling
+- **🔐 Google Authentication** with NextAuth.js
+- **📊 Lead management and scoring** with AI-powered insights
+- **🔄 Supabase database integration** with robust connectivity
+- **⚡ NextJS 15 with App Router** for optimal performance
 - **🎓 Interactive Scoring Tutorial**: Comprehensive onboarding tutorial that explains AI-powered lead scoring with company-specific personalization
-- Customizable table columns that adapt to business needs
-- "Best Overall" score that weights factors according to user priorities
+- **📋 Customizable table columns** that adapt to business needs
+- **🏆 "Best Overall" score** that weights factors according to user priorities
 - **🌟 Subtle Animated Background**: Sophisticated animated elements with particles, neural networks, and geometric shapes that create a premium tech aesthetic
 - **✨ Modern UI/UX**: Clean, floating text design with gradient accents and subtle motion graphics for enhanced visual appeal
+
+## Key Features
+
+### 🌐 **Website Intelligence & Context Extraction**
+- **Smart Website Scraping**: Extract company information and context from websites during onboarding
+- **LinkedIn Business Profile Analysis**: Analyze LinkedIn company pages for enhanced lead context
+- **Content Processing**: Intelligent content extraction focusing on main business information
+- **Onboarding Integration**: Optional website context step in user setup flow
+
+### 🎯 **AI-Powered Lead Analysis**
+- **📊 Multi-dimensional Contact Scoring** (Marketing Activity, Budget Potential, B2B/C2C Classification)
+- **⏱️ Optimal Outreach Time Enrichment**: Automatically determines the best time to contact leads
+- **🤖 Heygen AI Video Integration**: Generate AI-powered podcast scripts and access Heygen tools directly
+- **✨ AI Message Customization**: Personalize outreach messages with AI-powered prompts
+- **📧 Follow-up Email System**: Comprehensive follow-up email generator with 5 strategic approaches
+
+### 🎤 **Communication Tools**
+- **Audio Message Recording**: Record, play, and download personalized audio messages
+- **Message Transformation**: Apply different tones (conversational, professional, funny)
+- **Follow-up Strategies**: 5 distinct follow-up approaches with timing guidance
+- **Contextual Personalization**: AI-powered content based on lead and business information
+
+### 🔮 **User Experience**
+- **Welcome Onboarding Modal**: First-time visitors receive guidance to the upload page
+- **Personalized Onboarding**: Interactive setup to customize lead scoring based on company profile and target audience
+- **Website Context Collection**: Optional step to gather company information for better personalization
+- **Modern Dark UI**: Enhanced visual consistency, clarity, and professionalism across components
+
+### ☁️ **Enterprise Deployment**
+- **Google Cloud Run**: Production-ready deployment with automatic scaling
+- **Environment Management**: Secure secret management with Google Secret Manager
+- **Multi-project Support**: Isolated deployments across different Google Cloud projects
+- **Health Monitoring**: Built-in health checks and monitoring endpoints
 
 ## Getting Started
 
@@ -39,23 +72,29 @@ AI-powered insights and outreach automation for lead management.
    npm install
    ```
 
-3. Create a `.env` file in the root directory with the following variables:
-   ```
-   # NextAuth.js Configuration
-   NEXTAUTH_URL=http://localhost:3000
-   NEXTAUTH_SECRET=your_nextauth_secret
-
-   # Google OAuth
-   GOOGLE_CLIENT_ID=your_google_client_id
-   GOOGLE_CLIENT_SECRET=your_google_client_secret
-
+3. Create a `.env.local` file in the root directory with:
+   ```env
    # Supabase Configuration
    NEXT_PUBLIC_SUPABASE_URL=https://kodddurybogqynkswrzp.supabase.co
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
    SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
-   # Database URL (if using Prisma)
-   DATABASE_URL=your_database_url
+   # AI APIs
+   REPLICATE_API_KEY=your_replicate_api_key
+   HEYGEN_API_KEY=your_heygen_api_key
+   FIRECRAWL_API_KEY=your_firecrawl_api_key
+
+   # Google OAuth credentials
+   GOOGLE_CLIENT_ID=your_google_client_id
+   GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+   # NextAuth configuration
+   NEXTAUTH_URL=http://localhost:3000
+   NEXTAUTH_SECRET=your_nextauth_secret
+
+   # Cloud Run Integration (for production)
+   NEXT_PUBLIC_CLOUD_RUN_URL=https://your-cloud-run-service-url.run.app
+   CLOUD_RUN_API_URL=https://your-cloud-run-service-url.run.app
    ```
 
    **Note:** Ensure the Supabase URL is exactly as shown above. The URL contains "bog" not "boq".
@@ -81,7 +120,55 @@ For detailed authentication setup instructions, see [AUTHENTICATION.md](./docs/A
 
 ## Deployment
 
+### Option 1: Vercel Deployment (Frontend)
 This project is configured for deployment on Vercel. See [Vercel deployment instructions](https://nextjs.org/docs/deployment) for details.
+
+### Option 2: Google Cloud Run (Full-Stack)
+For production deployment with backend capabilities:
+
+1. **Prerequisites:**
+   - Google Cloud account and project
+   - Docker installed
+   - gcloud CLI configured
+
+2. **Deploy to Cloud Run:**
+   ```bash
+   # Make deployment script executable
+   chmod +x scripts/deploy-cloudrun.sh
+   
+   # Deploy to your Google Cloud project
+   ./scripts/deploy-cloudrun.sh
+   ```
+
+3. **Environment Configuration:**
+   The deployment script automatically:
+   - Creates Google Secret Manager secrets for sensitive data
+   - Configures environment variables for Cloud Run
+   - Sets up proper IAM permissions
+   - Deploys with auto-scaling configuration
+
+4. **Update OAuth Settings:**
+   After deployment, update your OAuth providers:
+   - **Google OAuth:** Add `https://your-service-url.run.app/api/auth/callback/google`
+   - **Supabase Auth:** Add `https://your-service-url.run.app/api/auth/callback`
+
+**Cloud Run Features:**
+- Automatic scaling (0-10 instances)
+- 2GB memory, 2 CPU allocation
+- 300-second timeout for long-running operations
+- Health monitoring and error tracking
+- Secure secret management
+
+## Architecture
+
+### Development Stack
+- **Frontend**: Next.js 15 with App Router, TypeScript, Tailwind CSS
+- **Backend**: Next.js API routes with TypeScript
+- **Database**: Supabase (PostgreSQL)
+- **Authentication**: NextAuth.js with Google OAuth
+- **AI Integration**: Replicate API, Heygen API
+- **Web Scraping**: Firecrawl API
+- **Deployment**: Vercel (frontend) or Google Cloud Run (full-stack)
 
 ## Learn More
 

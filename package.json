@@ -15,7 +15,11 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "clean": "rm -rf .next && rm -rf node_modules/.cache",
-    "deploy": "npm run clean && npm run build && vercel --prod"
+    "deploy": "npm run clean && npm run build && vercel --prod",
+    "deploy:cloudrun": "./scripts/deploy-cloudrun.sh",
+    "cloudrun:build": "docker build -t props-lead-api .",
+    "cloudrun:test": "docker run -p 8080:8080 --env-file .env.local props-lead-api",
+    "gcloud:setup": "gcloud auth login && gcloud config set project $GOOGLE_CLOUD_PROJECT"
   },
   "dependencies": {
     "@auth/core": "^0.34.2",
