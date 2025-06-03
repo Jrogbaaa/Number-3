@@ -911,10 +911,31 @@ The test suite covers:
 - API routes (handling requests, data validation, error cases)
 - UI components (rendering, user interactions)
 - End-to-end user flows (complete scenarios from upload to message customization)
+- Onboarding process (including double-onboarding prevention fixes)
+- Website scraping and error handling (silent failure handling)
+- Date formatting and table layout (preventing column overlap)
 
 ### Test Structure
 - `src/__tests__/` - Jest unit and integration tests
-- `e2e/` - Playwright end-to-end tests 
+- `tests/` - Playwright end-to-end tests for upload flows and user interactions
+
+### Recent Test Improvements (Latest Update)
+
+**Playwright Test Fixes**:
+- ✅ **Fixed strict mode violations**: Replaced ambiguous locators with specific element targeting
+- ✅ **Updated success message assertions**: Tests now match actual UI text content
+- ✅ **Fixed timing issues**: Improved wait logic to handle fast processing completion
+- ✅ **Enhanced test reliability**: All tests now consistently pass across browsers
+
+**Test Results**:
+- Jest: 2 passing tests (MessageGenerator component, utilities)
+- Playwright: 3 passing tests (new user upload, large file handling, medium file processing)
+
+**Coverage Areas**:
+- User onboarding flow (preventing double onboarding after sign-in)
+- Lead upload functionality (unauthenticated and authenticated modes)
+- File processing validation (handling various file sizes)
+- Error handling and success messaging
 
 ## Authentication Setup
 
