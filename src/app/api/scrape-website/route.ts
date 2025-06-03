@@ -4,24 +4,11 @@ import { authOptions } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('[API:scrape-website] Starting request processing');
-    
     const session = await getServerSession(authOptions);
     
-    console.log('[API:scrape-website] Session check:', {
-      hasSession: !!session,
-      hasUser: !!session?.user,
-      userId: session?.user?.id || 'none'
-    });
-    
     if (!session?.user?.id) {
-      console.log('[API:scrape-website] Authentication failed - no session or user ID');
-      return NextResponse.json({ 
-        error: 'Unauthorized - Please sign in to use website analysis' 
-      }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    console.log('[API:scrape-website] User authenticated:', session.user.id);
 
     const { url, type } = await request.json();
     
@@ -47,8 +34,7 @@ export async function POST(request: NextRequest) {
     // Use Firecrawl to scrape the website
     const firecrawlApiKey = process.env.FIRECRAWL_API_KEY;
     if (!firecrawlApiKey) {
-      console.error('[API:scrape-website] Firecrawl API key not configured');
-      return NextResponse.json({ error: 'Website analysis service not configured' }, { status: 500 });
+      return NextResponse.json({ error: 'Firecrawl API key not configured' }, { status: 500 });
     }
 
     try {

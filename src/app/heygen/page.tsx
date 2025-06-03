@@ -11,7 +11,7 @@ export default function CreateMediaPage() {
             Generate professional content with AI-powered tools for podcasts, videos, and scripts
           </p>
         </div>
-        
+
         <CreateMediaFeatures />
       </div>
     </DashboardLayout>

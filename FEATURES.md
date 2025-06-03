@@ -108,7 +108,7 @@
 - All API calls to AI services are made server-side
 - Sensitive information is never exposed to client-side code
 - Environment variables are used for all credentials and API keys
-- Database tables secured with proper Row Level Security policies
+- Database tables secured with proper Row Level Security policies 
 
 # OptiLeads.ai Features
 

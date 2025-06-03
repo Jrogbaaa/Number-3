@@ -377,22 +377,22 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
 
     // Sort using the exact same logic as LeadsTable
     const sortedLeads = processedLeads.sort((a, b) => {
-      // Primary sort: Best Overall score (descending)
-      const scoreA = a.calculatedOverallScore;
-      const scoreB = b.calculatedOverallScore;
-      const scoreDiff = scoreB - scoreA;
-      if (scoreDiff !== 0) return scoreDiff;
+        // Primary sort: Best Overall score (descending)
+        const scoreA = a.calculatedOverallScore;
+        const scoreB = b.calculatedOverallScore;
+        const scoreDiff = scoreB - scoreA;
+        if (scoreDiff !== 0) return scoreDiff;
 
-      // Secondary sort: Created date (newest first)
-      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-      const dateDiff = dateB - dateA;
-      if (dateDiff !== 0) return dateDiff;
-      
-      // Final tie-breaker: sort by email or name for consistent ordering
-      const aIdentifier = a.email || a.name || a.id || '';
-      const bIdentifier = b.email || b.name || b.id || '';
-      return aIdentifier.localeCompare(bIdentifier);
+        // Secondary sort: Created date (newest first)
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        const dateDiff = dateB - dateA;
+        if (dateDiff !== 0) return dateDiff;
+        
+        // Final tie-breaker: sort by email or name for consistent ordering
+        const aIdentifier = a.email || a.name || a.id || '';
+        const bIdentifier = b.email || b.name || b.id || '';
+        return aIdentifier.localeCompare(bIdentifier);
     });
 
     // Only use top 15 leads for the weekly view (same as LeadsTable)
@@ -483,7 +483,7 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
         <div className="animate-pulse">
           <div className="h-6 bg-gray-700 rounded mb-4 w-1/3"></div>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            {WEEKDAYS.map((day) => (
+      {WEEKDAYS.map((day) => (
               <div key={day} className="space-y-3">
                 <div className="h-4 bg-gray-700 rounded w-2/3"></div>
                 <div className="space-y-2">
@@ -492,11 +492,11 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
                   ))}
                 </div>
               </div>
-            ))}
+      ))}
           </div>
         </div>
-      </div>
-    );
+    </div>
+  );
   }
 
   return (
@@ -511,49 +511,49 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
                 <div className="text-xs text-gray-500">
                   {getSlotsByDay(day).length} contact{getSlotsByDay(day).length !== 1 ? 's' : ''}
                 </div>
-              </div>
-
-              <div className="space-y-3 min-h-[100px]">
-                {getSlotsByDay(day).slice(0, 3).map((slot) => (
-                  <div 
-                    key={`desktop-slot-${slot.id}`} 
-                    className="group p-3 bg-gray-800 border border-gray-700 rounded-md hover:border-blue-600/70 hover:bg-gray-700/60 transition-all duration-150 ease-in-out cursor-pointer shadow-sm"
-                    onClick={() => handleSlotClick(slot.id)}
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSlotClick(slot.id)}
-                    aria-label={`View outreach details for ${slot.lead}`}
-                  >
-                    <div className="font-medium text-gray-100 group-hover:text-white text-sm truncate">{slot.lead}</div>
-                    <div className="text-xs text-gray-400 truncate mt-0.5">{slot.company}</div>
-                    <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-1.5">
-                       <Clock className="w-3 h-3 flex-shrink-0" /> 
-                       <span>{slot.time}</span>
+      </div>
+      
+                <div className="space-y-3 min-h-[100px]">
+                  {getSlotsByDay(day).slice(0, 3).map((slot) => (
+                    <div 
+                      key={`desktop-slot-${slot.id}`} 
+                      className="group p-3 bg-gray-800 border border-gray-700 rounded-md hover:border-blue-600/70 hover:bg-gray-700/60 transition-all duration-150 ease-in-out cursor-pointer shadow-sm"
+                      onClick={() => handleSlotClick(slot.id)}
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSlotClick(slot.id)}
+                      aria-label={`View outreach details for ${slot.lead}`}
+                    >
+                      <div className="font-medium text-gray-100 group-hover:text-white text-sm truncate">{slot.lead}</div>
+                      <div className="text-xs text-gray-400 truncate mt-0.5">{slot.company}</div>
+                      <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-1.5">
+                         <Clock className="w-3 h-3 flex-shrink-0" /> 
+                         <span>{slot.time}</span>
+                      </div>
+                      <div className={`flex items-center gap-1 text-xs font-medium mt-2 ${getProbabilityClasses(slot.probability)}`}>
+                         <TrendingUp className="w-3 h-3 flex-shrink-0" /> 
+                         <span>{slot.probability}% relevance</span>
+                      </div>
                     </div>
-                    <div className={`flex items-center gap-1 text-xs font-medium mt-2 ${getProbabilityClasses(slot.probability)}`}>
-                       <TrendingUp className="w-3 h-3 flex-shrink-0" /> 
-                       <span>{slot.probability}% relevance</span>
+                  ))}
+                  
+                  {getSlotsByDay(day).length === 0 && (
+                    <div className="text-center text-sm text-gray-500 pt-6 pb-4">
+                      No contacts scheduled.
                     </div>
-                  </div>
-                ))}
-                
-                {getSlotsByDay(day).length === 0 && (
-                  <div className="text-center text-sm text-gray-500 pt-6 pb-4">
-                    No contacts scheduled.
-                  </div>
-                )}
-                
-                {getMoreCount(day) > 0 && (
-                  <button 
+                  )}
+                  
+                  {getMoreCount(day) > 0 && (
+                    <button
                     onClick={() => handleDayClick(day)}
                     className="w-full text-center text-xs text-blue-400 hover:text-blue-300 py-2 border border-gray-700 rounded-md hover:border-blue-600/50 transition-colors"
-                  >
+                    >
                     +{getMoreCount(day)} more contact{getMoreCount(day) !== 1 ? 's' : ''}
-                  </button>
-                )}
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
       </div>
 
       {/* Mobile View */}
@@ -591,7 +591,7 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
               <>
                 {getSlotsByDay(activeDayMobile).map((slot) => (
                   <div 
-                    key={`mobile-slot-${slot.id}`}
+                    key={`mobile-slot-${slot.id}`} 
                     className="p-4 bg-gray-800 border border-gray-700 rounded-lg hover:border-blue-600/70 transition-colors cursor-pointer"
                     onClick={() => handleSlotClick(slot.id)}
                     tabIndex={0}
@@ -603,8 +603,8 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-1.5 text-gray-400">
                         <Clock className="w-3 h-3" />
-                        <span>{slot.time}</span>
-                      </div>
+                       <span>{slot.time}</span>
+                    </div>
                       <div className={`flex items-center gap-1 font-medium ${getProbabilityClasses(slot.probability)}`}>
                         <TrendingUp className="w-3 h-3" />
                         <span>{slot.probability}%</span>
@@ -625,7 +625,7 @@ const ContentCalendar = ({ selectedDay = null, onSelectLead }: ContentCalendarPr
             )}
           </div>
         )}
-      </div>
+          </div>
     </div>
   );
 };

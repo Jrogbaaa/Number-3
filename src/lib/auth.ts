@@ -68,23 +68,6 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   debug: process.env.NODE_ENV === 'development', // Only enable debug in development
-  
-  // Add cookies configuration for production
-  cookies: {
-    sessionToken: {
-      name: "next-auth.session-token",
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 30 * 24 * 60 * 60, // 30 days
-        // Ensure cookies work across subdomains on Vercel
-        domain: process.env.NODE_ENV === "production" ? ".vercel.app" : undefined,
-      },
-    },
-  },
-  
   callbacks: {
     async session({ session, token }) {
       // Add user ID to the session

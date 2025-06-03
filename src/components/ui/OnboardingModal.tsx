@@ -363,7 +363,7 @@ export default function OnboardingModal() {
       setIsScrapingWebsite(false);
     }
   };
-
+  
   // Step indicators
   const steps = [
     { name: 'Welcome', icon: <Settings className="h-5 w-5" />, step: 'welcome' },
@@ -959,12 +959,12 @@ export default function OnboardingModal() {
         
         {/* Scrollable content area */}
         <div className="flex-1 overflow-y-auto p-6">
-          {/* Error banner */}
-          <ErrorBanner />
-          
-          {/* Modal content */}
-          <div className="py-2">
-            {renderStepContent()}
+        {/* Error banner */}
+        <ErrorBanner />
+        
+        {/* Modal content */}
+        <div className="py-2">
+          {renderStepContent()}
           </div>
         </div>
         

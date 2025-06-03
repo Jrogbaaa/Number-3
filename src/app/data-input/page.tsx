@@ -76,13 +76,12 @@ export default function DataInputPage() {
       router.refresh();
       toast.success('Leads uploaded successfully!');
       
-      // Set a flag that leads were uploaded and tutorial should show on dashboard visit
+      // Trigger tutorial for first-time users with successful upload
       if (uploadedLeads && uploadedLeads.length > 0) {
-        try {
-          localStorage.setItem('tutorial-trigger-on-dashboard', 'true');
-        } catch (error) {
-          console.warn('[DataInput] Failed to set tutorial trigger flag:', error);
-        }
+        // Small delay to let the page update first
+        setTimeout(() => {
+          triggerTutorialAfterUpload(uploadedLeads.length);
+        }, 1000);
       }
     } else {
       console.log('[DataInput] Processing unauthenticated user upload');
@@ -172,7 +171,7 @@ export default function DataInputPage() {
                   Perfect! {temporaryLeads.length} Leads Analyzed
                 </h3>
                 <p className="text-gray-300 mb-6">
-                  Your leads have been analyzed using your personalized preferences. Sign in to view your customized dashboard, detailed lead rankings, AI-powered insights, scoring tutorial, and outreach calendar.
+                  Your leads have been analyzed using your personalized preferences. Sign in to view your customized dashboard, detailed lead rankings, AI-powered insights, and outreach calendar.
                 </p>
                 
                 <div className="space-y-3">

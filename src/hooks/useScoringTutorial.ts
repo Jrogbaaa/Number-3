@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 
 const TUTORIAL_STORAGE_KEY = 'scoring-tutorial-completed';
-const TUTORIAL_TRIGGER_KEY = 'tutorial-trigger-on-dashboard';
 
 export const useScoringTutorial = () => {
   const [hasSeenTutorial, setHasSeenTutorial] = useState<boolean>(false);
@@ -27,37 +26,21 @@ export const useScoringTutorial = () => {
     checkTutorialStatus();
   }, []);
 
-  // Check if tutorial should show on dashboard visit
-  const checkForDashboardTrigger = () => {
-    if (isLoading) return false;
-    
-    try {
-      const shouldTrigger = localStorage.getItem(TUTORIAL_TRIGGER_KEY);
-      console.log('[ScoringTutorial] Checking dashboard trigger:', {
-        shouldTrigger,
-        hasSeenTutorial,
-        showTutorial
-      });
-      
-      // Only show if they haven't seen it, trigger flag is set, and not already showing
-      if (!hasSeenTutorial && shouldTrigger === 'true' && !showTutorial) {
-        console.log('[ScoringTutorial] Showing tutorial on dashboard visit');
-        setShowTutorial(true);
-        // Clear the trigger flag so it doesn't show again
-        localStorage.removeItem(TUTORIAL_TRIGGER_KEY);
-        return true;
-      }
-    } catch (error) {
-      console.warn('[ScoringTutorial] Failed to check dashboard trigger:', error);
-    }
-    
-    return false;
-  };
-
-  // Legacy function for backward compatibility - now just checks dashboard trigger
+  // Trigger tutorial for first-time users after lead upload
   const triggerTutorialAfterUpload = (leadCount: number) => {
-    console.log('[ScoringTutorial] triggerTutorialAfterUpload called (legacy) - checking dashboard trigger instead');
-    return checkForDashboardTrigger();
+    if (isLoading) return;
+    
+    console.log('[ScoringTutorial] Checking if tutorial should show after upload:', {
+      leadCount,
+      hasSeenTutorial,
+      showTutorial
+    });
+
+    // Only show if they haven't seen it and this is their first upload with leads
+    if (!hasSeenTutorial && leadCount > 0 && !showTutorial) {
+      console.log('[ScoringTutorial] Showing tutorial after first upload');
+      setShowTutorial(true);
+    }
   };
 
   // Trigger tutorial when settings are reset
@@ -80,8 +63,6 @@ export const useScoringTutorial = () => {
       localStorage.setItem(TUTORIAL_STORAGE_KEY, 'true');
       setHasSeenTutorial(true);
       setShowTutorial(false);
-      // Also clear any pending dashboard trigger
-      localStorage.removeItem(TUTORIAL_TRIGGER_KEY);
     } catch (error) {
       console.warn('[ScoringTutorial] Failed to save tutorial completion:', error);
     }
@@ -98,7 +79,6 @@ export const useScoringTutorial = () => {
     console.log('[ScoringTutorial] Tutorial state reset');
     try {
       localStorage.removeItem(TUTORIAL_STORAGE_KEY);
-      localStorage.removeItem(TUTORIAL_TRIGGER_KEY);
       setHasSeenTutorial(false);
       setShowTutorial(false);
     } catch (error) {
@@ -112,7 +92,6 @@ export const useScoringTutorial = () => {
     isLoading,
     triggerTutorialAfterUpload,
     triggerTutorialAfterReset,
-    checkForDashboardTrigger,
     completeTutorial,
     closeTutorial,
     resetTutorial
@@ -124,7 +103,6 @@ if (typeof window !== 'undefined') {
   (window as any).testScoringTutorial = () => {
     console.log('[ScoringTutorial] Manual test triggered');
     localStorage.removeItem('scoring-tutorial-completed');
-    localStorage.setItem('tutorial-trigger-on-dashboard', 'true');
     window.location.reload();
   };
   

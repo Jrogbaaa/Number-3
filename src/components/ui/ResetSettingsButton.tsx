@@ -39,7 +39,7 @@ const ResetSettingsButton = () => {
         // Also clear any cached onboarding completion flags and mark reset time
         localStorage.removeItem('hasVisitedDashboard');
         localStorage.setItem('lastSettingsReset', Date.now().toString());
-        
+
         // Clear scoring tutorial completion so it shows again after reset
         localStorage.removeItem('scoring-tutorial-completed');
 
