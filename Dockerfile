@@ -23,13 +23,13 @@ RUN npm rebuild --if-present || true
 ENV NEXTAUTH_SECRET=build-time-secret
 ENV SUPABASE_URL=https://kodddurybogqynkswrzp.supabase.co
 ENV NEXT_PUBLIC_SUPABASE_URL=https://kodddurybogqynkswrzp.supabase.co
-ENV SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvZGRkdXJ5Ym9ncXlua3N3cnpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzNjM2ODYsImV4cCI6MjA1MTkzOTY4Nn0.GC6Ny_8wZiYwbPd7F5kBYXnyUHEelPQXK-oeG6fYqSQ
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvZGRkdXJ5Ym9ncXlua3N3cnpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzNjM2ODYsImV4cCI6MjA1MTkzOTY4Nn0.GC6Ny_8wZiYwbPd7F5kBYXnyUHEelPQXK-oeG6fYqSQ
+ENV SUPABASE_ANON_KEY=placeholder-anon-key
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder-anon-key
 ENV SUPABASE_SERVICE_ROLE_KEY=placeholder-service-role-key
 ENV GOOGLE_CLIENT_ID=placeholder-client-id
 ENV GOOGLE_CLIENT_SECRET=placeholder-client-secret
-ENV NEXTAUTH_URL=https://placeholder.run.app
-ENV FIRECRAWL_API_KEY=build-fallback-key
+ENV NEXTAUTH_URL=http://localhost:3000
+ENV FIRECRAWL_API_KEY=placeholder-firecrawl-key
 ENV NODE_ENV=production
 
 # Build the Next.js application
