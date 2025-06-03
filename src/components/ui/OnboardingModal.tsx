@@ -330,35 +330,31 @@ export default function OnboardingModal() {
       const data = await response.json();
 
       if (!response.ok) {
-        // Handle specific error status codes
-        if (response.status === 408) {
-          throw new Error('The website took too long to load. Please try a different URL or try again later.');
-        } else if (response.status === 429) {
-          throw new Error('Too many requests. Please wait a moment and try again.');
-        } else if (response.status === 503) {
-          throw new Error('Scraping service is temporarily unavailable. Please try again later.');
-        }
-        throw new Error(data.error || 'Failed to scrape website content');
+        // Instead of showing error messages to user, just silently continue
+        // This allows users to add their website URL regardless of scraping success
+        console.log('Website scraping failed, but continuing without error message:', data.error);
+        setScrapedWebsiteContent(''); // Clear any previous content
+        setErrorMessage(''); // Don't show error to user
+        setIsScrapingWebsite(false);
+        return;
       }
 
       if (data.success && data.data?.content) {
         setScrapedWebsiteContent(data.data.content);
         setErrorMessage('');
       } else {
-        throw new Error('No content could be extracted from the website');
+        // Don't show error to user, just continue without scraped content
+        console.log('No content extracted, but continuing without error message');
+        setScrapedWebsiteContent('');
+        setErrorMessage('');
       }
     } catch (error) {
-      console.error('Website scraping error:', error);
+      console.log('Website scraping error, but continuing without showing error to user:', error);
       
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          setErrorMessage('Request timed out. Please try again with a different URL.');
-        } else {
-          setErrorMessage(error.message);
-        }
-      } else {
-        setErrorMessage('Failed to scrape website content. Please try again.');
-      }
+      // Don't show any error messages to the user
+      // They can still add their website URL manually
+      setScrapedWebsiteContent('');
+      setErrorMessage('');
     } finally {
       setIsScrapingWebsite(false);
     }

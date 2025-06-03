@@ -1280,7 +1280,7 @@ export default function LeadsTable({ leads, showChromeScore = false, loading = f
                     widthClass = 'w-40';
                     break;
                   case 'added':
-                    widthClass = 'w-24';
+                    widthClass = 'w-20'; // Made smaller to prevent overlap with action buttons
                     break;
                   case 'intent':
                   case 'budget':
@@ -1344,7 +1344,7 @@ export default function LeadsTable({ leads, showChromeScore = false, loading = f
                           widthClass = 'w-40';
                           break;
                         case 'added':
-                          widthClass = 'w-24';
+                          widthClass = 'w-20'; // Made smaller to prevent overlap with action buttons
                           break;
                         case 'intent':
                         case 'budget':
@@ -1505,7 +1505,11 @@ export default function LeadsTable({ leads, showChromeScore = false, loading = f
                         case 'added':
                           return (
                             <td key={column.id} className={`py-3 px-4 whitespace-nowrap text-gray-400 ${widthClass}`}>
-                    {lead.created_at ? new Date(lead.created_at).toLocaleDateString() : 'N/A'}
+                    {lead.created_at ? new Date(lead.created_at).toLocaleDateString('en-US', { 
+                      month: 'numeric', 
+                      day: 'numeric', 
+                      year: '2-digit' 
+                    }) : 'N/A'}
                   </td>
                           );
                         default:

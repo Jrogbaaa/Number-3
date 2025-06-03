@@ -129,21 +129,56 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
     const sessionAny = session as any;
     const userId = userIdParam || session?.user?.id || sessionAny?.user?.sub || sessionAny?.nextAuth?.user?.id || sessionAny?.supabase?.user?.id;
     
-    if (!userId || isIncognitoDetected) return null;
+    if (isIncognitoDetected) return null;
     
     try {
-      // Try loading with the original user ID
-      const localPrefs = localStorage.getItem(`user-preferences-${userId}`);
+      // Try loading with the original user ID first
+      if (userId) {
+        const localPrefs = localStorage.getItem(`user-preferences-${userId}`);
+        if (localPrefs) {
+          const parsedPrefs = JSON.parse(localPrefs);
+          console.log('[UserPreferencesProvider] Loaded preferences from localStorage:', parsedPrefs);
+          
+          // Ensure the userId in the preferences matches the session userId
+          // This handles cases where the backend might have transformed the ID
+          parsedPrefs.userId = userId;
+          
+          return parsedPrefs;
+        }
+      }
       
-      if (localPrefs) {
-        const parsedPrefs = JSON.parse(localPrefs);
-        console.log('[UserPreferencesProvider] Loaded preferences from localStorage:', parsedPrefs);
-        
-        // Ensure the userId in the preferences matches the session userId
-        // This handles cases where the backend might have transformed the ID
-        parsedPrefs.userId = userId;
-        
-        return parsedPrefs;
+      // Check if user has temporary leads and look for generic onboarding completion
+      const tempLeads = localStorage.getItem('temporary-leads');
+      if (tempLeads && userId) {
+        // Check for onboarding completion stored with generic keys
+        const genericKeys = ['user-preferences-anonymous-user', 'user-preferences-anonymous', 'user-preferences-temp'];
+        for (const key of genericKeys) {
+          const genericPrefs = localStorage.getItem(key);
+          if (genericPrefs) {
+            try {
+              const parsedGenericPrefs = JSON.parse(genericPrefs);
+              if (parsedGenericPrefs.hasCompletedOnboarding) {
+                console.log('[UserPreferencesProvider] Found completed onboarding in generic preferences, migrating to user-specific preferences');
+                // Migrate the generic preferences to user-specific preferences
+                const migratedPrefs = {
+                  ...parsedGenericPrefs,
+                  userId: userId,
+                  updatedAt: new Date()
+                };
+                
+                // Save to user-specific key
+                localStorage.setItem(`user-preferences-${userId}`, JSON.stringify(migratedPrefs));
+                
+                // Clean up the generic preference
+                localStorage.removeItem(key);
+                
+                return migratedPrefs;
+              }
+            } catch (e) {
+              // Ignore parse errors for generic preferences
+            }
+          }
+        }
       }
     } catch (err) {
       console.error('[UserPreferencesProvider] Error parsing local preferences:', err);
@@ -152,7 +187,7 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
     // Return default preferences if nothing in localStorage
     return {
       ...DEFAULT_PREFERENCES,
-      userId: userId
+      userId: userId || 'anonymous'
     };
   };
 
@@ -161,13 +196,40 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
     const sessionAny = session as any;
     const userId = userIdParam || session?.user?.id || sessionAny?.user?.sub || sessionAny?.nextAuth?.user?.id || sessionAny?.supabase?.user?.id;
     
-    if (!userId || isIncognitoDetected) return false;
+    if (isIncognitoDetected) return false;
     
     try {
-      const localPrefs = localStorage.getItem(`user-preferences-${userId}`);
-      if (localPrefs) {
-        const parsedPrefs = JSON.parse(localPrefs);
-        return parsedPrefs.hasCompletedOnboarding || false;
+      // Check for onboarding completion with the user's actual ID
+      if (userId) {
+        const localPrefs = localStorage.getItem(`user-preferences-${userId}`);
+        if (localPrefs) {
+          const parsedPrefs = JSON.parse(localPrefs);
+          if (parsedPrefs.hasCompletedOnboarding) {
+            return true;
+          }
+        }
+      }
+      
+      // Also check for generic onboarding completion (for users who completed onboarding while unauthenticated)
+      // This happens when users complete onboarding, upload leads, then sign in
+      const tempLeads = localStorage.getItem('temporary-leads');
+      if (tempLeads) {
+        // Check for onboarding completion stored with generic keys
+        const genericKeys = ['user-preferences-anonymous-user', 'user-preferences-anonymous', 'user-preferences-temp'];
+        for (const key of genericKeys) {
+          const genericPrefs = localStorage.getItem(key);
+          if (genericPrefs) {
+            try {
+              const parsedGenericPrefs = JSON.parse(genericPrefs);
+              if (parsedGenericPrefs.hasCompletedOnboarding) {
+                console.log('[UserPreferencesProvider] Found completed onboarding in generic preferences, user should not see onboarding again');
+                return true;
+              }
+            } catch (e) {
+              // Ignore parse errors for generic preferences
+            }
+          }
+        }
       }
     } catch (err) {
       console.error('[UserPreferencesProvider] Error checking onboarding completion:', err);
