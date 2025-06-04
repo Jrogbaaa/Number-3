@@ -8,7 +8,6 @@ import ContentCalendar from '@/components/outreach/ContentCalendar';
 import LeadsTable from '@/components/LeadsTable';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import LeadScoreDistribution from '@/components/dashboard/LeadScoreDistribution';
-import WelcomeModal from '@/components/ui/WelcomeModal';
 import OnboardingModal from '@/components/ui/OnboardingModal';
 import ScoringTutorialModal from '@/components/ui/ScoringTutorialModal';
 import { useUserPreferences } from '@/providers/UserPreferencesProvider';
@@ -18,13 +17,6 @@ import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 import ResetSettingsButton from '@/components/ui/ResetSettingsButton';
 import { RotateCcw, Users, Calendar, Info, TrendingUp, Target } from 'lucide-react';
-
-// Extend the Window interface to include our custom property
-declare global {
-  interface Window {
-    resetFirstVisitFlag?: () => void;
-  }
-}
 
 // Add this component for debugging
 const DebugInfo = ({ 
@@ -87,10 +79,8 @@ export default function DashboardPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(false);
   const [showDebugInfo, setShowDebugInfo] = useState<boolean>(process.env.NODE_ENV !== 'production');
   const [isOnboardingActive, setIsOnboardingActive] = useState<boolean>(false);
-  const [preventWelcomeModal, setPreventWelcomeModal] = useState<boolean>(true);
   const [isResetting, setIsResetting] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'leads' | 'outreach'>('leads');
   
@@ -138,7 +128,7 @@ export default function DashboardPage() {
   const preferences = status === 'authenticated' ? userPreferences.preferences : null;
   const preferencesError = status === 'authenticated' ? userPreferences.error : null;
 
-  // Track onboarding state changes and prevent welcome modal during onboarding/reset
+  // Track onboarding state changes
   useEffect(() => {
     setIsOnboardingActive(!hasCompletedOnboarding);
     
@@ -149,21 +139,6 @@ export default function DashboardPage() {
     // Set resetting state if it's a very recent reset (within 45 seconds to account for page reload)
     const isVeryRecentReset = lastResetTime && (Date.now() - parseInt(lastResetTime)) < 45 * 1000;
     setIsResetting(!!isVeryRecentReset);
-    
-    // If onboarding is not completed OR this is a recent reset, prevent welcome modal
-    if (!hasCompletedOnboarding || isRecentReset) {
-      setPreventWelcomeModal(true);
-      // Also clear the welcome modal state if it was set
-      setShowWelcomeModal(false);
-    } else {
-      // Only allow welcome modal if onboarding is truly complete AND no recent reset
-      // Add a delay to ensure everything is stable
-      const timer = setTimeout(() => {
-        setPreventWelcomeModal(false);
-      }, 3000); // 3 second delay to ensure onboarding is fully complete
-      
-      return () => clearTimeout(timer);
-    }
   }, [hasCompletedOnboarding]);
 
   // Check for recent settings reset and trigger tutorial if needed
@@ -215,8 +190,6 @@ export default function DashboardPage() {
     status,
     preferences: preferences ? 'loaded' : 'none',
     isOnboardingActive,
-    preventWelcomeModal,
-    showWelcomeModal,
     isResetting
   });
 
@@ -656,76 +629,6 @@ export default function DashboardPage() {
     // Keep loading true while status is 'loading'
   }, [status, session]); // Trigger when session is ready
 
-  // Check for first visit when component mounts
-  useEffect(() => {
-    // Skip if not authenticated
-    if (status !== 'authenticated') return;
-    
-    // COMPLETELY DISABLE welcome modal if any of these conditions are true:
-    // 1. Onboarding not completed
-    // 2. Preferences not loaded
-    // 3. Prevention flag is set
-    // 4. Onboarding is active
-    // 5. Recent reset activity
-    // 6. Current onboarding step is not complete (7)
-    // 7. Currently in resetting state
-    
-    const lastResetTime = localStorage.getItem('lastSettingsReset');
-    const isRecentReset = lastResetTime && (Date.now() - parseInt(lastResetTime)) < 10 * 60 * 1000; // 10 minutes
-    const currentStep = preferences?.onboardingStep || 1;
-    
-    const shouldBlockWelcomeModal = (
-      !hasCompletedOnboarding ||
-      !preferences ||
-      preventWelcomeModal ||
-      isOnboardingActive ||
-      isRecentReset ||
-      currentStep < 7 ||
-      preferencesLoading ||
-      isResetting // Add this critical check
-    );
-    
-    if (shouldBlockWelcomeModal) {
-      console.log('[Dashboard] Blocking welcome modal due to:', {
-        hasCompletedOnboarding,
-        hasPreferences: !!preferences,
-        preventWelcomeModal,
-        isOnboardingActive,
-        isRecentReset,
-        currentStep,
-        preferencesLoading,
-        isResetting
-      });
-      // Actively hide welcome modal if it's currently showing
-      setShowWelcomeModal(false);
-      return; // Don't show welcome modal
-    }
-    
-    // Only show welcome modal if ALL conditions are met and it's first visit
-    const hasVisitedBefore = localStorage.getItem('hasVisitedDashboard');
-    if (!hasVisitedBefore) {
-      console.log('[Dashboard] Showing welcome modal - all conditions met');
-      setShowWelcomeModal(true);
-      localStorage.setItem('hasVisitedDashboard', 'true');
-    }
-    
-    // Add developer utility to reset first visit flag (available in browser console)
-    // Usage: window.resetFirstVisitFlag()
-    window.resetFirstVisitFlag = () => {
-      localStorage.removeItem('hasVisitedDashboard');
-      console.log('First visit flag reset. Refresh the page to see the welcome modal again.');
-    };
-    
-    // Cleanup
-    return () => {
-      delete window.resetFirstVisitFlag;
-    };
-  }, [status, hasCompletedOnboarding, preferences, preventWelcomeModal, isOnboardingActive, preferencesLoading, isResetting]);
-
-  const handleCloseWelcomeModal = () => {
-    setShowWelcomeModal(false);
-  };
-
   // Show loading state while checking authentication or preferences
   if (status === 'loading' || preferencesLoading) {
     return (
@@ -835,9 +738,6 @@ export default function DashboardPage() {
       ) : (
         !hasCompletedOnboarding && <OnboardingModal />
       )}
-      
-      {/* Show welcome modal on first visit (only if the user has completed onboarding and not prevented) */}
-      {showWelcomeModal && hasCompletedOnboarding && !preventWelcomeModal && !isOnboardingActive && <WelcomeModal onClose={handleCloseWelcomeModal} />}
       
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
