@@ -201,12 +201,16 @@ export default function DashboardPage() {
       // Show loading state to user
       const loadingToast = toast.loading(`Importing your ${tempLeads.length} leads...`);
       
+      // Add a small delay to ensure session is fully established
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       const response = await fetch('/api/upload-leads', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ leads: tempLeads }),
+        credentials: 'include', // Ensure session cookies are included
       });
       
       // Dismiss loading toast
@@ -219,28 +223,71 @@ export default function DashboardPage() {
         // Show success message
         toast.success(`Successfully imported ${tempLeads.length} leads to your account!`);
         
-        // Refresh leads data
-        fetchLeads();
+        // Clear temporary leads from localStorage immediately after successful import
+        localStorage.removeItem('temporary-leads');
+        console.log('[Dashboard] Cleared temporary leads from localStorage');
         
-        // Trigger tutorial after successful import if user has completed onboarding
-        if (hasCompletedOnboarding && tempLeads.length > 0) {
-          setTimeout(() => {
-            triggerTutorialAfterUpload(tempLeads.length);
-          }, 1500);
-        }
+        // Wait a moment then refresh leads data to ensure they appear
+        setTimeout(async () => {
+          console.log('[Dashboard] Fetching leads after successful import...');
+          await fetchLeads();
+          
+          // If no leads were fetched, retry a few times with increasing delays
+          if (leads.length === 0) {
+            console.log('[Dashboard] No leads found after import, retrying...');
+            let retryCount = 0;
+            const maxRetries = 3;
+            
+            const retryFetch = async () => {
+              retryCount++;
+              console.log(`[Dashboard] Retry attempt ${retryCount}/${maxRetries}`);
+              
+              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // 1s, 2s, 3s delays
+              await fetchLeads();
+              
+              if (leads.length === 0 && retryCount < maxRetries) {
+                await retryFetch();
+              } else if (leads.length > 0) {
+                console.log(`[Dashboard] Successfully fetched ${leads.length} leads after retry ${retryCount}`);
+              } else {
+                console.log('[Dashboard] Still no leads after all retries - there may be a data issue');
+                toast.error('Leads imported but not visible yet. Please refresh the page.');
+              }
+            };
+            
+            await retryFetch();
+          }
+          
+          // Trigger tutorial after successful import if user has completed onboarding
+          if (hasCompletedOnboarding && tempLeads.length > 0) {
+            setTimeout(() => {
+              triggerTutorialAfterUpload(tempLeads.length);
+            }, 1000);
+          }
+        }, 500);
+        
+        return true;
       } else {
         const errorData = await response.json();
         console.error('[Dashboard] Failed to import temporary leads:', errorData);
-        toast.error(`Failed to import leads: ${errorData.error || 'Unknown error'}`);
+        
+        // More specific error handling
+        if (response.status === 401) {
+          toast.error('Sign-in session expired. Please sign in again to import your leads.');
+          // Redirect to sign-in with callback to retry
+          setTimeout(() => {
+            window.location.href = '/api/auth/signin/google?callbackUrl=/dashboard';
+          }, 2000);
+        } else {
+          toast.error(`Failed to import leads: ${errorData.error || 'Unknown error'}`);
+        }
         
         // Don't clear temporary leads if import fails
         return false;
       }
-      
-      return true;
     } catch (error) {
       console.error('[Dashboard] Error importing temporary leads:', error);
-      toast.error('Error importing your leads. Please try uploading again.');
+      toast.error('Error importing your leads. Please refresh the page and try again.');
       return false;
     }
   };
@@ -260,28 +307,33 @@ export default function DashboardPage() {
     
     // Check for temporary leads when user signs in
     if (status === 'authenticated' && session?.user) {
-      try {
-        const tempLeads = localStorage.getItem('temporary-leads');
-        if (tempLeads) {
-          const leads = JSON.parse(tempLeads);
-          if (leads && Array.isArray(leads) && leads.length > 0) {
-            console.log(`[Dashboard] Found ${leads.length} temporary leads to import`);
-            
-            // Import temporary leads to user's account
-            importTemporaryLeads(leads).then((success) => {
-              if (success) {
-                // Only clear temporary leads from localStorage if import was successful
-                console.log('[Dashboard] Import successful, clearing temporary leads from localStorage');
-                localStorage.removeItem('temporary-leads');
-              } else {
-                console.log('[Dashboard] Import failed, keeping temporary leads in localStorage for retry');
-              }
-            });
+      // Add a small delay to ensure everything is properly initialized
+      setTimeout(() => {
+        try {
+          const tempLeads = localStorage.getItem('temporary-leads');
+          if (tempLeads) {
+            const leads = JSON.parse(tempLeads);
+            if (leads && Array.isArray(leads) && leads.length > 0) {
+              console.log(`[Dashboard] Found ${leads.length} temporary leads to import`);
+              
+              // Import temporary leads to user's account
+              importTemporaryLeads(leads).then((success) => {
+                if (!success) {
+                  console.log('[Dashboard] Import failed, keeping temporary leads in localStorage for retry');
+                }
+              }).catch((error) => {
+                console.error('[Dashboard] Import promise rejection:', error);
+              });
+            } else {
+              console.log('[Dashboard] No valid temporary leads found');
+            }
+          } else {
+            console.log('[Dashboard] No temporary leads in localStorage');
           }
+        } catch (error) {
+          console.error('[Dashboard] Error checking for temporary leads:', error);
         }
-      } catch (error) {
-        console.error('[Dashboard] Error checking for temporary leads:', error);
-      }
+      }, 1500); // Wait for session and preferences to be fully loaded
     }
     
     // Sync authentication with backend if needed

@@ -151,13 +151,16 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
       if (tempLeads && userId) {
         console.log('[UserPreferencesProvider] User has temporary leads, checking for generic onboarding completion');
         
-        // Check for onboarding completion stored with generic keys
+        // Check for onboarding completion stored with generic keys - expanded list
         const genericKeys = [
           'user-preferences-anonymous-user',
           'user-preferences-anonymous',
           'user-preferences-temp',
           'user-preferences-undefined',
-          'user-preferences-null'
+          'user-preferences-null',
+          'user-preferences-guest',
+          'user-preferences-default',
+          'user-preferences-local'
         ];
         
         for (const key of genericKeys) {
@@ -188,6 +191,44 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
               console.warn('[UserPreferencesProvider] Failed to parse generic preferences for key:', key);
             }
           }
+        }
+        
+        // Additional fallback: check for any localStorage key that contains onboarding completion
+        console.log('[UserPreferencesProvider] No generic keys found, checking all localStorage for onboarding completion');
+        try {
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.includes('preferences')) {
+              const value = localStorage.getItem(key);
+              if (value) {
+                try {
+                  const parsed = JSON.parse(value);
+                  if (parsed.hasCompletedOnboarding) {
+                    console.log(`[UserPreferencesProvider] Found onboarding completion in key: ${key}, migrating...`);
+                    
+                    // Migrate this to the user-specific key
+                    const migratedPrefs = {
+                      ...parsed,
+                      userId: userId,
+                      updatedAt: new Date()
+                    };
+                    
+                    saveToLocalStorage(migratedPrefs, userId);
+                    
+                    // Clean up the old key
+                    localStorage.removeItem(key);
+                    
+                    console.log('[UserPreferencesProvider] Successfully migrated onboarding from fallback key');
+                    return migratedPrefs;
+                  }
+                } catch (parseError) {
+                  // Ignore parse errors for non-JSON values
+                }
+              }
+            }
+          }
+        } catch (storageError) {
+          console.warn('[UserPreferencesProvider] Error scanning localStorage:', storageError);
         }
       }
       

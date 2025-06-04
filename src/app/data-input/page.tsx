@@ -68,8 +68,34 @@ export default function DataInputPage() {
       console.log('[DataInput] User is authenticated, clearing temporary leads from state');
       setTemporaryLeads([]);
       setShowSignInPrompt(false);
+      
+      // Check if user just signed in and show a success message if they had temporary leads
+      try {
+        const tempLeads = localStorage.getItem('temporary-leads');
+        if (tempLeads) {
+          const leads = JSON.parse(tempLeads);
+          if (leads && Array.isArray(leads) && leads.length > 0) {
+            console.log('[DataInput] Found temporary leads after sign-in, they should be imported automatically');
+            // Show a message that leads are being imported
+            setTimeout(() => {
+              toast.success(`Welcome back! Your ${leads.length} leads are being imported to your account.`);
+              // Suggest user goes to dashboard
+              setTimeout(() => {
+                toast('You can view your leads in the dashboard.', {
+                  action: {
+                    label: 'Go to Dashboard',
+                    onClick: () => router.push('/dashboard')
+                  }
+                });
+              }, 2000);
+            }, 1000);
+          }
+        }
+      } catch (error) {
+        console.error('[DataInput] Error checking temporary leads after sign-in:', error);
+      }
     }
-  }, [status, userPreferences.hasCompletedOnboarding]);
+  }, [status, userPreferences.hasCompletedOnboarding, router]);
 
   const handleClearComplete = () => {
     // Force a router refresh to update the UI
