@@ -8,9 +8,11 @@ AI-powered insights and outreach automation for lead management with website int
 
 - **🌐 Website & LinkedIn Scraping**: Extract company context and insights during onboarding using Firecrawl API
 - **☁️ Cloud Run Deployment**: Production-ready Google Cloud deployment with automatic scaling
-- **🔐 Google Authentication** with NextAuth.js
+- **🔐 Google Authentication** with NextAuth.js and comprehensive user profile management
+- **👤 User Profile Header**: Google profile photo, company name personalization, and dropdown menu
+- **🏢 Company Personalization**: Display user and company information throughout the interface
 - **📊 Lead management and scoring** with AI-powered insights
-- **🔄 Supabase database integration** with robust connectivity
+- **🔄 Supabase database integration** with robust connectivity and multi-user support
 - **⚡ NextJS 15 with App Router** for optimal performance
 - **🎓 Interactive Scoring Tutorial**: Comprehensive onboarding tutorial that explains AI-powered lead scoring with company-specific personalization
 - **📋 Customizable table columns** that adapt to business needs
