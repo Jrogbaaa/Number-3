@@ -45,18 +45,31 @@ export default function DataInputPage() {
 
   // Load temporary leads from localStorage on mount
   useEffect(() => {
+    console.log('[DataInput] useEffect - Loading temporary leads, status:', status);
     if (status === 'unauthenticated') {
       try {
         const savedLeads = localStorage.getItem('temporary-leads');
+        console.log('[DataInput] Found savedLeads in localStorage:', !!savedLeads);
         if (savedLeads) {
           const leads = JSON.parse(savedLeads);
+          console.log('[DataInput] Parsed leads from localStorage:', leads.length, 'leads');
           setTemporaryLeads(leads);
+          
+          // Check if we should show sign-in prompt for existing leads
+          if (userPreferences.hasCompletedOnboarding && leads.length > 0) {
+            console.log('[DataInput] User has completed onboarding and has leads, showing sign-in prompt');
+            setShowSignInPrompt(true);
+          }
         }
       } catch (error) {
-        console.error('Error loading temporary leads:', error);
+        console.error('[DataInput] Error loading temporary leads:', error);
       }
+    } else if (status === 'authenticated') {
+      console.log('[DataInput] User is authenticated, clearing temporary leads from state');
+      setTemporaryLeads([]);
+      setShowSignInPrompt(false);
     }
-  }, [status]);
+  }, [status, userPreferences.hasCompletedOnboarding]);
 
   const handleClearComplete = () => {
     // Force a router refresh to update the UI
@@ -69,6 +82,7 @@ export default function DataInputPage() {
     console.log('[DataInput] handleUploadComplete called');
     console.log('[DataInput] Session status:', status);
     console.log('[DataInput] Uploaded leads count:', uploadedLeads?.length || 0);
+    console.log('[DataInput] Current hasCompletedOnboarding:', userPreferences.hasCompletedOnboarding);
     
     if (status === 'authenticated') {
       console.log('[DataInput] Processing authenticated user upload');
@@ -91,8 +105,17 @@ export default function DataInputPage() {
           console.log('[DataInput] Saving', uploadedLeads.length, 'leads to localStorage');
           localStorage.setItem('temporary-leads', JSON.stringify(uploadedLeads));
           setTemporaryLeads(uploadedLeads);
-          setShowSignInPrompt(true);
-          toast.success(`${uploadedLeads.length} leads processed! Sign in to see your results.`);
+          
+          // Only show sign-in prompt if user has completed onboarding
+          // This prevents the prompt from showing during the onboarding process
+          if (userPreferences.hasCompletedOnboarding) {
+            console.log('[DataInput] User has completed onboarding, showing sign-in prompt');
+            setShowSignInPrompt(true);
+            toast.success(`${uploadedLeads.length} leads processed! Sign in to see your results.`);
+          } else {
+            console.log('[DataInput] User has not completed onboarding, not showing sign-in prompt yet');
+            toast.success(`${uploadedLeads.length} leads processed successfully!`);
+          }
         } catch (error) {
           console.error('Error saving temporary leads:', error);
           toast.error('Error saving leads temporarily. Please try again.');
@@ -129,6 +152,8 @@ export default function DataInputPage() {
   const isAuthenticated = status === 'authenticated';
 
   console.log('[DataInput] Render - Session status:', status, 'isAuthenticated:', isAuthenticated);
+  console.log('[DataInput] Render - showSignInPrompt:', showSignInPrompt, 'temporaryLeads.length:', temporaryLeads.length);
+  console.log('[DataInput] Render - hasCompletedOnboarding:', userPreferences.hasCompletedOnboarding);
 
   return (
     <DashboardLayout>
@@ -160,7 +185,7 @@ export default function DataInputPage() {
         )}
 
         {/* Sign-in prompt modal for successful upload */}
-        {showSignInPrompt && temporaryLeads.length > 0 && (
+        {showSignInPrompt && temporaryLeads.length > 0 && !isAuthenticated && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
             <div className="bg-gradient-to-br from-gray-900 via-gray-900 to-gray-950 border border-gray-700/50 rounded-xl shadow-2xl p-6 w-full max-w-md mx-4 backdrop-blur-sm">
               <div className="text-center">

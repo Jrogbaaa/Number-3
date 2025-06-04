@@ -223,7 +223,10 @@ export default function DashboardPage() {
   // Import temporary leads when user signs in
   const importTemporaryLeads = async (tempLeads: any[]) => {
     try {
-      console.log(`Importing ${tempLeads.length} temporary leads for authenticated user`);
+      console.log(`[Dashboard] Importing ${tempLeads.length} temporary leads for authenticated user`);
+      
+      // Show loading state to user
+      const loadingToast = toast.loading(`Importing your ${tempLeads.length} leads...`);
       
       const response = await fetch('/api/upload-leads', {
         method: 'POST',
@@ -233,17 +236,39 @@ export default function DashboardPage() {
         body: JSON.stringify({ leads: tempLeads }),
       });
       
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
+      
       if (response.ok) {
         const result = await response.json();
-        console.log('Temporary leads imported successfully:', result);
+        console.log('[Dashboard] Temporary leads imported successfully:', result);
+        
+        // Show success message
+        toast.success(`Successfully imported ${tempLeads.length} leads to your account!`);
+        
         // Refresh leads data
         fetchLeads();
+        
+        // Trigger tutorial after successful import if user has completed onboarding
+        if (hasCompletedOnboarding && tempLeads.length > 0) {
+          setTimeout(() => {
+            triggerTutorialAfterUpload(tempLeads.length);
+          }, 1500);
+        }
       } else {
         const errorData = await response.json();
-        console.error('Failed to import temporary leads:', errorData);
+        console.error('[Dashboard] Failed to import temporary leads:', errorData);
+        toast.error(`Failed to import leads: ${errorData.error || 'Unknown error'}`);
+        
+        // Don't clear temporary leads if import fails
+        return false;
       }
+      
+      return true;
     } catch (error) {
-      console.error('Error importing temporary leads:', error);
+      console.error('[Dashboard] Error importing temporary leads:', error);
+      toast.error('Error importing your leads. Please try uploading again.');
+      return false;
     }
   };
 
@@ -267,14 +292,22 @@ export default function DashboardPage() {
         if (tempLeads) {
           const leads = JSON.parse(tempLeads);
           if (leads && Array.isArray(leads) && leads.length > 0) {
+            console.log(`[Dashboard] Found ${leads.length} temporary leads to import`);
+            
             // Import temporary leads to user's account
-            importTemporaryLeads(leads);
-            // Clear temporary leads from localStorage
-            localStorage.removeItem('temporary-leads');
+            importTemporaryLeads(leads).then((success) => {
+              if (success) {
+                // Only clear temporary leads from localStorage if import was successful
+                console.log('[Dashboard] Import successful, clearing temporary leads from localStorage');
+                localStorage.removeItem('temporary-leads');
+              } else {
+                console.log('[Dashboard] Import failed, keeping temporary leads in localStorage for retry');
+              }
+            });
           }
         }
       } catch (error) {
-        console.error('Error checking for temporary leads:', error);
+        console.error('[Dashboard] Error checking for temporary leads:', error);
       }
     }
     
