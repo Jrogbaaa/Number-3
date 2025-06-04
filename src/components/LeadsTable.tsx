@@ -1277,10 +1277,10 @@ export default function LeadsTable({ leads, showChromeScore = false, loading = f
                     widthClass = 'w-24';
                     break;
                   case 'actions':
-                    widthClass = 'w-40';
+                    widthClass = 'w-44'; // Slightly increased to give more room for buttons
                     break;
                   case 'added':
-                    widthClass = 'w-20'; // Made smaller to prevent overlap with action buttons
+                    widthClass = 'w-16'; // Made even smaller to prevent overlap with action buttons
                     break;
                   case 'intent':
                   case 'budget':
@@ -1298,7 +1298,7 @@ export default function LeadsTable({ leads, showChromeScore = false, loading = f
                 return (
                 <th 
                   key={column.id} 
-                    className={`py-3 px-4 ${widthClass} cursor-pointer group hover:bg-gray-700/50 transition-colors duration-150`}
+                    className={`py-3 px-2 ${widthClass} cursor-pointer group hover:bg-gray-700/50 transition-colors duration-150`}
                   onClick={() => column.key && requestSort(column.key)}
                   onKeyDown={(e: React.KeyboardEvent<HTMLTableCellElement>) => column.key && (e.key === 'Enter' || e.key === ' ') && requestSort(column.key)}
                   tabIndex={0}
@@ -1341,10 +1341,10 @@ export default function LeadsTable({ leads, showChromeScore = false, loading = f
                           widthClass = 'w-24';
                           break;
                         case 'actions':
-                          widthClass = 'w-40';
+                          widthClass = 'w-44'; // Slightly increased to give more room for buttons
                           break;
                         case 'added':
-                          widthClass = 'w-20'; // Made smaller to prevent overlap with action buttons
+                          widthClass = 'w-16'; // Made even smaller to prevent overlap with action buttons
                           break;
                         case 'intent':
                         case 'budget':
@@ -1479,36 +1479,35 @@ export default function LeadsTable({ leads, showChromeScore = false, loading = f
                           );
                         case 'actions':
                           return (
-                            <td key={column.id} className={`py-3 px-4 whitespace-nowrap ${widthClass}`}>
-                              <div className="flex items-center gap-2">
+                            <td key={column.id} className={`py-3 px-2 whitespace-nowrap ${widthClass}`}>
+                              <div className="flex items-center gap-1.5">
                                 <Link
                                   href={`/outreach/lead/${lead.id}`}
                                   onClick={(e) => e.stopPropagation()}
-                                  className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                                  className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors shrink-0"
                                   title="Create outreach message"
                                 >
                                   <Mail className="w-3 h-3" />
-                                  Outreach
+                                  <span className="hidden sm:inline">Outreach</span>
                                 </Link>
                                 <Link
                                   href={`/outreach/lead/${lead.id}?tab=follow-up`}
                                   onClick={(e) => e.stopPropagation()}
-                                  className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors"
+                                  className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors shrink-0"
                                   title="Create follow-up message"
                                 >
                                   <Reply className="w-3 h-3" />
-                                  Follow-up
+                                  <span className="hidden sm:inline">Follow-up</span>
                                 </Link>
                               </div>
                             </td>
                           );
                         case 'added':
                           return (
-                            <td key={column.id} className={`py-3 px-4 whitespace-nowrap text-gray-400 ${widthClass}`}>
+                            <td key={column.id} className={`py-3 px-2 whitespace-nowrap text-gray-400 text-xs ${widthClass}`}>
                     {lead.created_at ? new Date(lead.created_at).toLocaleDateString('en-US', { 
                       month: 'numeric', 
-                      day: 'numeric', 
-                      year: '2-digit' 
+                      day: 'numeric'
                     }) : 'N/A'}
                   </td>
                           );
