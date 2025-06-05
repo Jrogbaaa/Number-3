@@ -40,3 +40,6 @@ playwright-report/
 
 # IDE
 .vscode/ .env
+
+# Sentry Config File
+.env.sentry-build-plugin
