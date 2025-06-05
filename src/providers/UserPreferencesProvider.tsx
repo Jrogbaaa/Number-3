@@ -145,11 +145,13 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
         }
       }
       
-      // ENHANCED: Check for generic onboarding completion when user has temporary leads
+      // ENHANCED: Check for generic onboarding completion 
       // This handles the case where users complete onboarding while unauthenticated then sign in
+      // OR when loading preferences for unauthenticated users
       const tempLeads = localStorage.getItem('temporary-leads');
-      if (tempLeads && userId) {
-        console.log('[UserPreferencesProvider] User has temporary leads, checking for generic onboarding completion');
+              if ((tempLeads && userId) || userId === 'anonymous-user') {
+          const reason = userId === 'anonymous-user' ? 'unauthenticated user' : 'user has temporary leads';
+          console.log(`[UserPreferencesProvider] ${reason}, checking for generic onboarding completion`);
         
         // Check for onboarding completion stored with generic keys - expanded list
         const genericKeys = [
@@ -169,23 +171,33 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
             try {
               const parsedGenericPrefs = JSON.parse(genericPrefs);
               if (parsedGenericPrefs.hasCompletedOnboarding) {
-                console.log('[UserPreferencesProvider] Found completed onboarding in generic preferences, migrating to user-specific key');
+                console.log('[UserPreferencesProvider] Found completed onboarding in generic preferences');
                 
-                // Migrate the preferences to the user-specific key
-                const migratedPrefs = {
-                  ...parsedGenericPrefs,
-                  userId: userId,
-                  updatedAt: new Date()
-                };
-                
-                // Save to user-specific key
-                saveToLocalStorage(migratedPrefs, userId);
-                
-                // Clean up the generic key
-                localStorage.removeItem(key);
-                
-                console.log('[UserPreferencesProvider] Successfully migrated onboarding preferences');
-                return migratedPrefs;
+                if (userId === 'anonymous-user') {
+                  // For unauthenticated users, just return the preferences without migration
+                  console.log('[UserPreferencesProvider] Returning preferences for unauthenticated user');
+                  return {
+                    ...parsedGenericPrefs,
+                    userId: 'anonymous-user'
+                  };
+                } else {
+                  // For authenticated users, migrate the preferences
+                  console.log('[UserPreferencesProvider] Migrating to user-specific key');
+                  const migratedPrefs = {
+                    ...parsedGenericPrefs,
+                    userId: userId,
+                    updatedAt: new Date()
+                  };
+                  
+                  // Save to user-specific key
+                  saveToLocalStorage(migratedPrefs, userId);
+                  
+                  // Clean up the generic key
+                  localStorage.removeItem(key);
+                  
+                  console.log('[UserPreferencesProvider] Successfully migrated onboarding preferences');
+                  return migratedPrefs;
+                }
               }
             } catch (e) {
               console.warn('[UserPreferencesProvider] Failed to parse generic preferences for key:', key);
@@ -204,22 +216,32 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
                 try {
                   const parsed = JSON.parse(value);
                   if (parsed.hasCompletedOnboarding) {
-                    console.log(`[UserPreferencesProvider] Found onboarding completion in key: ${key}, migrating...`);
+                    console.log(`[UserPreferencesProvider] Found onboarding completion in key: ${key}`);
                     
-                    // Migrate this to the user-specific key
-                    const migratedPrefs = {
-                      ...parsed,
-                      userId: userId,
-                      updatedAt: new Date()
-                    };
-                    
-                    saveToLocalStorage(migratedPrefs, userId);
-                    
-                    // Clean up the old key
-                    localStorage.removeItem(key);
-                    
-                    console.log('[UserPreferencesProvider] Successfully migrated onboarding from fallback key');
-                    return migratedPrefs;
+                    if (userId === 'anonymous-user') {
+                      // For unauthenticated users, just return the preferences without migration
+                      console.log('[UserPreferencesProvider] Returning preferences for unauthenticated user from fallback');
+                      return {
+                        ...parsed,
+                        userId: 'anonymous-user'
+                      };
+                    } else {
+                      // For authenticated users, migrate the preferences
+                      console.log('[UserPreferencesProvider] Migrating from fallback key...');
+                      const migratedPrefs = {
+                        ...parsed,
+                        userId: userId,
+                        updatedAt: new Date()
+                      };
+                      
+                      saveToLocalStorage(migratedPrefs, userId);
+                      
+                      // Clean up the old key
+                      localStorage.removeItem(key);
+                      
+                      console.log('[UserPreferencesProvider] Successfully migrated onboarding from fallback key');
+                      return migratedPrefs;
+                    }
                   }
                 } catch (parseError) {
                   // Ignore parse errors for non-JSON values
@@ -295,13 +317,17 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
     const sessionAny = session as any;
     const userId = userIdParam || session?.user?.id || sessionAny?.user?.sub || sessionAny?.nextAuth?.user?.id || sessionAny?.supabase?.user?.id;
     
-    if (!userId || isIncognitoDetected) return;
+    if (isIncognitoDetected) return;
+    
+    // Use 'anonymous-user' as default for unauthenticated users
+    const effectiveUserId = userId || 'anonymous-user';
     
     try {
       localStorage.setItem(
-        `user-preferences-${userId}`,
+        `user-preferences-${effectiveUserId}`,
         JSON.stringify(prefs)
       );
+      console.log(`[UserPreferencesProvider] Saved preferences to localStorage with key: user-preferences-${effectiveUserId}`);
     } catch (err) {
       console.error('[UserPreferencesProvider] Error saving to localStorage:', err);
     }
@@ -313,11 +339,27 @@ export const UserPreferencesProvider: React.FC<UserPreferencesProviderProps> = (
     const sessionAny = session as any; // Type assertion to access extended properties
     const userId = session?.user?.id || sessionAny?.user?.sub || sessionAny?.nextAuth?.user?.id || sessionAny?.supabase?.user?.id;
     
-    // Skip fetching if not authenticated - critical fix for auth flow
+    // Handle unauthenticated users by loading from localStorage
     if (status !== 'authenticated' || !userId) {
-      console.log('[UserPreferencesProvider] Skipping fetch - status:', status, 'userId:', userId);
-      console.log('[UserPreferencesProvider] Full session object:', session);
-      setLoading(false);
+      console.log('[UserPreferencesProvider] User not authenticated - status:', status, 'userId:', userId);
+      console.log('[UserPreferencesProvider] Loading preferences from localStorage for unauthenticated user');
+      
+      try {
+        setLoading(true);
+        // For unauthenticated users, try to load preferences from localStorage with generic keys
+        const unauthenticatedPrefs = loadFromLocalStorage('anonymous-user');
+        console.log('[UserPreferencesProvider] Unauthenticated preferences loaded:', unauthenticatedPrefs);
+        
+        setPreferences(unauthenticatedPrefs);
+      } catch (err) {
+        console.error('[UserPreferencesProvider] Error loading unauthenticated preferences:', err);
+        setPreferences({
+          ...DEFAULT_PREFERENCES,
+          userId: 'anonymous-user'
+        });
+      } finally {
+        setLoading(false);
+      }
       return;
     }
     

@@ -210,7 +210,7 @@ function AudioRecorder({ leadName }: { leadName: string }) {
       <div className="mb-4 bg-gray-800/50 rounded-lg p-4 border border-gray-700/30">
         <div className="text-gray-400 mb-2 text-sm font-medium">Suggested script:</div>
         <p className="text-gray-300 text-sm">
-          Hi {leadName}, this is [Your Name] from OptiLeads. I noticed your impressive work at your company and wanted to personally reach out. I'd love to discuss how our solutions might align with your needs. Feel free to call me back at [phone number] or respond to my email. Looking forward to connecting!
+          Hi {leadName}, this is [Your Name] from [Your Company]. I noticed your impressive work at your company and wanted to personally reach out. I'd love to discuss how our solutions might align with your needs. Feel free to call me back at [phone number] or respond to my email. Looking forward to connecting!
         </p>
       </div>
 
@@ -392,6 +392,22 @@ function LeadDetailContent() {
                   <Mail className="h-5 w-5 mr-3 text-gray-400 mt-0.5" />
                   <div>
                     <div className="text-sm text-gray-300 break-all">{lead.email}</div>
+                  </div>
+                </div>
+              )}
+              
+              {lead.linkedinUrl && (
+                <div className="flex items-start">
+                  <Linkedin className="h-5 w-5 mr-3 text-gray-400 mt-0.5" />
+                  <div>
+                    <a 
+                      href={lead.linkedinUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-400 hover:text-blue-300 break-all underline decoration-blue-400/50 hover:decoration-blue-300"
+                    >
+                      {lead.linkedinUrl}
+                    </a>
                   </div>
                 </div>
               )}

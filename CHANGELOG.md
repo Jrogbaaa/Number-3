@@ -5,7 +5,38 @@ All notable changes to the PROPS Lead Management Platform will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2024-12-19
+## [Unreleased] - 2025-01-28
+
+### 🔗 LinkedIn URL Integration & Contact Display Enhancement
+
+#### LinkedIn Profile Integration
+- **Added**: LinkedIn URL extraction and display throughout the platform
+- **Enhanced**: CSV upload processing now properly handles `linkedin_url` column variations
+- **Added**: Intelligent contact display priority: Email → LinkedIn URL → "No contact info"
+- **Fixed**: LinkedIn URLs now display as clickable "LinkedIn Profile" links when email unavailable
+- **Added**: LinkedIn field mapping includes multiple variations: `linkedin`, `linkedinurl`, `linkedin_url`, `linkedinlink`
+- **Enhanced**: Debug logging for LinkedIn field extraction during CSV processing
+
+#### Contact Information Display Improvements
+- **Replaced**: "No email" placeholders with LinkedIn URLs when available
+- **Added**: Clickable LinkedIn profile links that open in new tabs
+- **Enhanced**: Contact information priority logic in leads table (desktop, mobile, and card views)
+- **Added**: Event handling to prevent row selection when clicking LinkedIn links
+- **Improved**: Tooltip displays showing available contact information
+
+#### Database & Type Safety
+- **Fixed**: Property name handling for both `linkedinUrl` (TypeScript) and `linkedinurl` (database)
+- **Enhanced**: API response handling for LinkedIn URL data from multiple sources
+- **Added**: Type-safe access to LinkedIn properties with fallback handling
+- **Improved**: CSV field extraction debugging for better troubleshooting
+
+#### User Experience
+- **Enhanced**: Consistent LinkedIn URL display across all table views (desktop table, mobile cards)
+- **Added**: Visual distinction with blue link styling and hover effects
+- **Improved**: Contact information accessibility with proper tooltips and labels
+- **Fixed**: No more misleading "No email" messages when LinkedIn URLs are available
+
+## [15.13.15] - 2024-12-19
 
 ### 🎨 User Profile Header Enhancement
 

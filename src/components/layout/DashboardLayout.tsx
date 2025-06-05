@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import Sidebar from './Sidebar';
 import { useSession, signOut } from 'next-auth/react';
@@ -51,6 +52,11 @@ const UserProfile = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [sessionRetryCount, setSessionRetryCount] = useState(0);
   const [manualSession, setManualSession] = useState<any>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Debug logging
   console.log('[UserProfile] Session status:', status);
@@ -58,16 +64,23 @@ const UserProfile = () => {
   console.log('[UserProfile] User data:', session?.user);
   console.log('[UserProfile] User preferences:', preferences);
 
-  // Fallback: Try to get session from API if useSession fails
+  // Fallback: Try to get session from API if useSession fails OR is loading for too long
   useEffect(() => {
-    if (status === 'unauthenticated' && sessionRetryCount < 3) {
+    if ((status === 'unauthenticated' || status === 'loading') && sessionRetryCount < 5) {
       const fetchSession = async () => {
         try {
+          console.log('[UserProfile] Attempting manual session fetch, retry:', sessionRetryCount, 'status:', status);
           const response = await fetch('/api/auth/session');
           if (response.ok) {
             const sessionData = await response.json();
-            if (sessionData.authenticated && sessionData.nextAuth?.user) {
-              console.log('[UserProfile] Manual session fetch successful:', sessionData.nextAuth.user);
+            console.log('[UserProfile] Manual session fetch response:', sessionData);
+            if (sessionData.user) {
+              // NextAuth session format
+              console.log('[UserProfile] Found NextAuth session, setting manual session');
+              setManualSession({ user: sessionData.user });
+            } else if (sessionData.authenticated && sessionData.nextAuth?.user) {
+              // Custom session format
+              console.log('[UserProfile] Found custom session format, setting manual session');
               setManualSession(sessionData.nextAuth);
             }
           }
@@ -77,7 +90,9 @@ const UserProfile = () => {
         setSessionRetryCount(prev => prev + 1);
       };
       
-      setTimeout(fetchSession, 1000 * (sessionRetryCount + 1)); // Exponential backoff
+      // Try much faster for loading state
+      const delay = status === 'loading' ? 100 : 1000 * (sessionRetryCount + 1);
+      setTimeout(fetchSession, delay);
     }
   }, [status, sessionRetryCount]);
 
@@ -110,7 +125,14 @@ const UserProfile = () => {
   }
 
   console.log('[UserProfile] Extracted user:', user);
+  console.log('[UserProfile] User image URL:', user?.image);
+  console.log('[UserProfile] User image exists?', !!user?.image);
   console.log('[UserProfile] Company name from preferences:', preferences?.companyName);
+  
+  // Force refresh if we don't have user data but session should be available
+  if (!user && sessionRetryCount === 0) {
+    setTimeout(() => setSessionRetryCount(1), 100);
+  }
 
   // Get company name from preferences
   const companyName = preferences?.companyName;
@@ -136,18 +158,30 @@ const UserProfile = () => {
         aria-label="User menu"
       >
         {/* User avatar */}
-        <div className="relative">
-          {user.image ? (
-            <img
-              src={user.image}
-              alt={user.name || 'User avatar'}
-              className="w-8 h-8 rounded-full ring-2 ring-gray-600/50 group-hover:ring-blue-400/50 transition-all duration-200"
-            />
-          ) : (
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center ring-2 ring-gray-600/50 group-hover:ring-blue-400/50 transition-all duration-200">
-              <User className="w-4 h-4 text-white" />
-            </div>
-          )}
+        <div className="relative w-8 h-8">
+          <img
+            src={user.image || ''}
+            alt={user.name || 'User avatar'}
+            className="w-8 h-8 rounded-full ring-2 ring-gray-600/50 group-hover:ring-blue-400/50 transition-all duration-200"
+            style={{ display: user.image ? 'block' : 'none' }}
+            onLoad={() => {
+              console.log('[UserProfile] Image loaded successfully:', user.image);
+            }}
+            onError={(e) => {
+              console.log('[UserProfile] Image failed to load:', user.image);
+              e.currentTarget.style.display = 'none';
+              const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+              if (fallback) {
+                fallback.style.display = 'flex';
+              }
+            }}
+          />
+          <div 
+            className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center ring-2 ring-gray-600/50 group-hover:ring-blue-400/50 transition-all duration-200"
+            style={{ display: user.image ? 'none' : 'flex' }}
+          >
+            <User className="w-4 h-4 text-white" />
+          </div>
         </div>
         
         {/* User name and company - hidden on very small screens */}
@@ -177,31 +211,50 @@ const UserProfile = () => {
         <ChevronDown className={`w-4 h-4 text-gray-400 group-hover:text-white transition-all duration-200 ${showDropdown ? 'rotate-180' : ''}`} />
       </button>
 
-      {/* Dropdown menu */}
-      {showDropdown && (
+      {/* Dropdown menu - rendered via portal */}
+      {showDropdown && isMounted && createPortal(
         <>
           {/* Backdrop */}
           <div 
-            className="fixed inset-0 z-10" 
+            className="fixed inset-0 z-[150]" 
             onClick={() => setShowDropdown(false)}
+            style={{ zIndex: 9998 }}
           />
           
           {/* Dropdown content */}
-          <div className="absolute right-0 top-full mt-2 w-56 bg-gray-900 border border-gray-700/50 rounded-lg shadow-xl z-20 py-2">
+          <div 
+            className="fixed bg-red-500 border-4 border-yellow-400 rounded-lg shadow-2xl z-[200] py-2 w-56"
+            style={{ 
+              zIndex: 9999,
+              top: '60px',
+              right: '20px'
+            }}
+          >
             {/* User info section */}
             <div className="px-4 py-3 border-b border-gray-700/50">
               <div className="flex items-center gap-3">
-                {user.image ? (
+                <div className="relative w-10 h-10">
                   <img
-                    src={user.image}
+                    src={user.image || ''}
                     alt={user.name || 'User avatar'}
                     className="w-10 h-10 rounded-full"
+                    style={{ display: user.image ? 'block' : 'none' }}
+                    onError={(e) => {
+                      console.log('[UserProfile] Dropdown image failed to load:', user.image);
+                      e.currentTarget.style.display = 'none';
+                      const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                      if (fallback) {
+                        fallback.style.display = 'flex';
+                      }
+                    }}
                   />
-                ) : (
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center">
+                  <div 
+                    className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center"
+                    style={{ display: user.image ? 'none' : 'flex' }}
+                  >
                     <User className="w-5 h-5 text-white" />
                   </div>
-                )}
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium text-white truncate">
@@ -235,7 +288,8 @@ const UserProfile = () => {
               Sign out
             </button>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );

@@ -98,7 +98,7 @@ export async function POST(request: Request) {
             ...lead,
             id: uuidv4(), // Always generate a new UUID for database compatibility
             name: (lead.name || 'Unknown Contact').trim(),
-            email: (lead.email || `lead_${Date.now()}_${Math.random().toString(36).slice(2)}@placeholder.com`).trim().toLowerCase(),
+            email: lead.email ? lead.email.trim().toLowerCase() : '',
             company: (lead.company || '').trim(),
             title: (lead.title || '').trim(),
             source: (lead.source || 'Other').trim() as LeadSource,
@@ -125,13 +125,14 @@ export async function POST(request: Request) {
           return leadToUpsert;
         });
 
-        // De-duplicate within the batch based on email
+        // De-duplicate within the batch based on email (but only if email exists)
         const uniqueLeadsMap = new Map<string, Record<string, any>>();
         preparedLeads.forEach(lead => {
-          const emailKey = lead.email?.toLowerCase();
-          if (emailKey) {
+          const emailKey = lead.email?.toLowerCase().trim();
+          if (emailKey && emailKey !== '') {
             uniqueLeadsMap.set(emailKey, lead);
           } else {
+            // For leads without email, use a unique identifier to avoid false duplicates
             const uniqueKey = lead.id || `no-email-${uuidv4()}`;
             uniqueLeadsMap.set(uniqueKey, lead);
           }
@@ -146,8 +147,8 @@ export async function POST(request: Request) {
         }
 
         // Instead of relying on database constraints, do manual duplicate checking
-        // First, check for existing leads with the same email for this user
-        const existingEmails = uniquePreparedLeads.map(lead => lead.email).filter(Boolean);
+        // First, check for existing leads with the same email for this user (only for leads with email addresses)
+        const existingEmails = uniquePreparedLeads.map(lead => lead.email).filter(email => email && email.trim() !== '');
         
         let existingLeads: any[] = [];
         if (existingEmails.length > 0) {
@@ -162,8 +163,15 @@ export async function POST(request: Request) {
         
         const existingEmailSet = new Set(existingLeads.map(lead => lead.email));
         
-        // Filter out duplicates
-        const newLeads = uniquePreparedLeads.filter(lead => !existingEmailSet.has(lead.email));
+        // Filter out duplicates (only check email duplicates for leads that have emails)
+        const newLeads = uniquePreparedLeads.filter(lead => {
+          // If lead has no email, always include it (no duplicate check possible)
+          if (!lead.email || lead.email.trim() === '') {
+            return true;
+          }
+          // If lead has email, check if it's already in the database
+          return !existingEmailSet.has(lead.email);
+        });
         const duplicatesInThisBatch = uniquePreparedLeads.length - newLeads.length;
         
         if (duplicatesInThisBatch > 0) {

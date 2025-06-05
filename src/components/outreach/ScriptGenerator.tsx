@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Lead } from '@/types/lead';
 import { getLeads } from '@/lib/supabase';
+import { useSession } from 'next-auth/react';
 
 interface ScriptTemplate {
   id: string;
@@ -38,6 +39,7 @@ const scriptTemplates: ScriptTemplate[] = [
 ];
 
 export default function ScriptGenerator({ initialLeadId = null }: ScriptGeneratorProps) {
+  const { data: session } = useSession();
   const [selectedTemplate, setSelectedTemplate] = useState<string>('personalized-outreach');
   const [selectedLead, setSelectedLead] = useState<string | null>(initialLeadId);
   const [generatedScript, setGeneratedScript] = useState<string>('');
@@ -81,6 +83,8 @@ export default function ScriptGenerator({ initialLeadId = null }: ScriptGenerato
   }, [initialLeadId, leads, selectedLead]);
 
   const generatePersonalizedScript = (lead: Lead) => {
+    const userName = session?.user?.name || 'Your name';
+    
     switch (selectedTemplate) {
       case 'personalized-outreach':
         return `Hi ${lead.name},
@@ -92,7 +96,7 @@ Based on your background and interests, I'd love to share how we've helped simil
 Would you be open to a brief conversation this week to explore how we could potentially help ${lead.company} achieve similar results?
 
 Looking forward to connecting,
-[Your name]`;
+${userName}`;
 
       case 'lead-overview':
         return `Hi ${lead.name},
@@ -107,7 +111,7 @@ Key points I'd love to discuss:
 Would you be interested in a quick call to discuss these points in detail?
 
 Best regards,
-[Your name]`;
+${userName}`;
 
       default:
         return 'Please select a template and lead to generate a personalized script.';

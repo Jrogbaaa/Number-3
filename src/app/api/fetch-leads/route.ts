@@ -83,6 +83,17 @@ export async function GET() {
     }
     
     console.log(`API: Successfully fetched ${data.length} leads for user ${userId} from Supabase.`);
+    
+    // Debug: Log first few leads to see their user_id and linkedinUrl
+    if (data.length > 0) {
+      console.log(`API: First 3 leads sample:`, data.slice(0, 3).map(lead => ({
+        id: lead.id,
+        name: lead.name,
+        user_id: lead.user_id,
+        linkedinUrl: lead.linkedinUrl,
+        linkedin_url: lead.linkedin_url
+      })));
+    }
 
     const processedLeads = data.map(lead => {
       const parsedInsights = lead.insights ? (
@@ -101,7 +112,9 @@ export async function GET() {
         businessOrientation: lead.business_orientation,
         orientationConfidence: lead.orientation_confidence,
         intentScore: lead.intent_score,
-        spendAuthorityScore: lead.spend_authority_score
+        spendAuthorityScore: lead.spend_authority_score,
+        // Handle both camelCase and lowercase variations of linkedinUrl
+        linkedinUrl: lead.linkedinUrl || lead.linkedinurl
       } as Lead;
     });
 

@@ -199,16 +199,24 @@ const MessageGenerator: React.FC<MessageGeneratorProps> = ({
       companyProduct: userBusinessInfo?.companyProduct?.substring(0, 50)
     });
 
-    // Create a proper signature with the user's actual company name
+    // Create a proper signature with the user's actual name and company name
+    const userName = session?.user?.name || 'Your Name';
     const hasValidCompanyName = userBusinessInfo?.companyName && 
                                userBusinessInfo.companyName.trim() !== '' && 
                                userBusinessInfo.companyName !== '[Your Company]';
     
-    const signature = hasValidCompanyName ? userBusinessInfo.companyName : '';
+    // Only add company name to signature if it's not already prominently mentioned in the value proposition
+    const shouldAddCompanyToSignature = hasValidCompanyName && 
+                                      senderCompany !== '[Your Company]' &&
+                                      !valueProposition.toLowerCase().includes(senderCompany.toLowerCase());
+    
+    const signature = shouldAddCompanyToSignature ? userBusinessInfo.companyName : '';
     
     console.log('[MessageGenerator] Signature logic:', {
+      userName,
       rawCompanyName: userBusinessInfo?.companyName,
       hasValidCompanyName,
+      shouldAddCompanyToSignature,
       finalSignature: signature
     });
 
@@ -221,7 +229,7 @@ We're ${valueProposition}, and thought it might genuinely be up your alley.${rol
 No pressure at all, but wondering if you'd be open to a quick 10-15 min chat sometime if this sounds like something you're exploring?
 
 Cheers,
-[Your Name]${signature ? `\n${signature}` : ''}${onboardingNote}`;
+${userName}${signature ? `\n${signature}` : ''}${onboardingNote}`;
 
     console.log('[MessageGenerator] Generated base message length:', baseTemplate.length);
     setBaseMessage(baseTemplate);

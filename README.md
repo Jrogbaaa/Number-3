@@ -408,7 +408,7 @@ The system automatically recognizes various common column names for core fields:
 - **Value**: `value`, `Value` (Used in Budget Potential calculation)
 - **Location**: `location`, `Location`, `city`, `City`, `state`, `State`, `country`, `Country`
 - **Phone**: `phone`, `Phone`, `mobile`, `Mobile`
-- **LinkedIn URL**: `linkedin`, `LinkedIn`, `linkedinUrl`, `linkedin_url`
+- **LinkedIn URL**: `linkedin`, `LinkedIn`, `linkedinUrl`, `linkedin_url`, `linkedinurl`, `linkedinlink`
 - **Tags**: `tags`, `Tags` (Comma-separated values expected)
 
 *Note: The scoring system will attempt to infer information even if specific columns like `insights` are not present.* 

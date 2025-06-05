@@ -168,12 +168,18 @@ const FollowUpGenerator: React.FC<FollowUpGeneratorProps> = ({
       hasBusinessInfo: !!userBusinessInfo
     });
     
-    // Create signature with company name
+    // Create signature with user's actual name and company name
+    const userName = session?.user?.name || 'Your Name';
     const hasValidCompanyName = userBusinessInfo?.companyName && 
                                userBusinessInfo.companyName.trim() !== '' && 
                                userBusinessInfo.companyName !== '[Your Company]';
     
-    const signature = hasValidCompanyName ? userBusinessInfo.companyName : '';
+    // Only add company name to signature if it's not already prominently mentioned in the message
+    const shouldAddCompanyToSignature = hasValidCompanyName && 
+                                      senderCompany !== '[Your Company]' &&
+                                      senderCompany !== senderProduct; // Avoid duplication if company name is the product
+    
+    const signature = shouldAddCompanyToSignature ? userBusinessInfo.companyName : '';
 
     let followUpTemplate = '';
 
@@ -188,7 +194,7 @@ I understand you're probably busy, but I thought you might be interested in a qu
 Would you be open to a brief 15-minute call this week to discuss how this might apply to your situation at ${companyName}?
 
 Best regards,
-[Your Name]${signature ? `\n${signature}` : ''}`;
+${userName}${signature ? `\n${signature}` : ''}`;
         break;
 
       case 'second-follow-up':
@@ -205,7 +211,7 @@ No sales pitch - just a genuine conversation about your challenges and potential
 Would you be interested in a quick 10-minute chat?
 
 Cheers,
-[Your Name]${signature ? `\n${signature}` : ''}`;
+${userName}${signature ? `\n${signature}` : ''}`;
         break;
 
       case 'final-follow-up':
@@ -222,7 +228,7 @@ But if you think there might be value in a quick conversation down the road, fee
 Wishing you all the best with your initiatives at ${companyName}.
 
 Best regards,
-[Your Name]${signature ? `\n${signature}` : ''}`;
+${userName}${signature ? `\n${signature}` : ''}`;
         break;
 
       case 'value-add':
@@ -239,7 +245,7 @@ No agenda here - just thought you'd appreciate the insights. But if you'd like t
 Hope this is helpful!
 
 Best,
-[Your Name]${signature ? `\n${signature}` : ''}`;
+${userName}${signature ? `\n${signature}` : ''}`;
         break;
 
       case 'event-based':
@@ -254,7 +260,7 @@ Would you be interested in a quick call to discuss how ${senderProduct} could su
 Looking forward to hearing from you.
 
 Best regards,
-[Your Name]${signature ? `\n${signature}` : ''}`;
+${userName}${signature ? `\n${signature}` : ''}`;
         break;
 
       default:
@@ -267,7 +273,7 @@ I'd love to learn more about your current challenges at ${companyName} and see i
 Would you be open to a brief conversation?
 
 Best regards,
-[Your Name]${signature ? `\n${signature}` : ''}`;
+${userName}${signature ? `\n${signature}` : ''}`;
     }
 
     console.log('[FollowUpGenerator] Generated follow-up message length:', followUpTemplate.length);

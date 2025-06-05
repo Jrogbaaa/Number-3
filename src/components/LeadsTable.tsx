@@ -1000,7 +1000,19 @@ export default function LeadsTable({ leads, showChromeScore = false, loading = f
           <div className="flex items-center text-base font-semibold text-white">
             <span className="truncate" title={lead.name || 'N/A'}>{lead.name || 'N/A'}</span>
           </div>
-          <div className="text-gray-400 text-xs mt-0.5 truncate" title={lead.email || 'No email'}>{lead.email || 'No email'}</div>
+          <div className="text-gray-400 text-xs mt-0.5 truncate" title={lead.email || lead.linkedinUrl || (lead as any).linkedinurl || 'No contact info'}>
+            {lead.email || (lead.linkedinUrl || (lead as any).linkedinurl ? (
+              <a 
+                href={lead.linkedinUrl || (lead as any).linkedinurl} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-blue-400 hover:text-blue-300 transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                LinkedIn Profile
+              </a>
+            ) : 'No contact info')}
+          </div>
           {(lead.company || lead.title) && (
             <div className="text-gray-500 text-xs mt-1 flex items-center flex-wrap gap-x-2">
               {lead.company && <span className="inline-flex items-center" title={lead.company}><Building2 className="w-3 h-3 mr-1 flex-shrink-0" />{lead.company}</span>}
@@ -1365,7 +1377,19 @@ export default function LeadsTable({ leads, showChromeScore = false, loading = f
                           return (
                             <td key={column.id} className={`py-3 px-4 whitespace-nowrap truncate ${widthClass}`}>
                     <div className="font-medium text-white truncate" title={lead.name || 'N/A'}>{lead.name || 'N/A'}</div>
-                    <div className="text-gray-400 truncate" title={lead.email || 'No email'}>{lead.email || 'No email'}</div>
+                    <div className="text-gray-400 truncate" title={lead.email || lead.linkedinUrl || (lead as any).linkedinurl || 'No contact info'}>
+                      {lead.email || (lead.linkedinUrl || (lead as any).linkedinurl ? (
+                        <a 
+                          href={lead.linkedinUrl || (lead as any).linkedinurl} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-blue-400 hover:text-blue-300 transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          LinkedIn Profile
+                        </a>
+                      ) : 'No contact info')}
+                    </div>
                      {(lead.company || lead.title) && (
                         <div className="text-gray-500 text-xs mt-1 flex items-center flex-wrap gap-x-2">
                           {lead.company && <span className="inline-flex items-center truncate" title={lead.company}><Building2 className="w-3 h-3 mr-1 flex-shrink-0" />{lead.company}</span>}
@@ -1573,7 +1597,19 @@ export default function LeadsTable({ leads, showChromeScore = false, loading = f
                     <div className="flex items-center text-base font-semibold text-white">
                       <span className="truncate" title={lead.name || 'N/A'}>{lead.name || 'N/A'}</span>
                     </div>
-                    <div className="text-gray-400 text-xs mt-0.5 truncate" title={lead.email || 'No email'}>{lead.email || 'No email'}</div>
+                    <div className="text-gray-400 text-xs mt-0.5 truncate" title={lead.email || lead.linkedinUrl || (lead as any).linkedinurl || 'No contact info'}>
+                      {lead.email || (lead.linkedinUrl || (lead as any).linkedinurl ? (
+                        <a 
+                          href={lead.linkedinUrl || (lead as any).linkedinurl} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-blue-400 hover:text-blue-300 transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          LinkedIn Profile
+                        </a>
+                      ) : 'No contact info')}
+                    </div>
                     {(lead.company || lead.title) && (
                       <div className="text-gray-500 text-xs mt-1 flex items-center flex-wrap gap-x-2">
                         {lead.company && <span className="inline-flex items-center" title={lead.company}><Building2 className="w-3 h-3 mr-1 flex-shrink-0" />{lead.company}</span>}

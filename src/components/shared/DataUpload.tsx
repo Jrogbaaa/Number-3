@@ -69,23 +69,23 @@ type ProcessedLead = Omit<Lead, 'last_contacted_at'> & {
 };
 
 const COMMON_FIELD_MAPPINGS = {
-  name: ['name', 'full name', 'contact', 'person', 'first name', 'last name'],
-  email: ['email', 'e-mail', 'mail', 'email address', 'contact email'],
-  company: ['company', 'company_name', 'organization', 'employer', 'business', 'company name'],
-  title: ['title', 'position', 'role', 'job title'],
-  phone: ['phone', 'mobile', 'cell', 'contact number'],
-  linkedin: ['linkedin', 'linkedin url', 'linkedin profile', 'profile url', 'social media', 'linkedin link'],
+  name: ['name', 'fullname', 'full name', 'contact', 'person', 'first name', 'last name', 'firstname', 'lastname'],
+  email: ['email', 'emailaddress', 'e-mail', 'emai', 'mail', 'email address', 'contact email', 'contactemail', 'emailid', 'email_address'],
+  company: ['company', 'companyname', 'company_name', 'organization', 'employer', 'business', 'company name', 'companyname', 'org'],
+  title: ['title', 'jobtitle', 'position', 'role', 'job title', 'job_title', 'designation'],
+  phone: ['phone', 'phonenumber', 'mobile', 'cell', 'contact number', 'contactnumber', 'telephone', 'phone_number'],
+  linkedin: ['linkedin', 'linkedinurl', 'linkedin url', 'linkedin profile', 'profile url', 'social media', 'linkedin link', 'linkedinprofile', 'linkedin_url', 'linkedinurl', 'linkedinlink'],
   industry: ['industry', 'sector', 'market'],
   interests: ['interests', 'focus', 'specialties', 'expertise'],
   background: ['background', 'experience', 'about'],
-  firstName: ['firstname', 'first name', 'first'],
-  lastName: ['lastname', 'last name', 'last', 'last_name'],
-  companySize: ['company size', 'employees', 'headcount', 'company_size', 'employee count', 'size'],
-  annualRevenue: ['revenue', 'annual revenue', 'yearly revenue', 'company revenue', 'turnover'],
-  propsEngagement: ['props engagement', 'engagement score', 'content engagement', 'engagement'],
-  relevantPosts: ['posts', 'content', 'articles', 'publications', 'blog', 'thought leadership'],
-  industryGroups: ['groups', 'communities', 'associations', 'memberships', 'forums', 'networks'],
-  notes: ['notes', 'comments', 'additional info', 'other information', 'details']
+  firstName: ['firstname', 'first name', 'first', 'fname'],
+  lastName: ['lastname', 'last name', 'last', 'last_name', 'lname'],
+  companySize: ['company size', 'employees', 'headcount', 'company_size', 'employee count', 'size', 'companysize', 'employeecount'],
+  annualRevenue: ['revenue', 'annual revenue', 'yearly revenue', 'company revenue', 'turnover', 'annualrevenue', 'companyrevenue'],
+  propsEngagement: ['props engagement', 'engagement score', 'content engagement', 'engagement', 'propsengagement', 'engagementscore'],
+  relevantPosts: ['posts', 'content', 'articles', 'publications', 'blog', 'thought leadership', 'relevantposts', 'thoughtleadership'],
+  industryGroups: ['groups', 'communities', 'associations', 'memberships', 'forums', 'networks', 'industrygroups'],
+  notes: ['notes', 'comments', 'additional info', 'other information', 'details', 'additionalinfo', 'otherinformation']
 };
 
 const extractFieldValue = (row: CSVRow, fieldMappings: string[]): string => {
@@ -94,6 +94,26 @@ const extractFieldValue = (row: CSVRow, fieldMappings: string[]): string => {
       key.toLowerCase().includes(mapping.toLowerCase())
     )
   );
+  
+                  // Debug logging for email and linkedin fields specifically
+                if (fieldMappings.includes('email')) {
+                  console.log(`[DataUpload] Email field extraction debug:`, {
+                    availableKeys: Object.keys(row),
+                    searchingFor: fieldMappings,
+                    foundKey: foundKey,
+                    foundValue: foundKey ? row[foundKey] : 'NO KEY FOUND'
+                  });
+                }
+                
+                if (fieldMappings.includes('linkedin')) {
+                  console.log(`[DataUpload] LinkedIn field extraction debug:`, {
+                    availableKeys: Object.keys(row),
+                    searchingFor: fieldMappings,
+                    foundKey: foundKey,
+                    foundValue: foundKey ? row[foundKey] : 'NO KEY FOUND'
+                  });
+                }
+  
   return foundKey ? row[foundKey] || '' : '';
 };
 
@@ -660,10 +680,27 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
                 return values.length > 0;
               })
               .map((row, index): ProcessedLead => {
+                // Debug logging for the first few rows to see what's happening with email extraction
+                if (index < 3) {
+                  console.log(`[DataUpload] Debug Row ${index}:`, {
+                    rowKeys: Object.keys(row),
+                    rawRow: row,
+                    emailMappings: COMMON_FIELD_MAPPINGS.email
+                  });
+                }
+                
                 // Extract standard fields using the helper or direct access after transformHeader
                 const email = extractFieldValue(row, COMMON_FIELD_MAPPINGS.email);
                 const title = extractFieldValue(row, COMMON_FIELD_MAPPINGS.title);
                 const linkedinUrl = extractFieldValue(row, COMMON_FIELD_MAPPINGS.linkedin);
+                
+                // Debug logging for email extraction specifically
+                if (index < 3) {
+                  console.log(`[DataUpload] Debug Row ${index} Email Extraction:`, {
+                    extractedEmail: email,
+                    willUseEmail: email || `placeholder email for row ${index}`
+                  });
+                }
 
                 // --- Direct access after transformHeader for name ---
                 const firstName = row['firstname'] || row['first name'] || row['first'] || ''; // Check transformed keys
@@ -764,17 +801,22 @@ const DataUpload: FC<DataUploadProps> = ({ onUploadComplete, allowUnauthenticate
                   }
                 }
 
-                // Generate a unique ID for the email if missing
-                const generatedEmail = email || `lead_${Date.now()}_${index}_${Math.random().toString(36).slice(2)}@placeholder.com`;
+                // Use real email if available, otherwise use LinkedIn URL, otherwise leave empty
+                let finalEmailOrContact = '';
+                if (email && email.trim() !== '') {
+                  finalEmailOrContact = email.trim();
+                } else if (enhancedLinkedinUrl && enhancedLinkedinUrl.trim() !== '') {
+                  finalEmailOrContact = enhancedLinkedinUrl.trim();
+                }
 
                 // --- Add Final Pre-Return Log ---
-                console.log(`[DataUpload.tsx] Final assignment for Row ${index}: Name='${generatedName || `Unnamed Lead ${index + 1}`}', Company='${company || ''}'`);
+                console.log(`[DataUpload.tsx] Final assignment for Row ${index}: Name='${generatedName || `Unnamed Lead ${index + 1}`}', Email/Contact='${finalEmailOrContact || 'NONE'}', Company='${company || ''}'`);
                 // --- End Log ---
 
                 return {
                   id: '', // Will be generated by Supabase
                   name: generatedName || `Unnamed Lead ${index + 1}`, // Use generatedName (which includes combined name)
-                  email: generatedEmail,
+                  email: finalEmailOrContact || '',
                   company: company || '', // Use the directly accessed company
                   title: title || '',
                   score: insights.potentialValue || 0,

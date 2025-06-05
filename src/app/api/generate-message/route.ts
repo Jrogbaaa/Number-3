@@ -150,6 +150,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Unauthorized - please sign in' }, { status: 401 });
     }
 
+    // Get user's name for signature replacement
+    const userName = session.user.name || 'Your Name';
+
     // Fetch user's business information
     const userBusinessInfo = await getUserBusinessInfo(session.user.id);
     
@@ -284,13 +287,19 @@ TRANSFORMED MESSAGE:`;
           transformedMessageBody = transformedMessageBody.replace(/^\s*\n+\s*/, '').trim();
         }
         
-        // Add company signature if available
+        // Replace [Your Name] with actual user's name and add company signature if available
+        transformedMessageBody = transformedMessageBody.replace(/\[Your Name\]/g, userName);
+        
         const userCompanyName = userBusinessInfo?.companyName;
         const hasValidCompanyName = userCompanyName && 
                                    userCompanyName.trim() !== '' && 
                                    userCompanyName !== '[Your Company]';
         
-        const finalSignature = hasValidCompanyName ? `\n\n${userCompanyName}` : '';
+        // Only add company name if not already mentioned in the message to avoid duplication
+        const shouldAddCompany = hasValidCompanyName && 
+                               !transformedMessageBody.toLowerCase().includes(userCompanyName.toLowerCase());
+        
+        const finalSignature = shouldAddCompany ? `\n\n${userCompanyName}` : '';
         
         // Return the response with the AI-transformed message
         return NextResponse.json({ 
@@ -511,13 +520,15 @@ TRANSFORMED MESSAGE:`;
       }
     }
     
-    // Preserve user's company name in signature if it exists
+    // Replace [Your Name] with actual user's name and handle company name in signature
+    newSignature = newSignature.replace(/\[Your Name\]/g, userName);
+    
     const userCompanyName = userBusinessInfo?.companyName;
     if (userCompanyName && userCompanyName !== '[Your Company]' && userCompanyName.trim() !== '') {
-      // Check if signature already contains the company name
-      if (!newSignature.includes(userCompanyName)) {
-        // Add company name to signature
-        newSignature = newSignature.replace('[Your Name]', `[Your Name]\n${userCompanyName}`);
+      // Check if signature already contains the company name to avoid duplication
+      if (!newSignature.includes(userCompanyName) && !newMessageBody.toLowerCase().includes(userCompanyName.toLowerCase())) {
+        // Add company name to signature only if not already mentioned in the message
+        newSignature = newSignature + `\n${userCompanyName}`;
       }
     }
     

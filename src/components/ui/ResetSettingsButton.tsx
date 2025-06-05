@@ -121,10 +121,10 @@ const ResetSettingsButton = () => {
       <button
         onClick={() => setShowConfirmDialog(true)}
         className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500 text-gray-300 hover:text-white rounded-lg transition-all duration-200 text-sm font-medium border border-gray-600/50 shadow-lg hover:shadow-xl hover:scale-105"
-        title="Reset targeting preferences to change who you want to reach"
+        title="Change your scoring focus and targeting preferences"
       >
         <RotateCcw className="h-4 w-4" />
-        Reset Settings
+        Change Scoring Focus
       </button>
 
       {showConfirmDialog && <ConfirmDialog />}
