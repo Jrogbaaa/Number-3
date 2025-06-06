@@ -1001,7 +1001,15 @@ export default function LeadsTable({ leads, showChromeScore = false, loading = f
             <span className="truncate" title={lead.name || 'N/A'}>{lead.name || 'N/A'}</span>
           </div>
           <div className="text-gray-400 text-xs mt-0.5 truncate" title={lead.email || lead.linkedinUrl || (lead as any).linkedinurl || 'No contact info'}>
-            {lead.email || (lead.linkedinUrl || (lead as any).linkedinurl ? (
+            {lead.email ? (
+              <a 
+                href={`mailto:${lead.email}`}
+                className="text-blue-400 hover:text-blue-300 transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {lead.email}
+              </a>
+            ) : (lead.linkedinUrl || (lead as any).linkedinurl) ? (
               <a 
                 href={lead.linkedinUrl || (lead as any).linkedinurl} 
                 target="_blank" 
@@ -1011,7 +1019,7 @@ export default function LeadsTable({ leads, showChromeScore = false, loading = f
               >
                 LinkedIn Profile
               </a>
-            ) : 'No contact info')}
+            ) : 'No contact info'}
           </div>
           {(lead.company || lead.title) && (
             <div className="text-gray-500 text-xs mt-1 flex items-center flex-wrap gap-x-2">
@@ -1378,7 +1386,15 @@ export default function LeadsTable({ leads, showChromeScore = false, loading = f
                             <td key={column.id} className={`py-3 px-4 whitespace-nowrap truncate ${widthClass}`}>
                     <div className="font-medium text-white truncate" title={lead.name || 'N/A'}>{lead.name || 'N/A'}</div>
                     <div className="text-gray-400 truncate" title={lead.email || lead.linkedinUrl || (lead as any).linkedinurl || 'No contact info'}>
-                      {lead.email || (lead.linkedinUrl || (lead as any).linkedinurl ? (
+                      {lead.email ? (
+                        <a 
+                          href={`mailto:${lead.email}`}
+                          className="text-blue-400 hover:text-blue-300 transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {lead.email}
+                        </a>
+                      ) : (lead.linkedinUrl || (lead as any).linkedinurl) ? (
                         <a 
                           href={lead.linkedinUrl || (lead as any).linkedinurl} 
                           target="_blank" 
@@ -1388,7 +1404,7 @@ export default function LeadsTable({ leads, showChromeScore = false, loading = f
                         >
                           LinkedIn Profile
                         </a>
-                      ) : 'No contact info')}
+                      ) : 'No contact info'}
                     </div>
                      {(lead.company || lead.title) && (
                         <div className="text-gray-500 text-xs mt-1 flex items-center flex-wrap gap-x-2">
@@ -1598,7 +1614,15 @@ export default function LeadsTable({ leads, showChromeScore = false, loading = f
                       <span className="truncate" title={lead.name || 'N/A'}>{lead.name || 'N/A'}</span>
                     </div>
                     <div className="text-gray-400 text-xs mt-0.5 truncate" title={lead.email || lead.linkedinUrl || (lead as any).linkedinurl || 'No contact info'}>
-                      {lead.email || (lead.linkedinUrl || (lead as any).linkedinurl ? (
+                      {lead.email ? (
+                        <a 
+                          href={`mailto:${lead.email}`}
+                          className="text-blue-400 hover:text-blue-300 transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {lead.email}
+                        </a>
+                      ) : (lead.linkedinUrl || (lead as any).linkedinurl) ? (
                         <a 
                           href={lead.linkedinUrl || (lead as any).linkedinurl} 
                           target="_blank" 
@@ -1608,7 +1632,7 @@ export default function LeadsTable({ leads, showChromeScore = false, loading = f
                         >
                           LinkedIn Profile
                         </a>
-                      ) : 'No contact info')}
+                      ) : 'No contact info'}
                     </div>
                     {(lead.company || lead.title) && (
                       <div className="text-gray-500 text-xs mt-1 flex items-center flex-wrap gap-x-2">

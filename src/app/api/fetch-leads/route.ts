@@ -84,15 +84,24 @@ export async function GET() {
     
     console.log(`API: Successfully fetched ${data.length} leads for user ${userId} from Supabase.`);
     
-    // Debug: Log first few leads to see their user_id and linkedinUrl
+    // Debug: Log first few leads to see their contact info
     if (data.length > 0) {
       console.log(`API: First 3 leads sample:`, data.slice(0, 3).map(lead => ({
         id: lead.id,
         name: lead.name,
         user_id: lead.user_id,
+        email: lead.email,
         linkedinUrl: lead.linkedinUrl,
-        linkedin_url: lead.linkedin_url
+        linkedin_url: lead.linkedin_url,
+        hasContactInfo: !!(lead.email || lead.linkedinUrl || lead.linkedin_url)
       })));
+      
+      // Count contact info statistics
+      const withEmail = data.filter(lead => lead.email && lead.email.trim() !== '').length;
+      const withLinkedIn = data.filter(lead => (lead.linkedinUrl || lead.linkedin_url) && (lead.linkedinUrl || lead.linkedin_url).trim() !== '').length;
+      const withNoContact = data.filter(lead => !lead.email && !lead.linkedinUrl && !lead.linkedin_url).length;
+      
+      console.log(`API: Contact info stats - Email: ${withEmail}, LinkedIn: ${withLinkedIn}, No contact: ${withNoContact}`);
     }
 
     const processedLeads = data.map(lead => {

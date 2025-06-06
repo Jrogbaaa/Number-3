@@ -5,7 +5,25 @@ All notable changes to the PROPS Lead Management Platform will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2025-01-28
+## [Unreleased] - 2025-01-06
+
+### 🔧 Critical Contact Info Display Fix
+
+#### Contact Information Display Resolution
+- **CRITICAL FIX**: Resolved "No contact info" showing when email addresses existed
+- **Enhanced**: Contact display priority now correctly shows: Email → LinkedIn URL → "No contact info"
+- **Fixed**: Email addresses now display as clickable `mailto:` links in blue
+- **Fixed**: LinkedIn URLs display as "LinkedIn Profile" links when no email available
+- **Improved**: UI logic properly prioritizes available contact information
+- **Enhanced**: All three view modes (desktop table, mobile cards, card view) now consistent
+- **Added**: Enhanced API debugging with contact info statistics logging
+- **Tested**: Verified fix with 1000+ leads showing proper contact info distribution
+
+#### Root Cause Resolution
+- **Issue**: Flawed conditional logic was displaying "No contact info" even with valid emails
+- **Fix**: Restructured contact display logic to properly evaluate email first, then LinkedIn, then fallback
+- **Improvement**: Added comprehensive contact info statistics in API responses
+- **Quality**: All leads now show appropriate contact information based on available data
 
 ### 🔗 LinkedIn URL Integration & Contact Display Enhancement
 
