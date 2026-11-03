@@ -5,7 +5,23 @@ All notable changes to the PROPS Lead Management Platform will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2025-01-06
+## [Unreleased] - 2026-11-03
+
+### 🔒 Removed Leftover Debug and Maintenance Routes
+
+These routes used the Supabase service-role key (which skips database security rules) without checking that the caller owned the data.
+
+- **Removed**: Debug routes that returned lead records: `/api/debug-incognito`, `/api/debug-leads`, `/api/test-leads`, `/api/check-schema`, `/api/check-user-status`
+- **Removed**: `/api/reset-leads` and the `/emergency-reset` page that called it
+- **Removed**: One-off account migration routes `/api/transfer-leads`, `/api/transfer-leads-back`, `/api/transfer-old-leads`, and the `/fix-account` page that called them
+- **Changed**: The `/test-connection` debug page keeps only the "Test Supabase Connection" check
+- **Kept**: `/api/debug-env`, because the sign-in page uses it to check that Google sign-in is configured (it returns yes/no only, never values)
+
+### ↩️ Reverted Enhanced UI Components Integration (Kombai)
+
+- **Reverted**: Commit `7983cf9` (2025-08-18). It moved runtime dependencies such as `sonner`, `replicate` and `react-hot-toast` out of `dependencies` into a `strictDependencies` block that npm ignores, so the app could not build and that version never deployed. The code now matches the last deployed version (`f9f5c78`) apart from the removals above. The UI work can be re-applied later with its dependencies declared properly.
+
+## [Previous] - 2025-01-06
 
 ### 🔧 Critical Contact Info Display Fix
 
