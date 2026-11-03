@@ -21,6 +21,10 @@ These routes used the Supabase service-role key (which skips database security r
 
 - **Reverted**: Commit `7983cf9` (2025-08-18). It moved runtime dependencies such as `sonner`, `replicate` and `react-hot-toast` out of `dependencies` into a `strictDependencies` block that npm ignores, so the app could not build and that version never deployed. The code now matches the last deployed version (`f9f5c78`) apart from the removals above. The UI work can be re-applied later with its dependencies declared properly.
 
+### ⬆️ Upgraded Next.js to 15.5.28
+
+- **Changed**: `next` from `^15.2.4` to `^15.5.28`. Vercel refused to deploy 15.2.4 ("Vulnerable version of Next.js detected"), so no change could go live. React and the rest of the app are unchanged.
+
 ## [Previous] - 2025-01-06
 
 ### 🔧 Critical Contact Info Display Fix
