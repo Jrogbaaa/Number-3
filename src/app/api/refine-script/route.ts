@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { llamaClient } from '@/lib/llama';
 import Replicate from 'replicate';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 // Initialize Replicate client with API key from environment
 const REPLICATE_API_KEY = process.env.REPLICATE_API_KEY;
@@ -34,6 +36,16 @@ interface DebugInfo {
 
 export async function POST(request: NextRequest) {
   try {
+    // Paid Replicate call: only signed-in users may trigger it
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({
+        success: false,
+        error: 'User not authenticated',
+        refinementStatus: "error_api"
+      }, { status: 401 });
+    }
+
     console.log("API: Received request to refine-script endpoint");
     
     let requestBody;

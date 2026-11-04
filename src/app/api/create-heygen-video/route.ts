@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { HeygenClient } from '@/lib/heygen';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 // TODO: Replace with a valid Heygen Avatar ID
 const DEFAULT_AVATAR_ID = 'YourDefaultHeygenAvatarId'; 
 
 export async function POST(request: NextRequest) {
   try {
+    // Paid HeyGen call: only signed-in users may trigger it
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { script, avatarId } = body;
 

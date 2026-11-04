@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 // Create a server-side client with service role key
 // This bypasses RLS policies for admin operations
@@ -13,6 +15,11 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+    }
+
     const { id, ...updateData } = await request.json();
     
     if (!id) {
@@ -37,6 +44,9 @@ export async function POST(request: NextRequest) {
       dbUpdateData[dbField] = value;
     }
 
+    // The caller may never change who owns a lead
+    delete dbUpdateData.user_id;
+
     // Always add updated_at timestamp
     dbUpdateData.updated_at = new Date().toISOString();
 
@@ -47,6 +57,7 @@ export async function POST(request: NextRequest) {
       .from('leads')
       .update(dbUpdateData)
       .eq('id', id)
+      .eq('user_id', session.user.id) // only the owner's own lead
       .select();
 
     if (error) {
@@ -62,6 +73,11 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // No row came back: the lead doesn't exist or belongs to someone else
+    if (!data || data.length === 0) {
+      return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
     }
 
     return NextResponse.json({ 
