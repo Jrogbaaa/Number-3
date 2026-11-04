@@ -5,44 +5,25 @@ All notable changes to the PROPS Lead Management Platform will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2025-01-07
+## [Unreleased] - 2026-11-03
 
-### 🎨 Enhanced UI Components Integration (Kombai)
+### 🔒 Removed Leftover Debug and Maintenance Routes
 
-#### Modern UI Component Library Added
-- **NEW**: Integrated comprehensive enhanced UI component library via Kombai
-- **Added**: 8 new enhanced components with modern design and animations:
-  - `EnhancedButton` - Gradient buttons with hover effects and multiple variants
-  - `GlassCard` - Beautiful glassmorphism cards with backdrop blur
-  - `ScoreDisplay` - Animated score visualization components
-  - `AnimatedBackground` - Dynamic background effects and animations
-  - `EnhancedNavigation` - Modern navigation with glass effects
-  - `EnhancedHero` - Stunning hero sections with animations
-  - `EnhancedDashboard` - Advanced dashboard layout components
-  - `EnhancedLeadsTable` - Beautiful modern table designs
-- **Enhanced**: CSS animations including float, gradient-shift, and pulse-glow effects
-- **Added**: Comprehensive mock data for component demonstrations
-- **Created**: Preview page at `/page.uienhancement` to showcase all components
+These routes used the Supabase service-role key (which skips database security rules) without checking that the caller owned the data.
 
-#### Development Environment Improvements
-- **Fixed**: Next.js ES module configuration issues for Node.js 23.7.0
-- **Updated**: Tailwind CSS configuration with proper CSS variables and design tokens
-- **Added**: Support for modern dark theme with HSL color variables
-- **Installed**: Required dependencies:
-  - `class-variance-authority` for component variants
-  - `tailwindcss-animate` for enhanced animations
-  - `next-auth` for authentication middleware
-  - `@sentry/nextjs` for error tracking
-  - `postcss-preset-env` and `postcss-import` for CSS processing
-- **Resolved**: All module resolution and build configuration errors
-- **Improved**: Development server stability and hot reload functionality
+- **Removed**: Debug routes that returned lead records: `/api/debug-incognito`, `/api/debug-leads`, `/api/test-leads`, `/api/check-schema`, `/api/check-user-status`
+- **Removed**: `/api/reset-leads` and the `/emergency-reset` page that called it
+- **Removed**: One-off account migration routes `/api/transfer-leads`, `/api/transfer-leads-back`, `/api/transfer-old-leads`, and the `/fix-account` page that called them
+- **Changed**: The `/test-connection` debug page keeps only the "Test Supabase Connection" check
+- **Kept**: `/api/debug-env`, because the sign-in page uses it to check that Google sign-in is configured (it returns yes/no only, never values)
 
-#### Infrastructure & Configuration Updates
-- **Fixed**: Multiple dependency resolution issues preventing development server startup
-- **Updated**: PostCSS configuration for modern CSS processing
-- **Resolved**: Lockfile conflicts between project directories
-- **Enhanced**: Error handling and build process stability
-- **Improved**: TypeScript compilation and module resolution
+### ↩️ Reverted Enhanced UI Components Integration (Kombai)
+
+- **Reverted**: Commit `7983cf9` (2025-08-18). It moved runtime dependencies such as `sonner`, `replicate` and `react-hot-toast` out of `dependencies` into a `strictDependencies` block that npm ignores, so the app could not build and that version never deployed. The code now matches the last deployed version (`f9f5c78`) apart from the removals above. The UI work can be re-applied later with its dependencies declared properly.
+
+### ⬆️ Upgraded Next.js to 15.5.28
+
+- **Changed**: `next` from `^15.2.4` to `^15.5.28`. Vercel refused to deploy 15.2.4 ("Vulnerable version of Next.js detected"), so no change could go live. React and the rest of the app are unchanged.
 
 ## [Previous] - 2025-01-06
 
