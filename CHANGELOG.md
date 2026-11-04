@@ -21,6 +21,12 @@ These routes used the Supabase service-role key (which skips database security r
 
 - **Reverted**: Commit `7983cf9` (2025-08-18). It moved runtime dependencies such as `sonner`, `replicate` and `react-hot-toast` out of `dependencies` into a `strictDependencies` block that npm ignores, so the app could not build and that version never deployed. The code now matches the last deployed version (`f9f5c78`) apart from the removals above. The UI work can be re-applied later with its dependencies declared properly.
 
+### 🔐 Login Checks on Three API Routes
+
+- **Changed**: `/api/update-lead` now requires a login and only updates a lead owned by the signed-in user (404 otherwise). It can no longer change a lead's `user_id`.
+- **Changed**: `/api/create-heygen-video` (paid HeyGen) and `/api/refine-script` (paid Replicate) now require a login (401 otherwise).
+- **Unchanged**: the pages that call them already sit behind the sign-in redirect in `src/middleware.ts`. If the outreach-time save fails, the page keeps its existing fallback of saving in the browser.
+
 ### ⬆️ Upgraded Next.js to 15.5.28
 
 - **Changed**: `next` from `^15.2.4` to `^15.5.28`. Vercel refused to deploy 15.2.4 ("Vulnerable version of Next.js detected"), so no change could go live. React and the rest of the app are unchanged.
